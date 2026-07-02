@@ -223,6 +223,20 @@ public final class SanctuaryCommands {
                         .then(Commands.literal("status").executes(safe(SanctuaryCommands::dangerStatus)))
                         .then(Commands.literal("reset").executes(safe(SanctuaryCommands::dangerReset))))
                 .then(Commands.literal("anchor")
+                        .then(Commands.literal("time")
+                                .then(Commands.literal("add")
+                                        .then(Commands.argument("hours", DoubleArgumentType.doubleArg(-100000, 100000))
+                                                .executes(safe(c -> anchorTime(c, false, null)))
+                                                .then(Commands.argument("ownerId", StringArgumentType.word())
+                                                        .executes(safe(c -> anchorTime(c, false,
+                                                                StringArgumentType.getString(c, "ownerId")))))))
+                                .then(Commands.literal("set")
+                                        .then(Commands.argument("hours", DoubleArgumentType.doubleArg(0, 100000))
+                                                .executes(safe(c -> anchorTime(c, true, null)))
+                                                .then(Commands.argument("ownerId", StringArgumentType.word())
+                                                        .executes(safe(c -> anchorTime(c, true,
+                                                                StringArgumentType.getString(c, "ownerId")))))))
+                        )
                         .then(Commands.literal("exempt").executes(safe(SanctuaryCommands::anchorExempt)))
                         .then(Commands.literal("list").executes(safe(SanctuaryCommands::anchorList)))
                         .then(Commands.literal("clear").executes(safe(SanctuaryCommands::anchorClear)))
@@ -231,6 +245,74 @@ public final class SanctuaryCommands {
                                         .then(Commands.argument("z", DoubleArgumentType.doubleArg())
                                                 .then(Commands.argument("radius", DoubleArgumentType.doubleArg(0))
                                                         .executes(safe(SanctuaryCommands::anchorAdd)))))));
+    }
+
+    /**
+     * Admin time management. {@code add} offsets the charge (negative drains); {@code set} pins
+     * remaining hours exactly. Targets the nearest anchor within 16 blocks, or — given an id
+     * argument — every anchor whose owner UUID starts with it (the 8-char id from the menus) or
+     * whose owner name matches. Exempt anchors are skipped (flip them with /sanctuary anchor
+     * exempt first).
+     */
+    private static int anchorTime(CommandContext<CommandSourceStack> ctx, boolean set, String ownerSel)
+            throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        double hours = DoubleArgumentType.getDouble(ctx, "hours");
+        long now = ctx.getSource().getServer().overworld().getGameTime();
+        com.k33bz.sanctuary.anchor.AnchorState state = com.k33bz.sanctuary.anchor.AnchorState.get();
+
+        java.util.List<com.k33bz.sanctuary.anchor.AnchorState.PlacedAnchor> targets = new java.util.ArrayList<>();
+        if (ownerSel != null) {
+            String sel = ownerSel.toLowerCase(java.util.Locale.ROOT);
+            for (var a : state.anchors) {
+                boolean idMatch = a.ownerId != null && a.ownerId.toLowerCase(java.util.Locale.ROOT).startsWith(sel);
+                boolean nameMatch = a.owner != null && a.owner.equalsIgnoreCase(ownerSel);
+                if (idMatch || nameMatch) {
+                    targets.add(a);
+                }
+            }
+        } else {
+            net.minecraft.server.level.ServerPlayer player = ctx.getSource().getPlayerOrException();
+            com.k33bz.sanctuary.anchor.AnchorState.PlacedAnchor best = null;
+            double bestSq = 16 * 16;
+            for (var a : state.anchors) {
+                double dx = a.x - player.getX(), dz = a.z - player.getZ();
+                if (dx * dx + dz * dz < bestSq) {
+                    bestSq = dx * dx + dz * dz;
+                    best = a;
+                }
+            }
+            if (best != null) {
+                targets.add(best);
+            }
+        }
+        if (targets.isEmpty()) {
+            ctx.getSource().sendFailure(Component.literal(ownerSel == null
+                    ? "No placed anchor within 16 blocks." : "No anchors match '" + ownerSel + "'."));
+            return 0;
+        }
+        int changed = 0;
+        for (var a : targets) {
+            if (a.isExempt()) {
+                continue; // eternal — /sanctuary anchor exempt to make it fueled first
+            }
+            long expiry = set ? now + (long) (hours * 72000.0)
+                    : Math.max(a.expiry, now) + (long) (hours * 72000.0);
+            a.expiry = Math.max(now, expiry); // <= now means dormant right now
+            changed++;
+            String msg = String.format(java.util.Locale.ROOT, "  (%.0f, %.0f) %s — now %s [%.1fh]",
+                    a.x, a.z, a.owner == null ? "server" : a.owner,
+                    com.k33bz.sanctuary.anchor.AnchorUpkeep.remaining(a, now)[0], a.hoursLeft(now));
+            ctx.getSource().sendSuccess(() -> Component.literal(msg), false);
+        }
+        if (changed > 0) {
+            state.save();
+            int n = changed;
+            ctx.getSource().sendSuccess(() -> Component.literal(n + " anchor(s) updated."), true);
+        } else {
+            ctx.getSource().sendFailure(Component.literal(
+                    "Matched only eternal anchors — use /sanctuary anchor exempt to make them fueled first."));
+        }
+        return changed;
     }
 
     /** Toggle upkeep exemption on the placed anchor nearest the executing player (within 16 blocks). */

@@ -183,13 +183,18 @@ public final class AnchorUpkeep {
             BlockPos pos = BlockPos.containing(a.x, a.y, a.z);
             boolean active = a.isActive(now);
             Boolean last = LAST_ACTIVE.put(pos.asLong(), active);
-            // Label always reflects owner + remaining time (fuzzy above a day, hot colors below).
-            String who = a.owner == null ? "server" : a.owner;
-            String[] t = remaining(a, now);
-            setLabel(server, pos, String.format(Locale.ROOT,
-                    "{text:\"SA [%s] \",color:\"light_purple\",bold:1b,"
-                            + "extra:[{text:\"(%s)\",color:\"%s\",bold:0b}]}",
-                    who, t[0], t[1].toLowerCase(Locale.ROOT)));
+            // Label: eternal anchors read gold with no timer; fueled ones purple with the fuzzy
+            // timer (which heats yellow->gold->red inside the final 24h). Owner is menu-only.
+            if (a.isExempt()) {
+                setLabel(server, pos, "{text:\"Sanctuary Anchor\",color:\"gold\",bold:1b}");
+            } else {
+                String[] t = remaining(a, now);
+                String timerColor = t[1].equals("GREEN") ? "light_purple" : t[1].toLowerCase(Locale.ROOT);
+                setLabel(server, pos, String.format(Locale.ROOT,
+                        "{text:\"Sanctuary Anchor \",color:\"light_purple\",bold:1b,"
+                                + "extra:[{text:\"(%s)\",color:\"%s\",bold:0b}]}",
+                        t[0], timerColor));
+            }
             // Low fuel warning: the crystal smokes through its final 24 hours, harder under 6.
             double h = a.hoursLeft(now);
             if (active && !a.isExempt() && h < 24.0) {

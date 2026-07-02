@@ -47,6 +47,17 @@ public class AnchorMenu extends SimpleGui {
         refresh(); // properties (flame gauge) only reach the client once the screen exists
     }
 
+    private int tickCounter = 0;
+
+    @Override
+    public void onTick() {
+        super.onTick();
+        if (++tickCounter >= 20) {
+            tickCounter = 0;
+            refresh(); // live countdown: the timer, clock, and flame update every second
+        }
+    }
+
     private void refresh() {
         long now = player.level().getGameTime();
         SanctuaryConfig cfg = Sanctuary.CONFIG;
@@ -92,15 +103,23 @@ public class AnchorMenu extends SimpleGui {
                         : Component.literal(String.format(Locale.ROOT, "%.1f h banked (cap %.0f h)", hours, cap))
                                 .withStyle(ChatFormatting.GRAY))));
 
-        // Output (right, locked): the crystal's status readout.
+        // Output (right, locked): the crystal's full status — owner, UUID, live countdown.
         String who = anchor.owner == null ? "server" : anchor.owner;
         String[] t = AnchorUpkeep.remaining(anchor, now);
         ItemStack crystal = SanctuaryCrystal.create();
         crystal.set(DataComponents.CUSTOM_NAME, Component.literal("SA [" + who + "]")
                 .withStyle(s -> s.withColor(ChatFormatting.LIGHT_PURPLE).withItalic(false).withBold(true)));
-        this.setSlot(2, GuiElementBuilder.from(crystal)
-                .setLore(List.of(Component.literal("(" + t[0] + ")")
-                        .withStyle(ChatFormatting.valueOf(t[1])))));
+        java.util.List<Component> lore = new java.util.ArrayList<>();
+        lore.add(Component.literal("Owner: " + who).withStyle(ChatFormatting.GRAY));
+        if (anchor.ownerId != null) {
+            lore.add(Component.literal("UUID: " + anchor.ownerId).withStyle(ChatFormatting.DARK_GRAY));
+        }
+        if (!anchor.isExempt()) {
+            lore.add(Component.literal(countdown(anchor.hoursLeft(now)))
+                    .withStyle(ChatFormatting.valueOf(t[1])));
+        }
+        lore.add(Component.literal("(" + t[0] + ")").withStyle(ChatFormatting.valueOf(t[1])));
+        this.setSlot(2, GuiElementBuilder.from(crystal).setLore(lore));
 
         // Flame gauge = charge fraction of the cap (a full flame is a fully banked sanctuary).
         int frac = anchor.isExempt() ? 1000
@@ -118,6 +137,15 @@ public class AnchorMenu extends SimpleGui {
         int count = type.isRight ? 1 : cursor.getCount();
         AnchorUpkeep.feed(player, pos, anchor, cursor, count);
         refresh();
+    }
+
+    /** Precise live countdown, e.g. "6d 14h 22m 08s". */
+    private static String countdown(double hours) {
+        long total = Math.max(0L, (long) (hours * 3600.0));
+        long d = total / 86400, h = (total % 86400) / 3600, m = (total % 3600) / 60, sec = total % 60;
+        return d > 0
+                ? String.format(Locale.ROOT, "%dd %dh %02dm %02ds", d, h, m, sec)
+                : String.format(Locale.ROOT, "%dh %02dm %02ds", h, m, sec);
     }
 
     private static String fmtHours(double h) {

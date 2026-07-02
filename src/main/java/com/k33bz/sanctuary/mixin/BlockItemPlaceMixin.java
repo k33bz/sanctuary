@@ -70,9 +70,11 @@ public class BlockItemPlaceMixin {
         if (level.getBlockEntity(pos) instanceof net.minecraft.world.level.block.entity.SkullBlockEntity skull
                 && SanctuaryCrystal.isCrystal(skull.getOwnerProfile())) {
             ServerPlayer placer = (ServerPlayer) context.getPlayer();
-            // Admins raise eternal sanctuaries; everyone else's burn fuel from a starting charge.
+            // Eternal sanctuaries are a deliberate admin act: creative-mode placement, or an
+            // explicitly granted permission node. Plain op in survival gets a normal fueled
+            // anchor (server owners play survival as ops — that shouldn't skip upkeep).
             boolean exempt = placer.isCreative()
-                    || Permissions.check(placer, "sanctuary.anchor.admin", 2);
+                    || Permissions.check(placer, "sanctuary.anchor.admin", false);
             long expiry = exempt || !Sanctuary.CONFIG.anchorUpkeepEnabled ? -1L
                     : level.getGameTime() + (long) (Sanctuary.CONFIG.anchorStartHours * 72000.0);
             AnchorState.get().ensureRegistered(pos, expiry,

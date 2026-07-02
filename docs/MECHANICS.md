@@ -80,7 +80,7 @@ implements them when installed, otherwise the defaults apply):
 |------|---------|-------|
 | `sanctuary.anchor.create` | allow | placing a crystal (forming an anchor) |
 | `sanctuary.anchor.break`  | allow | breaking an existing anchor |
-| `sanctuary.anchor.admin`  | op (level 2) | placing an **eternal** (upkeep-exempt) anchor |
+| `sanctuary.anchor.admin`  | deny (grant via LuckPerms) | placing an **eternal** anchor in survival; creative placement is always eternal |
 
 **Dimension gating** (`scalingDimensions`, default `["minecraft:overworld"]`): distance-based
 systems (mob scaling, world-danger scaling, anchors) exist **only** in listed dimensions.

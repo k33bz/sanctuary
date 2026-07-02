@@ -68,15 +68,14 @@ public final class AnchorUpkeep {
     /** Hours one item of this stack is worth (0 = not fuel). */
     static double fuelWorth(ItemStack stack) {
         SanctuaryConfig cfg = Sanctuary.CONFIG;
-        double perEmerald = cfg == null ? 1.0 : cfg.anchorHoursPerEmerald;
         if (stack.is(Items.DRAGON_EGG)) {
             return cfg == null ? 168.0 : cfg.anchorHoursPerEgg;
         }
         if (stack.is(Items.EMERALD)) {
-            return perEmerald;
+            return cfg == null ? 2.5 : cfg.anchorHoursPerEmerald;
         }
         if (stack.is(Items.EMERALD_BLOCK)) {
-            return perEmerald * 9.0;
+            return cfg == null ? 24.0 : cfg.anchorHoursPerEmeraldBlock;
         }
         return 0.0;
     }

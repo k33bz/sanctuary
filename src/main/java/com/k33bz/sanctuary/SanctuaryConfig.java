@@ -74,11 +74,15 @@ public class SanctuaryConfig {
     // anchor goes dormant (no safety, no Flan claim) until refueled. Admin/creative-placed
     // anchors are exempt, as are legacy pre-upkeep anchors.
     public boolean anchorUpkeepEnabled = true;
-    public double anchorStartHours = 24.0;     // charge a fresh crystal comes with
-    public double anchorHoursPerEmerald = 1.0;
-    public double anchorHoursPerEgg = 168.0;   // a dragon egg adds 7 days — and is the ONLY way
-                                               // to rekindle a dormant anchor
-    public double anchorMaxFuelHours = 720.0;  // 30 days banked max
+    public double anchorStartHours = 24.0;          // charge a fresh crystal comes with
+    // Fuel rates: a block is deliberately ~6.7% MORE efficient than 9 loose emeralds
+    // (9 x 2.5h = 22.5h vs 24h) — compressed vitality keeps better. One block = one day.
+    public double anchorHoursPerEmerald = 2.5;
+    public double anchorHoursPerEmeraldBlock = 24.0;
+    public double anchorHoursPerEgg = 168.0;        // a dragon egg adds 7 days — and is the ONLY
+                                                    // way to rekindle a dormant anchor
+    public double anchorMaxFuelHours = 2400.0;      // 100 days banked max (a stack of 64 blocks
+                                                    // = 64 days fits comfortably)
 
     // Optional Flan integration: active anchors carry an auto-created admin claim of this radius
     // around the crystal (protection for the anchor + its immediate town core). Requires Flan.

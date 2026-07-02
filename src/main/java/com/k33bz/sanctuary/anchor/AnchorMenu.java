@@ -70,10 +70,10 @@ public class AnchorMenu extends SimpleGui {
                         Component.literal("Click with the egg on your cursor.").withStyle(ChatFormatting.DARK_GRAY)));
             } else {
                 input.setLore(List.of(
-                        Component.literal("Emerald: +" + fmtHours(cfg == null ? 1 : cfg.anchorHoursPerEmerald))
+                        Component.literal("Emerald: +" + fmtHours(cfg == null ? 2.5 : cfg.anchorHoursPerEmerald))
                                 .withStyle(ChatFormatting.GRAY),
-                        Component.literal("Emerald block: +" + fmtHours(9 * (cfg == null ? 1 : cfg.anchorHoursPerEmerald)))
-                                .withStyle(ChatFormatting.GRAY),
+                        Component.literal("Emerald block: +" + fmtHours(cfg == null ? 24 : cfg.anchorHoursPerEmeraldBlock)
+                                + " (best rate)").withStyle(ChatFormatting.GRAY),
                         Component.literal("Dragon egg: +" + fmtHours(cfg == null ? 168 : cfg.anchorHoursPerEgg))
                                 .withStyle(ChatFormatting.GRAY),
                         Component.literal("Left-click: whole cursor stack — Right-click: one")
@@ -83,7 +83,7 @@ public class AnchorMenu extends SimpleGui {
         }
 
         // Fuel gauge (bottom): the banked charge in plain numbers.
-        double cap = cfg == null ? 720.0 : cfg.anchorMaxFuelHours;
+        double cap = cfg == null ? 2400.0 : cfg.anchorMaxFuelHours;
         double hours = anchor.isExempt() ? Double.MAX_VALUE : anchor.hoursLeft(now);
         this.setSlot(1, new GuiElementBuilder(Items.CLOCK)
                 .setName(Component.literal("Charge").withStyle(ChatFormatting.GOLD))

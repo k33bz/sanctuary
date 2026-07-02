@@ -78,6 +78,8 @@ public final class SanctuaryCommands {
         num("anchor.labelHeight", () -> cfg().anchorLabelHeight, v -> cfg().anchorLabelHeight = v, 0, 4);
         num("anchor.startHours", () -> cfg().anchorStartHours, v -> cfg().anchorStartHours = v, 0, 100000);
         num("anchor.hoursPerEmerald", () -> cfg().anchorHoursPerEmerald, v -> cfg().anchorHoursPerEmerald = v, 0, 10000);
+        num("anchor.hoursPerEmeraldBlock", () -> cfg().anchorHoursPerEmeraldBlock, v -> cfg().anchorHoursPerEmeraldBlock = v, 0, 100000);
+        num("anchor.hoursPerEgg", () -> cfg().anchorHoursPerEgg, v -> cfg().anchorHoursPerEgg = v, 0, 1000000);
         num("anchor.maxFuelHours", () -> cfg().anchorMaxFuelHours, v -> cfg().anchorMaxFuelHours = v, 1, 1000000);
         num("anchor.flanClaimRadius", () -> cfg().flanClaimRadius, v -> cfg().flanClaimRadius = (int) Math.round(v), 1, 128);
         num("mobscaling.particleRange", () -> cfg().mobScaling.particleRange, v -> cfg().mobScaling.particleRange = v, 0, 256);

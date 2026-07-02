@@ -44,21 +44,23 @@ public final class AnchorDialog {
 
         List<DialogBody> body = new ArrayList<>();
         body.add(new ItemBody(new ItemStackTemplate(Items.PLAYER_HEAD),
-                Optional.of(new PlainMessage(Component.literal("SA [" + who + "]")
-                        .withStyle(s -> s.withColor(ChatFormatting.LIGHT_PURPLE).withBold(true)), 200)),
+                Optional.of(new PlainMessage(Component.literal("Owner: " + who)
+                        .withStyle(ChatFormatting.GRAY), 200)),
                 true, false, 16, 16));
-        body.add(new PlainMessage(Component.literal("(" + t[0] + ")")
-                .withStyle(ChatFormatting.valueOf(t[1])), 250));
+        // One combined message block: separate body elements each get their own padded row,
+        // so multi-line-in-one keeps the dialog compact.
+        var status = Component.literal(t[0]).withStyle(ChatFormatting.valueOf(t[1]));
         if (!anchor.isExempt()) {
             double cap = cfg == null ? 1536.0 : cfg.anchorMaxFuelHours;
-            body.add(new PlainMessage(Component.literal(String.format(Locale.ROOT,
-                    "%.1f h banked (cap %.0f h)", anchor.hoursLeft(now), cap))
-                    .withStyle(ChatFormatting.GRAY), 250));
+            status.append(Component.literal(String.format(Locale.ROOT,
+                    "\n%.1f h banked (cap %.0f h)", anchor.hoursLeft(now), cap))
+                    .withStyle(ChatFormatting.GRAY));
         }
         if (anchor.ownerId != null) {
-            body.add(new PlainMessage(Component.literal("UUID: " + anchor.ownerId)
-                    .withStyle(ChatFormatting.DARK_GRAY), 250));
+            status.append(Component.literal("\nid: " + anchor.ownerId.substring(0, 8))
+                    .withStyle(ChatFormatting.DARK_GRAY));
         }
+        body.add(new PlainMessage(status, 250));
 
         List<ActionButton> buttons = new ArrayList<>();
         if (!anchor.isExempt()) {
@@ -77,7 +79,7 @@ public final class AnchorDialog {
         }
 
         CommonDialogData common = new CommonDialogData(
-                Component.literal("Sanctuary — SA [" + who + "]"),
+                Component.literal("Sanctuary Anchor"),
                 Optional.empty(),
                 true,   // closable with escape
                 false,  // don't pause (server dialogs never should)

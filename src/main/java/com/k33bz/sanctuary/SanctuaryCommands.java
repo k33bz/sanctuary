@@ -227,18 +227,20 @@ public final class SanctuaryCommands {
                                 .then(Commands.literal("add")
                                         .then(Commands.argument("hours", DoubleArgumentType.doubleArg(-100000, 100000))
                                                 .executes(safe(c -> anchorTime(c, false, null)))
-                                                .then(Commands.argument("ownerId", StringArgumentType.word())
+                                                .then(Commands.argument("ownerId", StringArgumentType.greedyString())
                                                         .executes(safe(c -> anchorTime(c, false,
                                                                 StringArgumentType.getString(c, "ownerId")))))))
                                 .then(Commands.literal("set")
                                         .then(Commands.argument("hours", DoubleArgumentType.doubleArg(0, 100000))
                                                 .executes(safe(c -> anchorTime(c, true, null)))
-                                                .then(Commands.argument("ownerId", StringArgumentType.word())
+                                                .then(Commands.argument("ownerId", StringArgumentType.greedyString())
                                                         .executes(safe(c -> anchorTime(c, true,
                                                                 StringArgumentType.getString(c, "ownerId")))))))
                         )
                         .then(Commands.literal("exempt").executes(safe(SanctuaryCommands::anchorExempt)))
-                        .then(Commands.literal("list").executes(safe(SanctuaryCommands::anchorList)))
+                        .then(Commands.literal("list").executes(safe(SanctuaryCommands::anchorList))
+                                .then(Commands.argument("filter", StringArgumentType.greedyString())
+                                        .executes(safe(SanctuaryCommands::anchorList))))
                         .then(Commands.literal("clear").executes(safe(SanctuaryCommands::anchorClear)))
                         .then(Commands.literal("add")
                                 .then(Commands.argument("x", DoubleArgumentType.doubleArg())
@@ -262,11 +264,8 @@ public final class SanctuaryCommands {
 
         java.util.List<com.k33bz.sanctuary.anchor.AnchorState.PlacedAnchor> targets = new java.util.ArrayList<>();
         if (ownerSel != null) {
-            String sel = ownerSel.toLowerCase(java.util.Locale.ROOT);
             for (var a : state.anchors) {
-                boolean idMatch = a.ownerId != null && a.ownerId.toLowerCase(java.util.Locale.ROOT).startsWith(sel);
-                boolean nameMatch = a.owner != null && a.owner.equalsIgnoreCase(ownerSel);
-                if (idMatch || nameMatch) {
+                if (com.k33bz.sanctuary.anchor.AnchorState.matches(a, ownerSel)) {
                     targets.add(a);
                 }
             }
@@ -511,24 +510,39 @@ public final class SanctuaryCommands {
 
     private static int anchorList(CommandContext<CommandSourceStack> ctx) {
         CommandSourceStack src = ctx.getSource();
+        String filter;
+        try {
+            filter = StringArgumentType.getString(ctx, "filter");
+        } catch (IllegalArgumentException e) {
+            filter = null;
+        }
         src.sendSuccess(() -> Component.literal("Sanctuary anchors:"), false);
         List<SanctuaryConfig.Anchor> anchors = cfg().anchors;
-        if (anchors != null) {
+        if (filter == null && anchors != null) {
             for (SanctuaryConfig.Anchor a : anchors) {
                 src.sendSuccess(() -> Component.literal(String.format(java.util.Locale.ROOT,
                         "  config (%.0f, %.0f) r=%.0f — global (server-owned)", a.x, a.z, a.safeRadius)), false);
             }
         }
         long now = src.getServer().overworld().getGameTime();
+        int shown = 0;
         for (com.k33bz.sanctuary.anchor.AnchorState.PlacedAnchor a
                 : com.k33bz.sanctuary.anchor.AnchorState.get().anchors) {
+            if (filter != null && !com.k33bz.sanctuary.anchor.AnchorState.matches(a, filter)) {
+                continue;
+            }
+            shown++;
             String owner = a.owner == null ? "server" : a.owner;
+            String id = a.id == null ? "????????" : a.id.substring(0, 8);
             String[] t = com.k33bz.sanctuary.anchor.AnchorUpkeep.remaining(a, now);
             String precise = a.isExempt() ? ""
                     : String.format(java.util.Locale.ROOT, " [%.1fh]", a.hoursLeft(now));
             src.sendSuccess(() -> Component.literal(String.format(java.util.Locale.ROOT,
-                    "  placed (%.0f, %d, %.0f) r=%.0f — %s — %s%s",
-                    a.x, a.y, a.z, a.radius, owner, t[0], precise)), false);
+                    "  [%s] (%.0f, %d, %.0f) r=%.0f — %s — %s%s",
+                    id, a.x, a.y, a.z, a.radius, owner, t[0], precise)), false);
+        }
+        if (filter != null && shown == 0) {
+            src.sendSuccess(() -> Component.literal("  (no anchors match)"), false);
         }
         return 1;
     }

@@ -28,6 +28,8 @@ public class AnchorState {
         /** Display name + UUID of the placing player (null for legacy/server anchors). */
         public String owner;
         public String ownerId;
+        /** This anchor's OWN unique id — full UUID targets exactly one sanctuary. */
+        public String id;
         /**
          * Game time when the fuel runs out. {@code <= 0} = exempt/eternal (admin anchors and
          * grandfathered legacy entries). Dormant anchors keep their entry but grant no safety.
@@ -97,6 +99,7 @@ public class AnchorState {
             }
         }
         PlacedAnchor a = new PlacedAnchor(px, pz, defaultRadius);
+        a.id = java.util.UUID.randomUUID().toString();
         a.y = pos.getY();
         a.expiry = expiry;
         a.owner = owner;
@@ -105,6 +108,28 @@ public class AnchorState {
         save();
         Sanctuary.LOGGER.info("[sanctuary] Sanctuary anchor formed at {},{} (radius {}, {})",
                 pos.getX(), pos.getZ(), defaultRadius, expiry <= 0 ? "eternal" : "fueled");
+    }
+
+    /**
+     * Selector match: full UUID (36 chars) = exact anchor id or owner id; a string with {@code *}
+     * = case-insensitive glob over anchor id, owner id, and owner name; otherwise = id prefix
+     * (anchor or owner) or exact owner name.
+     */
+    public static boolean matches(PlacedAnchor a, String selector) {
+        String sel = selector.toLowerCase(java.util.Locale.ROOT);
+        String id = a.id == null ? "" : a.id.toLowerCase(java.util.Locale.ROOT);
+        String ownerId = a.ownerId == null ? "" : a.ownerId.toLowerCase(java.util.Locale.ROOT);
+        String owner = a.owner == null ? "" : a.owner.toLowerCase(java.util.Locale.ROOT);
+        if (sel.indexOf('*') >= 0) {
+            String regex = ("\\Q" + sel.replace("*", "\\E.*\\Q") + "\\E");
+            return id.matches(regex) || ownerId.matches(regex) || owner.matches(regex);
+        }
+        if (sel.length() == 36) {
+            return id.equals(sel) || ownerId.equals(sel);
+        }
+        return (!id.isEmpty() && id.startsWith(sel))
+                || (!ownerId.isEmpty() && ownerId.startsWith(sel))
+                || owner.equals(sel);
     }
 
     /** How many placed anchors this player owns. */
@@ -193,6 +218,17 @@ public class AnchorState {
                 if (s != null) {
                     if (s.anchors == null) {
                         s.anchors = new ArrayList<>();
+                    }
+                    // Backfill anchor ids on legacy entries so every anchor is targetable.
+                    boolean dirty = false;
+                    for (PlacedAnchor a : s.anchors) {
+                        if (a.id == null) {
+                            a.id = java.util.UUID.randomUUID().toString();
+                            dirty = true;
+                        }
+                    }
+                    if (dirty) {
+                        s.save();
                     }
                     return s;
                 }

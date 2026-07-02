@@ -84,7 +84,8 @@ the tick handler and damage mixin read the config fresh every tick/hit:
 | `/sanctuary crystal give` | Give yourself a Sanctuary Crystal (admin seeding/testing) |
 | `/sanctuary anchor exempt` | Toggle eternal/fueled on the nearest placed anchor |
 | `/sanctuary cap get\|set <player> [n]` | Show or set a player's anchor cap |
-| `/sanctuary anchor time add\|set <hours> [id]` | Adjust an anchor's charge — nearest anchor, or every anchor matching an owner id/name |
+| `/sanctuary anchor time add\|set <hours> [selector]` | Adjust charge: nearest anchor, or by selector — full anchor UUID = exactly one, 8-char/owner name/`wild*cards` = all matches |
+| `/sanctuary anchor list [selector]` | List anchors with their ids; filter by id, owner, or wildcard (`893e*`, `MadeUpNam*`) |
 | `/sanctuary metrics top\|clear` | Kill hotspots (farm detection) / reset |
 
 `set`/`toggle`/`anchor` mutate the in-memory config (instant); `save` writes it to disk; `reload`

@@ -50,8 +50,8 @@ public final class AnchorDialog {
                     "\n%.1f h banked (cap %.0f h)", anchor.hoursLeft(now), cap))
                     .withStyle(ChatFormatting.GRAY));
         }
-        if (anchor.ownerId != null) {
-            status.append(Component.literal("\nid: " + anchor.ownerId.substring(0, 8))
+        if (anchor.id != null) {
+            status.append(Component.literal("\nid: " + anchor.id.substring(0, 8))
                     .withStyle(ChatFormatting.DARK_GRAY));
         }
         body.add(new PlainMessage(status, 250));

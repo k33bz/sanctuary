@@ -23,6 +23,13 @@ public class AnchorState {
         public double x;
         public double z;
         public double radius;
+        /** Block Y of the crystal (0 for legacy entries). */
+        public int y;
+        /**
+         * Game time when the fuel runs out. {@code <= 0} = exempt/eternal (admin anchors and
+         * grandfathered legacy entries). Dormant anchors keep their entry but grant no safety.
+         */
+        public long expiry;
 
         public PlacedAnchor() {
         }
@@ -32,7 +39,23 @@ public class AnchorState {
             this.z = z;
             this.radius = radius;
         }
+
+        public boolean isExempt() {
+            return expiry <= 0L;
+        }
+
+        public boolean isActive(long now) {
+            return isExempt() || expiry > now;
+        }
+
+        /** Hours of fuel remaining ({@code Double.MAX_VALUE} if exempt). */
+        public double hoursLeft(long now) {
+            return isExempt() ? Double.MAX_VALUE : Math.max(0.0, (expiry - now) / 72000.0);
+        }
     }
+
+    /** Server game time, refreshed by the tick loop; used to judge which anchors are active. */
+    public static volatile long NOW = 0L;
 
     public List<PlacedAnchor> anchors = new ArrayList<>();
     public double defaultRadius = 128.0;
@@ -51,8 +74,13 @@ public class AnchorState {
         return FabricLoader.getInstance().getConfigDir().resolve("sanctuary_anchors.json");
     }
 
-    /** Register an anchor at this beacon position if not already present (idempotent). */
+    /** Register an anchor at this position if not already present (idempotent). */
     public void ensureRegistered(BlockPos pos) {
+        ensureRegistered(pos, 0L);
+    }
+
+    /** Register an anchor with an explicit fuel expiry ({@code <= 0} = exempt/eternal). */
+    public void ensureRegistered(BlockPos pos, long expiry) {
         double px = pos.getX() + 0.5;
         double pz = pos.getZ() + 0.5;
         for (PlacedAnchor a : anchors) {
@@ -60,9 +88,25 @@ public class AnchorState {
                 return; // already registered
             }
         }
-        anchors.add(new PlacedAnchor(px, pz, defaultRadius));
+        PlacedAnchor a = new PlacedAnchor(px, pz, defaultRadius);
+        a.y = pos.getY();
+        a.expiry = expiry;
+        anchors.add(a);
         save();
-        Sanctuary.LOGGER.info("[sanctuary] Sanctuary anchor formed at {},{} (radius {})", pos.getX(), pos.getZ(), defaultRadius);
+        Sanctuary.LOGGER.info("[sanctuary] Sanctuary anchor formed at {},{} (radius {}, {})",
+                pos.getX(), pos.getZ(), defaultRadius, expiry <= 0 ? "eternal" : "fueled");
+    }
+
+    /** The placed anchor at this block position, or {@code null}. */
+    public PlacedAnchor anchorAt(BlockPos pos) {
+        double px = pos.getX() + 0.5;
+        double pz = pos.getZ() + 0.5;
+        for (PlacedAnchor a : anchors) {
+            if (near(a, px, pz)) {
+                return a;
+            }
+        }
+        return null;
     }
 
     /** Remove any anchor at this position (idempotent). */
@@ -90,10 +134,14 @@ public class AnchorState {
         return Math.abs(a.x - px) < 0.51 && Math.abs(a.z - pz) < 0.51;
     }
 
-    /** Blocks beyond the nearest placed anchor's safe radius; {@code Double.MAX_VALUE} if none placed. */
+    /** Blocks beyond the nearest ACTIVE placed anchor's safe radius; {@code Double.MAX_VALUE} if none. */
     public double blocksBeyondSafe(double x, double z) {
         double best = Double.MAX_VALUE;
+        long now = NOW;
         for (PlacedAnchor a : anchors) {
+            if (!a.isActive(now)) {
+                continue; // dormant: grants no safety until refueled
+            }
             double dx = x - a.x;
             double dz = z - a.z;
             double beyond = Math.sqrt(dx * dx + dz * dz) - a.radius;

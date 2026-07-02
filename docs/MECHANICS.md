@@ -35,6 +35,29 @@ players**, at `crystalDropChance` (3%) per qualifying kill — so sanctuary expa
 conquering the frontier, and the supply is renewable (unlike the one dragon egg). Ops can spawn
 one with `/sanctuary crystal give`.
 
+**Upkeep & decay** (`anchorUpkeepEnabled`). Player-raised sanctuaries burn fuel measured in
+**real hours of server uptime** (72,000 ticks/hour):
+
+```
+fresh crystal        = anchorStartHours (24 h)
++1 emerald           = anchorHoursPerEmerald (1 h)      right-click the crystal to feed
++1 emerald block     = 9 × anchorHoursPerEmerald (9 h)  sneak-click feeds the whole stack
+bank cap             = anchorMaxFuelHours (720 h = 30 days)
+```
+
+Right-clicking the crystal empty-handed shows the remaining charge. A dry anchor goes
+**dormant**: the crystal stays placed, but the zone reverts to wildlands (players inside see the
+boundary message fire naturally), the label greys out to "(dormant)", and its Flan claim is
+released — feeding emeralds reawakens it. **Exempt anchors never decay**: creative-mode
+placement, placers with `sanctuary.anchor.admin` (default: op), legacy pre-upkeep anchors, and
+anything toggled with `/sanctuary anchor exempt` (nearest anchor within 16 blocks).
+
+**Flan integration** (`flanIntegration`, soft dependency). When the [Flan](https://modrinth.com/mod/flan)
+mod is installed, every **active** anchor automatically carries a Flan **admin claim** of
+`flanClaimRadius` (16) around the crystal — real block/container grief protection for the anchor
+and its town core, created on activation and released on dormancy or break. Without Flan
+installed the integration silently does nothing.
+
 **Permissions (LuckPerms-compatible).** Anchor actions check
 [fabric-permissions-api](https://github.com/lucko/fabric-permissions-api) nodes (bundled; LuckPerms
 implements them when installed, otherwise the defaults apply):
@@ -43,6 +66,7 @@ implements them when installed, otherwise the defaults apply):
 |------|---------|-------|
 | `sanctuary.anchor.create` | allow | placing a crystal (forming an anchor) |
 | `sanctuary.anchor.break`  | allow | breaking an existing anchor |
+| `sanctuary.anchor.admin`  | op (level 2) | placing an **eternal** (upkeep-exempt) anchor |
 
 **Dimension gating** (`scalingDimensions`, default `["minecraft:overworld"]`): distance-based
 systems (mob scaling, world-danger scaling, anchors) exist **only** in listed dimensions.
@@ -298,6 +322,8 @@ state silently. The glyph is `☠` (U+2620); emoji are not in Minecraft's font.
 | `scalingDimensions` | overworld | §1 |
 | `anchorShowLabel` / `anchorLabelHeight` | true / 1.6 | cosmetic |
 | `crystalDropMinTier` / `crystalDropChance` | 3 / 0.03 | §1 |
+| `anchorUpkeepEnabled` / `anchorStartHours` / `anchorHoursPerEmerald` / `anchorMaxFuelHours` | true / 24 / 1 / 720 | §1 |
+| `flanIntegration` / `flanClaimRadius` | true / 16 | §1 |
 | `mobScaling.enabled` | true | §2 |
 | `mobScaling.{health,damage,speed,xp,follow}PerBlock` + `…MaxMultiplier` | see §2 table | §2 |
 | `mobScaling.damageCurveExponent` | 1.0 | §2.2 |

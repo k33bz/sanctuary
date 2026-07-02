@@ -76,6 +76,10 @@ public final class SanctuaryCommands {
                 v -> cfg().crystalDropMinTier = (int) Math.round(v), 0, 4);
         num("anchor.crystalDropChance", () -> cfg().crystalDropChance, v -> cfg().crystalDropChance = v, 0, 1);
         num("anchor.labelHeight", () -> cfg().anchorLabelHeight, v -> cfg().anchorLabelHeight = v, 0, 4);
+        num("anchor.startHours", () -> cfg().anchorStartHours, v -> cfg().anchorStartHours = v, 0, 100000);
+        num("anchor.hoursPerEmerald", () -> cfg().anchorHoursPerEmerald, v -> cfg().anchorHoursPerEmerald = v, 0, 10000);
+        num("anchor.maxFuelHours", () -> cfg().anchorMaxFuelHours, v -> cfg().anchorMaxFuelHours = v, 1, 1000000);
+        num("anchor.flanClaimRadius", () -> cfg().flanClaimRadius, v -> cfg().flanClaimRadius = (int) Math.round(v), 1, 128);
         num("mobscaling.particleRange", () -> cfg().mobScaling.particleRange, v -> cfg().mobScaling.particleRange = v, 0, 256);
         num("lethalSave.levelsPerDamage", () -> cfg().lethalSaveLevelsPerDamage, v -> cfg().lethalSaveLevelsPerDamage = (float) v, 0, 100);
         num("lethalSave.minLevels", () -> cfg().lethalSaveMinLevels, v -> cfg().lethalSaveMinLevels = (int) Math.round(v), 0, 1000);
@@ -94,6 +98,8 @@ public final class SanctuaryCommands {
         bool("anchorlabel", () -> cfg().anchorShowLabel, b -> cfg().anchorShowLabel = b);
         bool("lethalSave", () -> cfg().lethalSaveEnabled, b -> cfg().lethalSaveEnabled = b);
         bool("danger", () -> cfg().danger.enabled, b -> cfg().danger.enabled = b);
+        bool("anchorUpkeep", () -> cfg().anchorUpkeepEnabled, b -> cfg().anchorUpkeepEnabled = b);
+        bool("flanIntegration", () -> cfg().flanIntegration, b -> cfg().flanIntegration = b);
     }
 
     public static void register() {
@@ -126,6 +132,7 @@ public final class SanctuaryCommands {
                         .then(Commands.literal("status").executes(safe(SanctuaryCommands::dangerStatus)))
                         .then(Commands.literal("reset").executes(safe(SanctuaryCommands::dangerReset))))
                 .then(Commands.literal("anchor")
+                        .then(Commands.literal("exempt").executes(safe(SanctuaryCommands::anchorExempt)))
                         .then(Commands.literal("list").executes(safe(SanctuaryCommands::anchorList)))
                         .then(Commands.literal("clear").executes(safe(SanctuaryCommands::anchorClear)))
                         .then(Commands.literal("add")
@@ -133,6 +140,35 @@ public final class SanctuaryCommands {
                                         .then(Commands.argument("z", DoubleArgumentType.doubleArg())
                                                 .then(Commands.argument("radius", DoubleArgumentType.doubleArg(0))
                                                         .executes(safe(SanctuaryCommands::anchorAdd)))))));
+    }
+
+    /** Toggle upkeep exemption on the placed anchor nearest the executing player (within 16 blocks). */
+    private static int anchorExempt(CommandContext<CommandSourceStack> ctx) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        net.minecraft.server.level.ServerPlayer player = ctx.getSource().getPlayerOrException();
+        com.k33bz.sanctuary.anchor.AnchorState state = com.k33bz.sanctuary.anchor.AnchorState.get();
+        com.k33bz.sanctuary.anchor.AnchorState.PlacedAnchor best = null;
+        double bestSq = 16 * 16;
+        for (com.k33bz.sanctuary.anchor.AnchorState.PlacedAnchor a : state.anchors) {
+            double dx = a.x - player.getX(), dz = a.z - player.getZ();
+            if (dx * dx + dz * dz < bestSq) {
+                bestSq = dx * dx + dz * dz;
+                best = a;
+            }
+        }
+        if (best == null) {
+            ctx.getSource().sendFailure(Component.literal("No placed anchor within 16 blocks."));
+            return 0;
+        }
+        if (best.isExempt()) {
+            best.expiry = player.level().getGameTime() + (long) (cfg().anchorStartHours * 72000.0);
+            ctx.getSource().sendSuccess(() -> Component.literal(
+                    "Anchor is now fueled (upkeep applies, starting charge granted)."), true);
+        } else {
+            best.expiry = -1L;
+            ctx.getSource().sendSuccess(() -> Component.literal("Anchor is now eternal (upkeep exempt)."), true);
+        }
+        state.save();
+        return 1;
     }
 
     /** Hand the executing player a Sanctuary Crystal (for testing/admin seeding). */

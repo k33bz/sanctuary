@@ -17,6 +17,7 @@ loom {
 repositories {
     // Loom adds Minecraft + Fabric repositories automatically.
     maven { url = 'https://maven.nucleoid.xyz' } // Polymer (experiment)
+    maven { url = 'https://gitlab.com/api/v4/projects/21830712/packages/maven' } // Flan (Flemmli97)
 }
 
 dependencies {
@@ -29,6 +30,9 @@ dependencies {
     // Permission nodes (sanctuary.anchor.create/break). LuckPerms implements this API when
     // installed; without a permission mod the defaults apply, so it is safely optional.
     include(implementation("me.lucko:fabric-permissions-api:0.7.0"))
+    // Flan (soft dependency): compile against its claim API; at runtime the integration only
+    // activates when the Flan mod is actually installed (FlanIntegration guards on isModLoaded).
+    compileOnly "io.github.flemmli97:flan:26.1.2-1.12.7-fabric"
 
     // Pure-logic unit tests (SurvivalLogic) — no game runtime required.
     testImplementation platform('org.junit:junit-bom:5.11.3')

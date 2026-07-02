@@ -64,6 +64,7 @@ public class Sanctuary implements ModInitializer {
         registerMobScaling();
         registerAnchorBreak();
         registerCrystalDrops();
+        com.k33bz.sanctuary.anchor.AnchorUpkeep.register();
         // Forget zone tracking on disconnect so the next login re-announces the player's zone.
         net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents.DISCONNECT.register(
                 (handler, server) -> MobDifficulty.clearPlayer(handler.player.getUUID()));
@@ -105,6 +106,10 @@ public class Sanctuary implements ModInitializer {
                 MinecraftServer server = world.getServer();
                 if (server != null) {
                     AnchorInteraction.removeDisplays(server, pos);
+                }
+                if (CONFIG != null && CONFIG.flanIntegration && world instanceof ServerLevel sl
+                        && com.k33bz.sanctuary.anchor.FlanIntegration.available()) {
+                    com.k33bz.sanctuary.anchor.FlanIntegration.removeClaim(sl, pos);
                 }
                 if (state.is(Blocks.BEACON)) {
                     Block.popResource(world, pos, new ItemStack(Items.DRAGON_EGG)); // legacy anchors
@@ -175,6 +180,7 @@ public class Sanctuary implements ModInitializer {
                 MobDifficulty.tickBoundary(player, cfg);
             }
             AnchorInteraction.pulseAnchors(server); // focus pulse at active anchors
+            com.k33bz.sanctuary.anchor.AnchorUpkeep.tick(server, cfg);
         });
     }
 

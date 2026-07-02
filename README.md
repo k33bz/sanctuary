@@ -31,7 +31,9 @@ something you carve out of the wilds, anchor by anchor.
 | Door-breakers | deep zombies break wooden doors on **any** difficulty — and smash the frame blocks of a *player-placed* door when the way through is blocked |
 | Rabid wildlife | in Savage+ zones, 25% of animals spawn hostile and hunt players |
 | Sanctuary anchors | place a **Sanctuary Crystal** (rare drop from Ferocious+ mobs) to raise one; union of safe circles; breaking drops the crystal back |
-| Permissions | `sanctuary.anchor.create` / `.break` nodes via fabric-permissions-api (bundled) — LuckPerms-ready, safe defaults without it |
+| Sanctuary upkeep | player anchors burn fuel (24 h to start) — feed the crystal emeralds (1 h each, blocks = 9 h) or it goes dormant; admin anchors are eternal |
+| Flan integration | active anchors auto-carry a Flan admin claim (grief protection); released when dormant/broken. Soft dependency |
+| Permissions | `sanctuary.anchor.create` / `.break` / `.admin` nodes via fabric-permissions-api (bundled) — LuckPerms-ready, safe defaults without it |
 | Anti-farming | buffed mobs inside a sanctuary revert to vanilla — scaled XP included |
 | Threat readout | actionbar zone messages with a personalized 5-skull scale (☠), on crossing and on login |
 | World-danger scaling | difficulty/world-age damage multiplier on players (distance term off by default) |
@@ -76,6 +78,7 @@ the tick handler and damage mixin read the config fresh every tick/hit:
 | `/sanctuary anchor list\|add <x> <z> <radius>\|clear` | Manage config safe anchors |
 | `/sanctuary danger status\|reset` | Show the world-age damage pressure, or re-zero it without touching the world clock |
 | `/sanctuary crystal give` | Give yourself a Sanctuary Crystal (admin seeding/testing) |
+| `/sanctuary anchor exempt` | Toggle eternal/fueled on the nearest placed anchor |
 
 `set`/`toggle`/`anchor` mutate the in-memory config (instant); `save` writes it to disk; `reload`
 reads it back — tune live then `save`, or hand-edit the file and `reload`.

@@ -69,6 +69,20 @@ public class SanctuaryConfig {
     public int crystalDropMinTier = 3;       // Ferocious+ mobs may drop a crystal
     public double crystalDropChance = 0.03;  // per qualifying player-kill
 
+    // Upkeep: player-raised sanctuaries burn fuel (real hours of server uptime). Feed the crystal
+    // emeralds to extend it (right-click; sneak = whole stack; emerald block = 9 emeralds). A dry
+    // anchor goes dormant (no safety, no Flan claim) until refueled. Admin/creative-placed
+    // anchors are exempt, as are legacy pre-upkeep anchors.
+    public boolean anchorUpkeepEnabled = true;
+    public double anchorStartHours = 24.0;     // charge a fresh crystal comes with
+    public double anchorHoursPerEmerald = 1.0;
+    public double anchorMaxFuelHours = 720.0;  // 30 days banked max
+
+    // Optional Flan integration: active anchors carry an auto-created admin claim of this radius
+    // around the crystal (protection for the anchor + its immediate town core). Requires Flan.
+    public boolean flanIntegration = true;
+    public int flanClaimRadius = 16;
+
     // System 7 — spawn-based wild-mob difficulty: hostiles are buffed by their distance from the
     // nearest anchor when they spawn (baked into their attributes), with tiered names + particles.
     public MobScaling mobScaling = new MobScaling();

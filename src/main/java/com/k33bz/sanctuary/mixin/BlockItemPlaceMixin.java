@@ -69,7 +69,13 @@ public class BlockItemPlaceMixin {
         // the hand stack may already be consumed (count 0) by the time we're called.
         if (level.getBlockEntity(pos) instanceof net.minecraft.world.level.block.entity.SkullBlockEntity skull
                 && SanctuaryCrystal.isCrystal(skull.getOwnerProfile())) {
-            AnchorState.get().ensureRegistered(pos);
+            ServerPlayer placer = (ServerPlayer) context.getPlayer();
+            // Admins raise eternal sanctuaries; everyone else's burn fuel from a starting charge.
+            boolean exempt = placer.isCreative()
+                    || Permissions.check(placer, "sanctuary.anchor.admin", 2);
+            long expiry = exempt || !Sanctuary.CONFIG.anchorUpkeepEnabled ? -1L
+                    : level.getGameTime() + (long) (Sanctuary.CONFIG.anchorStartHours * 72000.0);
+            AnchorState.get().ensureRegistered(pos, expiry);
             AnchorInteraction.playConversionEffect(level.getServer(), pos);
             AnchorInteraction.spawnAnchorDisplays(level.getServer(), pos);
             return;

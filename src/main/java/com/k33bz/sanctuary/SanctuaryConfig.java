@@ -81,8 +81,8 @@ public class SanctuaryConfig {
     public double anchorHoursPerEmeraldBlock = 24.0;
     public double anchorHoursPerEgg = 168.0;        // a dragon egg adds 7 days — and is the ONLY
                                                     // way to rekindle a dormant anchor
-    public double anchorMaxFuelHours = 2400.0;      // 100 days banked max (a stack of 64 blocks
-                                                    // = 64 days fits comfortably)
+    public double anchorMaxFuelHours = 1536.0;      // 64 days banked max — exactly one stack of
+                                                    // emerald blocks (one block = one day)
 
     // Optional Flan integration: active anchors carry an auto-created admin claim of this radius
     // around the crystal (protection for the anchor + its immediate town core). Requires Flan.

@@ -43,12 +43,12 @@ fresh crystal        = anchorStartHours (24 h)
 +1 emerald           = anchorHoursPerEmerald (2.5 h)
 +1 emerald block     = anchorHoursPerEmeraldBlock (24 h = 1 day)
 +1 dragon egg        = anchorHoursPerEgg (168 h = 7 days)
-bank cap             = anchorMaxFuelHours (2400 h = 100 days)
+bank cap             = anchorMaxFuelHours (1536 h = 64 days — exactly one stack of blocks)
 ```
 
 Blocks are deliberately ~6.7% more efficient than nine loose emeralds (24 h vs 22.5 h) —
 compressed vitality keeps better, so serious upkeep is done in blocks: **one block = one day**,
-a stack of 64 blocks ≈ 64 days. Feed by right-clicking the crystal (sneak = whole stack) or via
+a full stack of 64 blocks = 64 days = the entire bank. Feed by right-clicking the crystal (sneak = whole stack) or via
 the furnace-style menu (empty-hand click: left = cursor stack, right = one).
 
 The anchor's floating label shows **owner + remaining time**: `SA [k33bz] (> 7 days remaining)` —
@@ -337,7 +337,7 @@ state silently. The glyph is `☠` (U+2620); emoji are not in Minecraft's font.
 | `anchorShowLabel` / `anchorLabelHeight` | true / 1.6 | cosmetic |
 | `crystalDropMinTier` / `crystalDropChance` | 3 / 0.03 | §1 |
 | `anchorUpkeepEnabled` / `anchorStartHours` | true / 24 | §1 |
-| `anchorHoursPerEmerald` / `anchorHoursPerEmeraldBlock` / `anchorHoursPerEgg` / `anchorMaxFuelHours` | 2.5 / 24 / 168 / 2400 | §1 |
+| `anchorHoursPerEmerald` / `anchorHoursPerEmeraldBlock` / `anchorHoursPerEgg` / `anchorMaxFuelHours` | 2.5 / 24 / 168 / 1536 | §1 |
 | `flanIntegration` / `flanClaimRadius` | true / 16 | §1 |
 | `mobScaling.enabled` | true | §2 |
 | `mobScaling.{health,damage,speed,xp,follow}PerBlock` + `…MaxMultiplier` | see §2 table | §2 |

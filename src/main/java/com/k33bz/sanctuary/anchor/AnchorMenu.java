@@ -83,7 +83,7 @@ public class AnchorMenu extends SimpleGui {
         }
 
         // Fuel gauge (bottom): the banked charge in plain numbers.
-        double cap = cfg == null ? 2400.0 : cfg.anchorMaxFuelHours;
+        double cap = cfg == null ? 1536.0 : cfg.anchorMaxFuelHours;
         double hours = anchor.isExempt() ? Double.MAX_VALUE : anchor.hoursLeft(now);
         this.setSlot(1, new GuiElementBuilder(Items.CLOCK)
                 .setName(Component.literal("Charge").withStyle(ChatFormatting.GOLD))

@@ -73,6 +73,10 @@ public class SanctuaryConfig {
     // emeralds to extend it (right-click; sneak = whole stack; emerald block = 9 emeralds). A dry
     // anchor goes dormant (no safety, no Flan claim) until refueled. Admin/creative-placed
     // anchors are exempt, as are legacy pre-upkeep anchors.
+    // Sanctuaries actually shelter: natural hostile spawns are suppressed inside active safe
+    // zones (spawner blocks / eggs / commands unaffected; wanderers get the revert treatment).
+    public boolean suppressHostileSpawnsInSanctuary = true;
+
     public boolean anchorUpkeepEnabled = true;
     public double anchorStartHours = 24.0;          // charge a fresh crystal comes with
     // Fuel rates: a block is deliberately ~6.7% MORE efficient than 9 loose emeralds

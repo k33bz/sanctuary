@@ -101,6 +101,8 @@ public final class SanctuaryCommands {
         bool("lethalSave", () -> cfg().lethalSaveEnabled, b -> cfg().lethalSaveEnabled = b);
         bool("danger", () -> cfg().danger.enabled, b -> cfg().danger.enabled = b);
         bool("anchorUpkeep", () -> cfg().anchorUpkeepEnabled, b -> cfg().anchorUpkeepEnabled = b);
+        bool("sanctuarySpawnSuppression", () -> cfg().suppressHostileSpawnsInSanctuary,
+                b -> cfg().suppressHostileSpawnsInSanctuary = b);
         bool("flanIntegration", () -> cfg().flanIntegration, b -> cfg().flanIntegration = b);
     }
 

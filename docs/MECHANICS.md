@@ -26,6 +26,11 @@ beyond(x, z) = max(0,  min over all anchors A of:  dist2D((x,z), A) − A.safeRa
   `0,0 r=128`) and player-placed anchors (radius 128, persisted in
   `config/sanctuary_anchors.json`).
 
+**Sanctuaries actually shelter** (`suppressHostileSpawnsInSanctuary`, default on): natural
+hostile spawns are cancelled inside active safe zones — the dark corners of your town stay
+empty. Spawner blocks, spawn eggs, and commands are untouched, and hostiles that wander in are
+merely vanilla-strength (and de-buffed by the revert pass if they were wild).
+
 **The Sanctuary Crystal.** A placed anchor is a **Sanctuary Crystal** — a player head wearing the
 crystal skin (pure vanilla block; renders on every client). Placing one forms the anchor
 (activation flash + floating label + recurring particle pulse and sonic-boom accent); breaking it

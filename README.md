@@ -35,6 +35,7 @@ something you carve out of the wilds, anchor by anchor.
 | Flan integration | active anchors auto-carry a Flan admin claim (grief protection); released when dormant/broken. Soft dependency |
 | Permissions | `sanctuary.anchor.create` / `.break` / `.admin` nodes via fabric-permissions-api (bundled) — LuckPerms-ready, safe defaults without it |
 | Anti-farming | buffed mobs inside a sanctuary revert to vanilla — scaled XP included |
+| Spawn suppression | natural hostile spawns are blocked inside active sanctuaries (spawners/eggs unaffected) |
 | Threat readout | actionbar zone messages with a personalized 5-skull scale (☠), on crossing and on login |
 | World-danger scaling | difficulty/world-age damage multiplier on players (distance term off by default) |
 

@@ -5,3 +5,4 @@ accessible	field	net/minecraft/world/entity/Mob	xpReward	I
 
 # Let the mod attach hunter goals (door-breaking) to deep-wildlands mobs.
 accessible	field	net/minecraft/world/entity/Mob	goalSelector	Lnet/minecraft/world/entity/ai/goal/GoalSelector;
+accessible	field	net/minecraft/world/entity/Mob	targetSelector	Lnet/minecraft/world/entity/ai/goal/GoalSelector;

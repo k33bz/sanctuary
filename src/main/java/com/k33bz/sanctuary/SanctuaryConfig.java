@@ -108,6 +108,14 @@ public class SanctuaryConfig {
         // survives the revert; only the mod's tier name is cleared.
         public boolean revertInSanctuary = true;
 
+        // Rabid wildlife: in Savage+ zones (tier 2+), animals roll this chance to spawn rabid —
+        // buffed like monsters and hunting players. Tamed animals and babies are exempt. Damage
+        // is rabidBaseDamage scaled by the zone's damage multiplier (animals have no attack
+        // attribute of their own).
+        public boolean rabidEnabled = true;
+        public double rabidChance = 0.25;
+        public double rabidBaseDamage = 2.0;
+
         // Frame smashing: door-breaker zombies that can't path to their target may smash a few
         // soft blocks around a PLAYER-PLACED wooden door (never world-generated structures).
         public boolean frameSmashEnabled = true;

@@ -11,9 +11,12 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.goal.BreakDoorGoal;
+import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.entity.monster.zombie.Zombie;
+import com.k33bz.sanctuary.siege.RabidAttackGoal;
 
 import java.util.List;
 
@@ -27,7 +30,7 @@ public final class MobDifficulty {
     private MobDifficulty() {
     }
 
-    private static final Identifier HEALTH_ID = Identifier.fromNamespaceAndPath(Sanctuary.MOD_ID, "wild_health");
+    public static final Identifier HEALTH_ID = Identifier.fromNamespaceAndPath(Sanctuary.MOD_ID, "wild_health");
     private static final Identifier DAMAGE_ID = Identifier.fromNamespaceAndPath(Sanctuary.MOD_ID, "wild_damage");
     private static final Identifier SPEED_ID = Identifier.fromNamespaceAndPath(Sanctuary.MOD_ID, "wild_speed");
     private static final Identifier FOLLOW_ID = Identifier.fromNamespaceAndPath(Sanctuary.MOD_ID, "wild_follow");
@@ -211,6 +214,69 @@ public final class MobDifficulty {
         return msg;
     }
 
+    /**
+     * Rabid wildlife — in Savage+ zones, animals roll a chance to turn on players. Buffed like
+     * monsters (health/speed/follow), tier-named, and given hunt goals. Tamed animals and babies
+     * are exempt. Idempotent per load; goals are transient and re-attached like door-breakers'.
+     */
+    public static void onAnimalLoad(net.minecraft.world.entity.animal.Animal animal, SanctuaryConfig cfg) {
+        SanctuaryConfig.MobScaling ms = cfg.mobScaling;
+        if (!ms.enabled || !ms.rabidEnabled) {
+            return;
+        }
+        if (animal.entityTags().contains(RabidAttackGoal.RABID_TAG)) {
+            attachRabidGoals(animal); // reloaded rabid animal: buffs persisted, goals didn't
+            return;
+        }
+        AttributeInstance hp = animal.getAttribute(Attributes.MAX_HEALTH);
+        if (hp == null || hp.getModifier(HEALTH_ID) != null) {
+            return;
+        }
+        if (animal.isBaby()
+                || (animal instanceof net.minecraft.world.entity.TamableAnimal tamable && tamable.isTame())
+                || (animal instanceof net.minecraft.world.entity.animal.equine.AbstractHorse horse
+                        && horse.isTamed())) {
+            return;
+        }
+        double beyond = Sanctuary.blocksBeyondNearestAnchor(cfg, animal.getX(), animal.getZ());
+        if (beyond <= 0.0) {
+            return;
+        }
+        double damageMult = SurvivalLogic.mobPowerMultiplier(beyond, ms.damagePerBlock, ms.damageMaxMultiplier);
+        int tier = SurvivalLogic.mobTier(damageMult - 1.0);
+        if (tier < 2 || animal.getRandom().nextDouble() >= ms.rabidChance) {
+            return; // calm below Savage, and only a fraction of Savage+ wildlife turns
+        }
+
+        double healthMult = SurvivalLogic.mobPowerMultiplier(beyond, ms.healthPerBlock, ms.healthMaxMultiplier);
+        double speedMult = SurvivalLogic.mobPowerMultiplier(beyond, ms.speedPerBlock, ms.speedMaxMultiplier);
+        double followMult = SurvivalLogic.mobPowerMultiplier(beyond, ms.followPerBlock, ms.followMaxMultiplier);
+        addMult(hp, HEALTH_ID, healthMult - 1.0);
+        animal.setHealth(animal.getMaxHealth());
+        addMult(animal.getAttribute(Attributes.MOVEMENT_SPEED), SPEED_ID, speedMult - 1.0);
+        addMult(animal.getAttribute(Attributes.FOLLOW_RANGE), FOLLOW_ID, followMult - 1.0);
+
+        animal.addTag(RabidAttackGoal.RABID_TAG);
+        attachRabidGoals(animal);
+
+        animal.setCustomName(Component.literal(TITLES[tier] + " ").append(animal.getName().copy())
+                .withStyle(COLORS[tier]));
+        animal.setCustomNameVisible(false);
+    }
+
+    private static void attachRabidGoals(net.minecraft.world.entity.animal.Animal animal) {
+        // Both goals gate on the rabid tag, so the sanctuary revert pacifies without goal surgery.
+        animal.targetSelector.addGoal(1,
+                new net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal<>(animal,
+                        net.minecraft.world.entity.player.Player.class, true) {
+                    @Override
+                    public boolean canUse() {
+                        return animal.entityTags().contains(RabidAttackGoal.RABID_TAG) && super.canUse();
+                    }
+                });
+        animal.goalSelector.addGoal(1, new RabidAttackGoal(animal));
+    }
+
     /** Attach the any-difficulty door-break goal to a mob carrying the door-breaker tag. */
     private static void attachDoorBreakGoalIfMarked(Monster mob) {
         if (mob instanceof Zombie && mob.entityTags().contains(DOOR_BREAKER_TAG)) {
@@ -236,24 +302,37 @@ public final class MobDifficulty {
         if (!ms.enabled) {
             return;
         }
-        List<Monster> mobs = level.getEntitiesOfClass(Monster.class, player.getBoundingBox().inflate(ms.particleRange));
-        for (Monster mob : mobs) {
-            AttributeInstance dmg = mob.getAttribute(Attributes.ATTACK_DAMAGE);
-            if (dmg == null) {
-                continue;
-            }
-            AttributeModifier mod = dmg.getModifier(DAMAGE_ID);
-            if (mod == null) {
+        List<Mob> mobs = level.getEntitiesOfClass(Mob.class, player.getBoundingBox().inflate(ms.particleRange));
+        for (Mob mob : mobs) {
+            int tier;
+            boolean rabid = mob instanceof Animal && mob.entityTags().contains(RabidAttackGoal.RABID_TAG);
+            if (rabid) {
+                // Recover the tier from the health buff (animals have no attack attribute).
+                AttributeInstance hp = mob.getAttribute(Attributes.MAX_HEALTH);
+                AttributeModifier mod = hp == null ? null : hp.getModifier(HEALTH_ID);
+                if (mod == null || ms.healthPerBlock <= 0) {
+                    continue;
+                }
+                double beyond = mod.amount() / ms.healthPerBlock;
+                tier = SurvivalLogic.mobTier(
+                        SurvivalLogic.mobPowerMultiplier(beyond, ms.damagePerBlock, ms.damageMaxMultiplier) - 1.0);
+            } else if (mob instanceof Monster) {
+                AttributeInstance dmg = mob.getAttribute(Attributes.ATTACK_DAMAGE);
+                AttributeModifier mod = dmg == null ? null : dmg.getModifier(DAMAGE_ID);
+                if (mod == null) {
+                    continue;
+                }
+                tier = SurvivalLogic.mobTier(mod.amount());
+            } else {
                 continue;
             }
             // Anti-farming: a wild mob standing inside a sanctuary loses its buffs (and its
             // scaled XP), so dragging Nightmare mobs home isn't an XP printer.
-            if (cfg.mobScaling.revertInSanctuary
+            if (ms.revertInSanctuary
                     && Sanctuary.blocksBeyondNearestAnchor(cfg, mob.getX(), mob.getZ()) <= 0.0) {
-                revertToVanilla(mob, cfg.mobScaling, mod.amount());
+                revertToVanilla(mob, ms, tier);
                 continue;
             }
-            int tier = SurvivalLogic.mobTier(mod.amount());
             if (tier <= 0) {
                 continue;
             }
@@ -263,16 +342,17 @@ public final class MobDifficulty {
     }
 
     /**
-     * Strip a wild mob back to vanilla: attribute buffs removed, XP reward un-scaled (the spawn
-     * distance is recovered from the damage modifier), the mod's tier name cleared. A custom name
-     * a player gave it with a real name tag is left alone.
+     * Strip a wild mob back to vanilla: attribute buffs removed, XP reward un-scaled (monsters;
+     * the spawn distance is recovered from the damage modifier), rabid/door-breaker status
+     * dropped, the mod's tier name cleared. A name a player gave it with a real name tag is
+     * different text and is left alone.
      */
-    private static void revertToVanilla(Monster mob, SanctuaryConfig.MobScaling ms, double damageBonus) {
-        int tier = SurvivalLogic.mobTier(damageBonus);
-
-        // Un-scale the XP reward using the multipliers this mob got at spawn.
-        if (ms.damagePerBlock > 0) {
-            double beyond = damageBonus / ms.damagePerBlock;
+    private static void revertToVanilla(Mob mob, SanctuaryConfig.MobScaling ms, int tier) {
+        // Un-scale a monster's XP reward using the multipliers it got at spawn.
+        AttributeInstance dmgAttr = mob.getAttribute(Attributes.ATTACK_DAMAGE);
+        AttributeModifier dmgMod = dmgAttr == null ? null : dmgAttr.getModifier(DAMAGE_ID);
+        if (dmgMod != null && ms.damagePerBlock > 0) {
+            double beyond = dmgMod.amount() / ms.damagePerBlock;
             double xpMult = SurvivalLogic.mobPowerMultiplier(beyond, ms.xpPerBlock, ms.xpMaxMultiplier);
             if (xpMult > 1.0) {
                 mob.xpReward = (int) Math.max(0, Math.round(mob.xpReward / xpMult));
@@ -296,6 +376,10 @@ public final class MobDifficulty {
         }
         mob.setHealth(Math.min(mob.getHealth(), mob.getMaxHealth()));
         mob.removeTag(DOOR_BREAKER_TAG); // no more sieging either (goal dies with next reload)
+        mob.removeTag(RabidAttackGoal.RABID_TAG); // rabid goals gate on the tag, so this pacifies too
+        if (mob.getTarget() instanceof net.minecraft.world.entity.player.Player) {
+            mob.setTarget(null);
+        }
 
         // Clear OUR tier name only — an actual player-applied name tag is different text and survives.
         if (tier > 0 && mob.hasCustomName()) {

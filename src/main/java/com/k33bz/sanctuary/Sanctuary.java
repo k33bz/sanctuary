@@ -93,8 +93,13 @@ public class Sanctuary implements ModInitializer {
     private void registerMobScaling() {
         ServerEntityEvents.ENTITY_LOAD.register((entity, world) -> {
             SanctuaryConfig cfg = CONFIG;
-            if (cfg != null && entity instanceof Monster mob && cfg.isScalingDimension(world)) {
+            if (cfg == null || !cfg.isScalingDimension(world)) {
+                return;
+            }
+            if (entity instanceof Monster mob) {
                 MobDifficulty.onSpawn(mob, cfg);
+            } else if (entity instanceof net.minecraft.world.entity.animal.Animal animal) {
+                MobDifficulty.onAnimalLoad(animal, cfg);
             }
         });
     }

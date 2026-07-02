@@ -109,14 +109,82 @@ public final class SanctuaryCommands {
         bool("anchorUpkeep", () -> cfg().anchorUpkeepEnabled, b -> cfg().anchorUpkeepEnabled = b);
         bool("deathKeep", () -> cfg().deathKeepEnabled, b -> cfg().deathKeepEnabled = b);
         bool("killEventLog", () -> cfg().killEventLogEnabled, b -> cfg().killEventLogEnabled = b);
+        bool("dialogMenu", () -> cfg().anchorDialogMenu, b -> cfg().anchorDialogMenu = b);
         bool("sanctuarySpawnSuppression", () -> cfg().suppressHostileSpawnsInSanctuary,
                 b -> cfg().suppressHostileSpawnsInSanctuary = b);
         bool("flanIntegration", () -> cfg().flanIntegration, b -> cfg().flanIntegration = b);
     }
 
     public static void register() {
-        CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
-                dispatcher.register(build()));
+        CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
+            dispatcher.register(build());
+            // Player-level (permission 0): backs the native-dialog menu's feed buttons. Acts only
+            // on an anchor within 6 blocks, consuming fuel from the player's own inventory.
+            dispatcher.register(Commands.literal("sanctuaryfeed")
+                    .then(Commands.argument("type", StringArgumentType.word())
+                            .then(Commands.argument("count", com.mojang.brigadier.arguments.IntegerArgumentType.integer(0, 64))
+                                    .executes(safe(SanctuaryCommands::dialogFeed)))));
+        });
+    }
+
+    /** Feed the nearest anchor from the executing player's inventory (dialog button backend). */
+    private static int dialogFeed(CommandContext<CommandSourceStack> ctx) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        net.minecraft.server.level.ServerPlayer player = ctx.getSource().getPlayerOrException();
+        String type = StringArgumentType.getString(ctx, "type");
+        int count = com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(ctx, "count");
+
+        // nearest placed anchor within 6 blocks
+        com.k33bz.sanctuary.anchor.AnchorState.PlacedAnchor best = null;
+        double bestSq = 6 * 6;
+        for (com.k33bz.sanctuary.anchor.AnchorState.PlacedAnchor a
+                : com.k33bz.sanctuary.anchor.AnchorState.get().anchors) {
+            double dx = a.x - player.getX(), dz = a.z - player.getZ();
+            if (dx * dx + dz * dz < bestSq) {
+                bestSq = dx * dx + dz * dz;
+                best = a;
+            }
+        }
+        if (best == null) {
+            ctx.getSource().sendFailure(Component.literal("No sanctuary anchor within reach."));
+            return 0;
+        }
+        net.minecraft.core.BlockPos pos = net.minecraft.core.BlockPos.containing(best.x, best.y, best.z);
+
+        if (!type.equals("status") && count > 0) {
+            net.minecraft.world.item.Item item = switch (type) {
+                case "emerald" -> net.minecraft.world.item.Items.EMERALD;
+                case "block" -> net.minecraft.world.item.Items.EMERALD_BLOCK;
+                case "egg" -> net.minecraft.world.item.Items.DRAGON_EGG;
+                default -> null;
+            };
+            if (item == null) {
+                return 0;
+            }
+            // find a matching stack in the player's inventory and feed from it
+            net.minecraft.world.item.ItemStack found = net.minecraft.world.item.ItemStack.EMPTY;
+            for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
+                net.minecraft.world.item.ItemStack st = player.getInventory().getItem(i);
+                if (st.is(item)) {
+                    found = st;
+                    break;
+                }
+            }
+            if (found.isEmpty()) {
+                String label = switch (type) {
+                    case "block" -> "emerald blocks";
+                    case "egg" -> "dragon eggs";
+                    default -> "emeralds";
+                };
+                player.sendOverlayMessage(Component.literal("You have no " + label + ".")
+                        .withStyle(net.minecraft.ChatFormatting.YELLOW));
+            } else {
+                com.k33bz.sanctuary.anchor.AnchorUpkeep.feed(player, pos, best, found,
+                        Math.min(count, found.getCount()));
+            }
+        }
+        // re-open with fresh numbers (this is the dialog's "refresh")
+        com.k33bz.sanctuary.anchor.AnchorDialog.open(player, pos, best);
+        return 1;
     }
 
     private static LiteralArgumentBuilder<CommandSourceStack> build() {

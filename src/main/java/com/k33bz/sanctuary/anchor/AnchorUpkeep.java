@@ -57,7 +57,11 @@ public final class AnchorUpkeep {
         ItemStack held = player.getItemInHand(hand);
         if (fuelWorth(held) <= 0.0) {
             // Not fuel (empty hand, tools, whatever): open the sanctuary menu instead.
-            AnchorMenu.open(sp, pos.immutable(), anchor);
+            if (Sanctuary.CONFIG != null && Sanctuary.CONFIG.anchorDialogMenu) {
+                AnchorDialog.open(sp, pos.immutable(), anchor);
+            } else {
+                AnchorMenu.open(sp, pos.immutable(), anchor);
+            }
             return InteractionResult.SUCCESS;
         }
         // Fuel in hand: quick top-up without the menu. One item per click, stack while sneaking.

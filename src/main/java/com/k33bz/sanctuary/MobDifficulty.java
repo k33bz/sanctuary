@@ -214,12 +214,63 @@ public final class MobDifficulty {
             if (mod == null) {
                 continue;
             }
+            // Anti-farming: a wild mob standing inside a sanctuary loses its buffs (and its
+            // scaled XP), so dragging Nightmare mobs home isn't an XP printer.
+            if (cfg.mobScaling.revertInSanctuary
+                    && Sanctuary.blocksBeyondNearestAnchor(cfg, mob.getX(), mob.getZ()) <= 0.0) {
+                revertToVanilla(mob, cfg.mobScaling, mod.amount());
+                continue;
+            }
             int tier = SurvivalLogic.mobTier(mod.amount());
             if (tier <= 0) {
                 continue;
             }
             level.sendParticles(particleFor(tier), mob.getX(), mob.getY() + mob.getBbHeight() * 0.6, mob.getZ(),
                     tier + 1, 0.3, 0.4, 0.3, 0.01);
+        }
+    }
+
+    /**
+     * Strip a wild mob back to vanilla: attribute buffs removed, XP reward un-scaled (the spawn
+     * distance is recovered from the damage modifier), the mod's tier name cleared. A custom name
+     * a player gave it with a real name tag is left alone.
+     */
+    private static void revertToVanilla(Monster mob, SanctuaryConfig.MobScaling ms, double damageBonus) {
+        int tier = SurvivalLogic.mobTier(damageBonus);
+
+        // Un-scale the XP reward using the multipliers this mob got at spawn.
+        if (ms.damagePerBlock > 0) {
+            double beyond = damageBonus / ms.damagePerBlock;
+            double xpMult = SurvivalLogic.mobPowerMultiplier(beyond, ms.xpPerBlock, ms.xpMaxMultiplier);
+            if (xpMult > 1.0) {
+                mob.xpReward = (int) Math.max(0, Math.round(mob.xpReward / xpMult));
+            }
+        }
+
+        for (Identifier id : new Identifier[]{HEALTH_ID, DAMAGE_ID, SPEED_ID, FOLLOW_ID}) {
+            AttributeInstance inst;
+            if (id == HEALTH_ID) {
+                inst = mob.getAttribute(Attributes.MAX_HEALTH);
+            } else if (id == DAMAGE_ID) {
+                inst = mob.getAttribute(Attributes.ATTACK_DAMAGE);
+            } else if (id == SPEED_ID) {
+                inst = mob.getAttribute(Attributes.MOVEMENT_SPEED);
+            } else {
+                inst = mob.getAttribute(Attributes.FOLLOW_RANGE);
+            }
+            if (inst != null) {
+                inst.removeModifier(id);
+            }
+        }
+        mob.setHealth(Math.min(mob.getHealth(), mob.getMaxHealth()));
+        mob.removeTag(DOOR_BREAKER_TAG); // no more sieging either (goal dies with next reload)
+
+        // Clear OUR tier name only — an actual player-applied name tag is different text and survives.
+        if (tier > 0 && mob.hasCustomName()) {
+            String expected = TITLES[tier] + " " + mob.getType().getDescription().getString();
+            if (expected.equals(mob.getCustomName().getString())) {
+                mob.setCustomName(null);
+            }
         }
     }
 

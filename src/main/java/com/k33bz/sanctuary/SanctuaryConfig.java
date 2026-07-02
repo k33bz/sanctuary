@@ -102,6 +102,12 @@ public class SanctuaryConfig {
         // default a level-25 player entering a 2.5x zone reads ~3/5 skulls (an even fight).
         public double skullLevelsPerMultiplier = 15.0;
 
+        // Anti-farming: a buffed wild mob that ends up inside a sanctuary safe zone (dragged,
+        // nametagged, or wandered in) reverts to vanilla strength — and its scaled XP reverts
+        // with it, so hauling Nightmare mobs home isn't an XP printer. A player-given name tag
+        // survives the revert; only the mod's tier name is cleared.
+        public boolean revertInSanctuary = true;
+
         // Frame smashing: door-breaker zombies that can't path to their target may smash a few
         // soft blocks around a PLAYER-PLACED wooden door (never world-generated structures).
         public boolean frameSmashEnabled = true;

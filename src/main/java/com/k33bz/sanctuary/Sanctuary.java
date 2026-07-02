@@ -70,6 +70,11 @@ public class Sanctuary implements ModInitializer {
         net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents.DISCONNECT.register(
                 (handler, server) -> MobDifficulty.clearPlayer(handler.player.getUUID()));
         SanctuaryCommands.register();
+        // Final flush/close of the metrics stores on clean shutdown.
+        net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
+            com.k33bz.sanctuary.metrics.KillMetrics.flush();
+            com.k33bz.sanctuary.metrics.KillEventLog.close();
+        });
     }
 
     /** Distance beyond the nearest safe anchor, considering BOTH config anchors and placed anchors. */
@@ -128,6 +133,10 @@ public class Sanctuary implements ModInitializer {
                 return;
             }
             com.k33bz.sanctuary.metrics.KillMetrics.record(mob, level, source);
+            if (CONFIG.killEventLogEnabled) {
+                com.k33bz.sanctuary.metrics.KillEventLog.record(mob, level, source,
+                        MobDifficulty.tierOf(mob, cfg.mobScaling));
+            }
             if (!cfg.isScalingDimension(level) || !(source.getEntity() instanceof ServerPlayer)) {
                 return;
             }
@@ -213,6 +222,7 @@ public class Sanctuary implements ModInitializer {
             AnchorInteraction.pulseAnchors(server); // focus pulse at active anchors
             com.k33bz.sanctuary.anchor.AnchorUpkeep.tick(server, cfg);
             com.k33bz.sanctuary.metrics.KillMetrics.flush(); // no-op unless new kills landed
+            com.k33bz.sanctuary.metrics.KillEventLog.flush();
         });
     }
 

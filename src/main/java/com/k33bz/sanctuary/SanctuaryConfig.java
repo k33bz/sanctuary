@@ -46,6 +46,11 @@ public class SanctuaryConfig {
     public double oxygenPerLevel = 1.0;   // level 500 -> ~2 hours underwater
     public double oxygenMax = 1000.0;
 
+    // Raw kill history: one NDJSON line per mob death, per-day files under
+    // config/sanctuary_kill_logs/. Cheap (buffered sequential appends); ~150 bytes per kill.
+    // Convertible to SQLite/pandas any time. Disable if disk is precious.
+    public boolean killEventLogEnabled = true;
+
     // System 8 — soul retention: keep a level-scaled fraction of XP levels on death, so a
     // veteran's death is a setback instead of a total reset (vanilla zeroes everything, which
     // in this mod also strips armor/hearts/shield — a rage-quit generator). Higher level =

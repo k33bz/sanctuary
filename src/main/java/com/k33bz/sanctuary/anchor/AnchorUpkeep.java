@@ -54,54 +54,79 @@ public final class AnchorUpkeep {
         if (anchor == null) {
             return InteractionResult.PASS;
         }
-        SanctuaryConfig cfg = Sanctuary.CONFIG;
-        long now = level.getGameTime();
-
         ItemStack held = player.getItemInHand(hand);
-        double hoursPerItem = cfg == null ? 1.0 : cfg.anchorHoursPerEmerald;
-        boolean egg = held.is(Items.DRAGON_EGG);
-        double worth = egg ? (cfg == null ? 168.0 : cfg.anchorHoursPerEgg)
-                : held.is(Items.EMERALD) ? hoursPerItem
-                : held.is(Items.EMERALD_BLOCK) ? hoursPerItem * 9.0 : 0.0;
-
-        if (worth <= 0.0 || anchor.isExempt() || cfg == null || !cfg.anchorUpkeepEnabled) {
-            sp.sendOverlayMessage(status(anchor, now));
-            return InteractionResult.PASS;
-        }
-        // A dormant anchor's flame is out — emeralds can't relight it. Only a dragon egg can.
-        if (!anchor.isActive(now) && !egg) {
-            sp.sendOverlayMessage(Component
-                    .literal("The sanctuary is dormant — only a dragon egg can rekindle it.")
-                    .withStyle(ChatFormatting.DARK_RED));
+        if (fuelWorth(held) <= 0.0) {
+            // Not fuel (empty hand, tools, whatever): open the sanctuary menu instead.
+            AnchorMenu.open(sp, pos.immutable(), anchor);
             return InteractionResult.SUCCESS;
         }
+        // Fuel in hand: quick top-up without the menu. One item per click, stack while sneaking.
+        feed(sp, pos, anchor, held, player.isShiftKeyDown() ? held.getCount() : 1);
+        return InteractionResult.SUCCESS;
+    }
 
-        // Feed: one item per click, the whole stack while sneaking.
-        int count = player.isShiftKeyDown() ? held.getCount() : 1;
+    /** Hours one item of this stack is worth (0 = not fuel). */
+    static double fuelWorth(ItemStack stack) {
+        SanctuaryConfig cfg = Sanctuary.CONFIG;
+        double perEmerald = cfg == null ? 1.0 : cfg.anchorHoursPerEmerald;
+        if (stack.is(Items.DRAGON_EGG)) {
+            return cfg == null ? 168.0 : cfg.anchorHoursPerEgg;
+        }
+        if (stack.is(Items.EMERALD)) {
+            return perEmerald;
+        }
+        if (stack.is(Items.EMERALD_BLOCK)) {
+            return perEmerald * 9.0;
+        }
+        return 0.0;
+    }
+
+    /**
+     * Feed up to {@code count} items from {@code stack} into the anchor. Shared by the direct
+     * right-click path and the furnace menu. Handles the dormant-needs-an-egg rule, the bank cap,
+     * consumption, effects, and the status readout.
+     */
+    public static void feed(ServerPlayer player, BlockPos pos, AnchorState.PlacedAnchor anchor,
+                            ItemStack stack, int count) {
+        SanctuaryConfig cfg = Sanctuary.CONFIG;
+        if (!(player.level() instanceof ServerLevel level)) {
+            return;
+        }
+        long now = level.getGameTime();
+        double worth = fuelWorth(stack);
+        if (worth <= 0.0 || anchor.isExempt() || cfg == null || !cfg.anchorUpkeepEnabled) {
+            player.sendOverlayMessage(status(anchor, now));
+            return;
+        }
+        // A dormant anchor's flame is out — emeralds can't relight it. Only a dragon egg can.
+        if (!anchor.isActive(now) && !stack.is(Items.DRAGON_EGG)) {
+            player.sendOverlayMessage(Component
+                    .literal("The sanctuary is dormant — only a dragon egg can rekindle it.")
+                    .withStyle(ChatFormatting.DARK_RED));
+            return;
+        }
+        count = Math.max(1, Math.min(count, stack.getCount()));
         long base = Math.max(anchor.expiry, now);
         long cap = now + (long) (cfg.anchorMaxFuelHours * 72000.0);
         long fed = Math.min(cap, base + (long) (worth * count * 72000.0));
+        if (fed <= base) {
+            player.sendOverlayMessage(Component.literal("The sanctuary can hold no more power.")
+                    .withStyle(ChatFormatting.YELLOW));
+            return;
+        }
         int accepted = (int) Math.ceil(count * Math.min(1.0, (fed - base) / Math.max(1.0, worth * count * 72000.0)));
         accepted = Math.max(1, Math.min(count, accepted));
-        if (fed <= base) {
-            sp.sendOverlayMessage(Component.literal("The sanctuary can hold no more power.")
-                    .withStyle(ChatFormatting.YELLOW));
-            return InteractionResult.SUCCESS;
-        }
         anchor.expiry = fed;
         AnchorState.get().save();
-        held.shrink(accepted);
+        stack.shrink(accepted);
 
-        if (level instanceof ServerLevel serverLevel) {
-            run(serverLevel.getServer(), String.format(Locale.ROOT,
-                    "playsound minecraft:block.amethyst_block.chime block @a %.1f %.1f %.1f 1 0.7",
-                    pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5));
-            run(serverLevel.getServer(), String.format(Locale.ROOT,
-                    "particle minecraft:happy_villager %.1f %.1f %.1f 0.3 0.3 0.3 0.01 8",
-                    pos.getX() + 0.5, pos.getY() + 0.8, pos.getZ() + 0.5));
-        }
-        sp.sendOverlayMessage(status(anchor, now));
-        return InteractionResult.SUCCESS;
+        run(level.getServer(), String.format(Locale.ROOT,
+                "playsound minecraft:block.amethyst_block.chime block @a %.1f %.1f %.1f 1 0.7",
+                pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5));
+        run(level.getServer(), String.format(Locale.ROOT,
+                "particle minecraft:happy_villager %.1f %.1f %.1f 0.3 0.3 0.3 0.01 8",
+                pos.getX() + 0.5, pos.getY() + 0.8, pos.getZ() + 0.5));
+        player.sendOverlayMessage(status(anchor, now));
     }
 
     private static Component status(AnchorState.PlacedAnchor anchor, long now) {

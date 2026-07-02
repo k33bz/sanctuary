@@ -103,8 +103,14 @@ public class SanctuaryConfig {
     public static class DangerScaling implements SurvivalLogic.DangerParams {
         public boolean enabled = true;
         public float difficultyWeight = 0.15f; // per difficulty id (peaceful=0 .. hard=3)
-        public double perDayWeight = 0.02;     // per in-game day the world has survived
-        public double perBlockWeight = 0.0005; // per block beyond the nearest safe radius
+        // Per in-game day the world has survived. Keep this SMALL: an always-on server burns ~72
+        // in-game days per real day, so 0.02 hit the 4x cap in ~2.5 real days — everywhere, spawn
+        // included. 0.0005 is a months-scale slow burn (~+1x per month of server uptime).
+        public double perDayWeight = 0.0005;
+        // Per block beyond the nearest safe radius. Default 0: mob attributes (System 7) already
+        // scale with distance, and this multiplied ON TOP of them (~24x at 5k instead of 6x).
+        // Left as a knob for deliberate double-dipping experiments later.
+        public double perBlockWeight = 0.0;
         public float maxMultiplier = 4.0f;
 
         @Override

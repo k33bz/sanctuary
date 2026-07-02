@@ -166,10 +166,18 @@ public final class AnchorUpkeep {
                     "{text:\"SA [%s] \",color:\"light_purple\",bold:1b,"
                             + "extra:[{text:\"(%s)\",color:\"%s\",bold:0b}]}",
                     who, t[0], t[1].toLowerCase(Locale.ROOT)));
+            // Low fuel warning: the crystal smokes through its final 24 hours, harder under 6.
+            double h = a.hoursLeft(now);
+            if (active && !a.isExempt() && h < 24.0) {
+                run(server, String.format(Locale.ROOT,
+                        "particle minecraft:campfire_cosy_smoke %.1f %.1f %.1f 0.12 0.25 0.12 0.004 %d",
+                        a.x, a.y + 0.6, a.z, h < 6.0 ? 10 : 4));
+            }
             if (last != null && last == active) {
                 continue; // no transition
             }
             if (active) {
+                AnchorInteraction.spawnSpinDisplay(server, pos); // the shell spins only while alive
                 if (flan) {
                     FlanIntegration.createClaim(overworld, pos, cfg.flanClaimRadius);
                 }
@@ -177,6 +185,7 @@ public final class AnchorUpkeep {
                     Sanctuary.LOGGER.info("[sanctuary] Anchor at {},{} reawakened", pos.getX(), pos.getZ());
                 }
             } else {
+                AnchorInteraction.removeSpinDisplay(server, pos); // still crystal = dead crystal
                 if (flan) {
                     FlanIntegration.removeClaim(overworld, pos);
                 }

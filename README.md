@@ -1,100 +1,82 @@
-# XP Vitality
+# Sanctuary
 
-A server-side Fabric mod for **Minecraft 26.1.2** that turns experience into a survival resource.
-Built and compiled against the real 26.1.2 jars on this host (not guessed).
+A server-side Fabric mod for **Minecraft 26.1.2** that turns **XP into a life force** and
+**distance into danger**. Vanilla clients connect with no mods — everything renders through
+vanilla attributes, effects, and display entities.
 
-## The systems
+## The idea
 
-| System | Where | Summary |
-|--------|-------|---------|
-| Passive regen | `XPVitality` (server tick) | While hurt and holding XP, drains XP to fast-heal ~1 heart per second. |
-| Armor from level | `LevelAttributes` (`armor` attr) | Leveling grants real armor points (capped) — shows as **armor icons** and does the reduction via vanilla's curve. |
-| Bonus hearts | `LevelAttributes` (`max_health` attr) | +1 **heart** at each level milestone (10, 25, 50, 100, 250, 500, …). |
-| XP shield | `LevelAttributes` (absorption effect) | **Yellow hearts** = `(level/milestone − 1) × maxHealth`; depletes in combat and only rebuilds after an out-of-combat cooldown (10s − 1s/milestone). Resets at each milestone. |
-| Breath | `LevelAttributes` (`oxygen_bonus` attr) | Air lasts ~`(level+1)×15s` underwater — level 500 ≈ can't drown. |
-| Lethal save | `XPVitality` (`ALLOW_DEATH`) | A killing blow spends whole levels to survive at ~1 heart — if you can afford it. |
-| World-danger scaling | `LivingEntityDamageMixin` | Mob damage scales up with difficulty, world age, and distance from safe anchors. |
-| Wild-mob difficulty | `MobDifficulty` (spawn hook) | Hostiles are buffed **at spawn** by distance from the nearest anchor (health/damage/speed, capped) — baked into their NBT. Tiered names (Feral→Nightmare) + particle auras. |
+Your XP level is your vitality: it heals you, armors you, grows your hearts and shield, and can
+buy back your life. The world scales the other way: the farther from a **sanctuary anchor**, the
+stronger everything gets — until the deep wildlands one-shot the unprepared, the wildlife turns
+rabid, and zombies tear the door (and its frame) off your shelter.
 
-Damage path order: the mixin **scales incoming mob damage up** at `hurtServer` HEAD, then vanilla's
-armor reduction (from the level-granted armor) applies afterward — preserving "scale up, then reduce".
-The hearts/armor/shield are standard synced attributes, so **vanilla clients render them** with no client mod.
+Sanctuaries are placeable: seat a **dragon egg in a beacon** and it becomes a spinning-crystal
+anchor that calms the region around it. Civilization is something you build outward, anchor by
+anchor.
 
-### Sanctuary anchor (placeable safe region)
+## Systems at a glance
 
-**Right-click a beacon while holding a dragon egg** to seat the egg inside it and form a sanctuary anchor:
-hostiles that spawn within its radius (default 128 blocks) stay vanilla-strength, while the wildlands
-beyond stay lethal (System 7). The egg appears as a shrunk dragon egg floating in the beacon (a
-`block_display` entity; size/height tunable via `anchor.eggScale`/`anchor.eggHeight`). It's **all vanilla
-blocks/entities**, so it renders natively on **every client** (vanilla or modded) — no custom content or
-resource pack. Anchor beacons suppress the vanilla beacon UI; break the beacon to pop the egg back out and
-drop the protection. Anchors persist in `config/xpvitality_anchors.json` and stack with the config
-`anchors` list (nearest wins).
+| System | Summary |
+|--------|---------|
+| XP regen | drain XP points to heal ~1 heart/s while hurt |
+| Level armor | +0.25 armor/level (cap 20 = 80% reduction at level 80), real armor icons |
+| Milestone hearts | +1 heart at levels 10, 25, 50, 100, 250, 500, 1000, 2500, 5000 |
+| XP shield | absorption scaling with progress past your milestone; rebuilds out of combat |
+| Breath | oxygen bonus per level — high levels effectively cannot drown |
+| Lethal save | spend levels to survive a killing blow at ~1 heart |
+| Wild-mob scaling | mobs gain damage/health/speed/XP with distance from the nearest anchor; fuzzy zone edges (±12% σ per spawn); optional exponential damage curve |
+| Threat tiers | Feral → Savage → Ferocious → Nightmare — color-coded names + particle auras |
+| Hunters | deep mobs track players from up to 3× vanilla range |
+| Door-breakers | deep zombies break wooden doors on **any** difficulty — and smash the frame blocks of a *player-placed* door when the way through is blocked |
+| Rabid wildlife | in Savage+ zones, 25% of animals spawn hostile and hunt players |
+| Sanctuary anchors | beacon + dragon egg; union of safe circles; breaking pops the egg back out |
+| Anti-farming | buffed mobs inside a sanctuary revert to vanilla — scaled XP included |
+| Threat readout | actionbar zone messages with a personalized 5-skull scale (☠), on crossing and on login |
+| World-danger scaling | difficulty/world-age damage multiplier on players (distance term off by default) |
 
-## Requirements
+Full formulas, tables, and worked examples: **[docs/MECHANICS.md](docs/MECHANICS.md)**.
+Design history: [SPEC.md](SPEC.md) · [CHANGELOG.md](CHANGELOG.md).
 
-- **JDK 25** (Minecraft 26.x requires it). Already installed here via `brew install openjdk@25`;
-  `JAVA_HOME` is set in `~/.zshrc`.
-- No mappings and no mixin refmap: **26.x ships un-obfuscated**, so the code targets Mojang names directly.
+Scaling and anchors apply to the **Overworld only** by default (`scalingDimensions`); the Nether
+and End stay vanilla.
 
-## Build & test
+## Requirements & build
 
-```sh
-cd ~/minecraft-mods/xpvitality
-./gradlew build        # compiles + runs SurvivalLogic unit tests
-./gradlew test         # just the pure-logic tests
-```
-
-The built mod jar lands in `build/libs/xpvitality-0.3.0.jar`.
-
-## Run / smoke-test
+- **JDK 25** (Minecraft 26.x requires it). No mappings, no mixin refmap — 26.x ships
+  un-obfuscated, so the code targets Mojang names directly.
 
 ```sh
-./gradlew runServer    # launches a dev dedicated server with the mod loaded
+./gradlew build        # compiles + runs the SurvivalLogic unit tests → build/libs/
+./gradlew runServer    # dev dedicated server on :25565 (validates mixin application)
 ```
 
-Mixin *application* (as opposed to compilation) is only fully validated at runtime, so `runServer`
-is the real confirmation that `LivingEntityDamageMixin` hooks `LivingEntity.hurtServer`.
-
-## Deploy to mc.kast.ro
+## Deploy
 
 1. `./gradlew build`
-2. Copy `build/libs/xpvitality-0.3.0.jar` into the server's `mods/` folder.
-3. Ensure the server runs on **Fabric Loader ≥ 0.19.3** with **Fabric API 0.153.0+26.1.2** and **Java 25**.
-4. First launch writes `config/xpvitality.json` — tune the levers there (no recompile needed).
+2. Copy `build/libs/sanctuary-<version>.jar` into the server's `mods/` folder.
+3. Server needs **Fabric Loader ≥ 0.19.3**, **Fabric API 0.153.0+26.1.2**, **Java 25**.
+4. First launch writes `config/sanctuary.json` — tune the levers there (no recompile needed).
 
-## Editing in Kiro
+## Configuration & commands
 
-```sh
-kiro ~/minecraft-mods/xpvitality
-```
-
-Kiro + Claude Code drive `./gradlew` directly. You lose IntelliJ's inline mixin gutter checks, but the
-compiler + `runServer` are the correctness oracle — which is exactly how this mod was verified.
-
-## Config (`config/xpvitality.json`)
-
-All balance levers live in `XPVitalityConfig`: regen rate/cost; `armor.perLevel`/`armor.max`;
-`hearts.hpPerMilestone` + the `milestones` list; `shield.maxFraction` and `shield.cooldown{Base,PerMilestone,Min}`;
-`oxygen.perLevel`/`oxygen.max`; lethal-save cost/revive-health; and the `danger` weights plus the `anchors`
-list (`{x, z, safeRadius}`, default spawn with a 128-block safe radius). The file is written with defaults on first launch.
-
-### In-game commands (`/xpvitality`, op / level 2+)
-
-Changes apply **live** — the tick handler and damage mixin read the config fresh every tick/hit, so
-there's no restart needed.
+All balance levers live in `config/sanctuary.json` (see the
+[config reference](docs/MECHANICS.md#9-config-reference)). Ops (level 2+) can tune **live** —
+the tick handler and damage mixin read the config fresh every tick/hit:
 
 | Command | Effect |
 |---|---|
-| `/xpvitality list` | Print every system toggle and numeric value |
-| `/xpvitality get <key>` | Read one value (tab-completes keys, e.g. `armor.max`) |
-| `/xpvitality set <key> <value>` | Set a value live (range-validated) |
-| `/xpvitality toggle <system>` | Flip a system on/off (`regen`, `armor`, `hearts`, `shield`, `breath`, `lethalSave`, `danger`) |
-| `/xpvitality save` | Persist current live values to the json |
-| `/xpvitality reload` | Re-read the json from disk |
-| `/xpvitality anchor list\|add <x> <z> <radius>\|clear` | Manage System-4 safe anchors |
+| `/sanctuary list` | Print every system toggle and numeric value |
+| `/sanctuary get <key>` | Read one value (tab-completes keys) |
+| `/sanctuary set <key> <value>` | Set a value live (range-validated) |
+| `/sanctuary toggle <system>` | Flip a system on/off |
+| `/sanctuary save` | Persist current live values to the json |
+| `/sanctuary reload` | Re-read the json from disk |
+| `/sanctuary anchor list\|add <x> <z> <radius>\|clear` | Manage config safe anchors |
 
 `set`/`toggle`/`anchor` mutate the in-memory config (instant); `save` writes it to disk; `reload`
-reads it back — so you can tune live, then `save`, or hand-edit the file and `reload`.
+reads it back — tune live then `save`, or hand-edit the file and `reload`.
 
-See [SPEC.md](SPEC.md) for the full design and [CHANGELOG.md](CHANGELOG.md) for version history.
+## License
+
+MIT

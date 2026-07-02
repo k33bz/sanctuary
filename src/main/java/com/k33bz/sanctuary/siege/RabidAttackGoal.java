@@ -91,7 +91,8 @@ public class RabidAttackGoal extends Goal {
             AttributeModifier mod = hp.getModifier(com.k33bz.sanctuary.MobDifficulty.HEALTH_ID);
             if (mod != null) {
                 double beyond = mod.amount() / ms.healthPerBlock;
-                mult = SurvivalLogic.mobPowerMultiplier(beyond, ms.damagePerBlock, ms.damageMaxMultiplier);
+                mult = SurvivalLogic.mobPowerMultiplier(beyond, ms.damagePerBlock, ms.damageMaxMultiplier,
+                        ms.damageCurveExponent);
             }
         }
         return (float) (ms.rabidBaseDamage * mult);

@@ -63,9 +63,13 @@ public final class MobDifficulty {
         if (beyond <= 0.0) {
             return; // spawned inside a safe zone: leave it vanilla-strength (and unmarked)
         }
+        // Fuzzy zone edges: this individual rolled slightly stronger or weaker than its distance
+        // says, so tier boundaries are bands, not lines. All of its stats share the one roll.
+        beyond = SurvivalLogic.fuzzedBeyond(beyond, mob.getRandom().nextGaussian(), ms.edgeFuzz);
 
         double healthMult = SurvivalLogic.mobPowerMultiplier(beyond, ms.healthPerBlock, ms.healthMaxMultiplier);
-        double damageMult = SurvivalLogic.mobPowerMultiplier(beyond, ms.damagePerBlock, ms.damageMaxMultiplier);
+        double damageMult = SurvivalLogic.mobPowerMultiplier(beyond, ms.damagePerBlock, ms.damageMaxMultiplier,
+                ms.damageCurveExponent);
         double speedMult = SurvivalLogic.mobPowerMultiplier(beyond, ms.speedPerBlock, ms.speedMaxMultiplier);
         double followMult = SurvivalLogic.mobPowerMultiplier(beyond, ms.followPerBlock, ms.followMaxMultiplier);
 
@@ -87,7 +91,8 @@ public final class MobDifficulty {
         }
 
         // Deeper mobs drop proportionally more XP — the payoff for braving the death zone.
-        double xpMult = SurvivalLogic.mobPowerMultiplier(beyond, ms.xpPerBlock, ms.xpMaxMultiplier);
+        double xpMult = SurvivalLogic.mobPowerMultiplier(beyond, ms.xpPerBlock, ms.xpMaxMultiplier,
+                ms.damageCurveExponent);
         mob.xpReward = (int) Math.round(mob.xpReward * xpMult);
 
         int tier = SurvivalLogic.mobTier(damageMult - 1.0);
@@ -123,7 +128,8 @@ public final class MobDifficulty {
         }
         double beyond = Sanctuary.blocksBeyondNearestAnchor(cfg, player.getX(), player.getZ());
         double zoneMult = beyond <= 0.0 ? 1.0
-                : SurvivalLogic.mobPowerMultiplier(beyond, ms.damagePerBlock, ms.damageMaxMultiplier);
+                : SurvivalLogic.mobPowerMultiplier(beyond, ms.damagePerBlock, ms.damageMaxMultiplier,
+                        ms.damageCurveExponent);
         int zone = beyond <= 0.0 ? 0 : 1 + SurvivalLogic.mobTier(zoneMult - 1.0);
         long now = player.level().getGameTime();
 
@@ -242,7 +248,9 @@ public final class MobDifficulty {
         if (beyond <= 0.0) {
             return;
         }
-        double damageMult = SurvivalLogic.mobPowerMultiplier(beyond, ms.damagePerBlock, ms.damageMaxMultiplier);
+        beyond = SurvivalLogic.fuzzedBeyond(beyond, animal.getRandom().nextGaussian(), ms.edgeFuzz);
+        double damageMult = SurvivalLogic.mobPowerMultiplier(beyond, ms.damagePerBlock, ms.damageMaxMultiplier,
+                ms.damageCurveExponent);
         int tier = SurvivalLogic.mobTier(damageMult - 1.0);
         if (tier < 2 || animal.getRandom().nextDouble() >= ms.rabidChance) {
             return; // calm below Savage, and only a fraction of Savage+ wildlife turns
@@ -314,8 +322,8 @@ public final class MobDifficulty {
                     continue;
                 }
                 double beyond = mod.amount() / ms.healthPerBlock;
-                tier = SurvivalLogic.mobTier(
-                        SurvivalLogic.mobPowerMultiplier(beyond, ms.damagePerBlock, ms.damageMaxMultiplier) - 1.0);
+                tier = SurvivalLogic.mobTier(SurvivalLogic.mobPowerMultiplier(beyond, ms.damagePerBlock,
+                        ms.damageMaxMultiplier, ms.damageCurveExponent) - 1.0);
             } else if (mob instanceof Monster) {
                 AttributeInstance dmg = mob.getAttribute(Attributes.ATTACK_DAMAGE);
                 AttributeModifier mod = dmg == null ? null : dmg.getModifier(DAMAGE_ID);
@@ -352,8 +360,10 @@ public final class MobDifficulty {
         AttributeInstance dmgAttr = mob.getAttribute(Attributes.ATTACK_DAMAGE);
         AttributeModifier dmgMod = dmgAttr == null ? null : dmgAttr.getModifier(DAMAGE_ID);
         if (dmgMod != null && ms.damagePerBlock > 0) {
-            double beyond = dmgMod.amount() / ms.damagePerBlock;
-            double xpMult = SurvivalLogic.mobPowerMultiplier(beyond, ms.xpPerBlock, ms.xpMaxMultiplier);
+            double beyond = SurvivalLogic.beyondFromDamageBonus(dmgMod.amount(), ms.damagePerBlock,
+                    ms.damageCurveExponent);
+            double xpMult = SurvivalLogic.mobPowerMultiplier(beyond, ms.xpPerBlock, ms.xpMaxMultiplier,
+                    ms.damageCurveExponent);
             if (xpMult > 1.0) {
                 mob.xpReward = (int) Math.max(0, Math.round(mob.xpReward / xpMult));
             }

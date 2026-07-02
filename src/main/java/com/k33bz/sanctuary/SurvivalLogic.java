@@ -121,7 +121,52 @@ public final class SurvivalLogic {
 
     /** Mob power multiplier from distance beyond the nearest safe anchor: {@code min(max, 1 + perBlock*beyond)}. */
     public static double mobPowerMultiplier(double blocksBeyondSafe, double perBlock, double max) {
-        return Math.min(max, 1.0 + Math.max(0.0, blocksBeyondSafe) * Math.max(0.0, perBlock));
+        return mobPowerMultiplier(blocksBeyondSafe, perBlock, max, 1.0);
+    }
+
+    /**
+     * Mob power multiplier with a curve exponent: {@code min(max, 1 + (perBlock*beyond)^exponent)}.
+     * Exponent 1 = linear (+1x per 1/perBlock blocks); above 1 the deep wildlands ramp superlinearly
+     * (e.g. exponent 1.5 at 4000 blocks: 1 + 4^1.5 = 9x instead of 5x). Exponent is clamped to a
+     * sane floor so a config typo can't invert the curve.
+     */
+    public static double mobPowerMultiplier(double blocksBeyondSafe, double perBlock, double max, double exponent) {
+        double base = Math.max(0.0, blocksBeyondSafe) * Math.max(0.0, perBlock);
+        double e = Math.max(0.1, exponent);
+        if (e != 1.0 && base > 0.0) {
+            base = Math.pow(base, e);
+        }
+        return Math.min(max, 1.0 + base);
+    }
+
+    /**
+     * Exact inverse of the damage curve (below the cap): recover blocks-beyond-safe from a mob's
+     * baked damage bonus ({@code = damageMultiplier - 1}). Used to un-scale XP on sanctuary revert
+     * and to derive rabid-animal damage, so it must mirror {@link #mobPowerMultiplier} exactly.
+     */
+    public static double beyondFromDamageBonus(double damageBonus, double perBlock, double exponent) {
+        if (perBlock <= 0.0 || damageBonus <= 0.0) {
+            return 0.0;
+        }
+        double e = Math.max(0.1, exponent);
+        double base = e != 1.0 ? Math.pow(damageBonus, 1.0 / e) : damageBonus;
+        return base / perBlock;
+    }
+
+    /**
+     * Fuzzy zone edges: jitter a spawn's effective distance by a gaussian sample scaled by
+     * {@code fuzz} (a fraction of the distance; 0.12 → σ = 12%). The sample is clamped to ±3σ so an
+     * outlier can't teleport the curve, and the result never goes below 0 (inside a sanctuary stays
+     * absolutely safe). Near a tier boundary this gives the "might roll a tier up or down" feel:
+     * at the default σ=12%, a spawn 10% shy of Savage range still comes out Savage ~18% of the time
+     * (it needs a +0.93σ roll), and one sitting exactly on the line rolls up or down 50/50.
+     */
+    public static double fuzzedBeyond(double blocksBeyondSafe, double gaussianSample, double fuzz) {
+        if (blocksBeyondSafe <= 0.0 || fuzz <= 0.0) {
+            return Math.max(0.0, blocksBeyondSafe);
+        }
+        double g = Math.max(-3.0, Math.min(3.0, gaussianSample));
+        return Math.max(0.0, blocksBeyondSafe * (1.0 + g * fuzz));
     }
 
     /** Threat tier 0–4 from a damage-modifier bonus (= damageMultiplier − 1), for names/particles. */

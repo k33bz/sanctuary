@@ -118,4 +118,34 @@ class SurvivalLogicTest {
         assertEquals(500.0, SurvivalLogic.oxygenBonusForLevel(500, 1.0, 1000), 1e-9); // ~2h underwater
         assertEquals(1000.0, SurvivalLogic.oxygenBonusForLevel(5000, 1.0, 1000), 1e-9); // capped
     }
+
+    @Test
+    void curveExponentIsLinearAtOneAndSuperlinearAbove() {
+        // linear default: +1x per 1000 blocks
+        assertEquals(5.0, SurvivalLogic.mobPowerMultiplier(4000, 0.001, 60, 1.0), 1e-9);
+        assertEquals(SurvivalLogic.mobPowerMultiplier(4000, 0.001, 60),
+                SurvivalLogic.mobPowerMultiplier(4000, 0.001, 60, 1.0), 1e-9);
+        // exponent 1.5: 1 + 4^1.5 = 9
+        assertEquals(9.0, SurvivalLogic.mobPowerMultiplier(4000, 0.001, 60, 1.5), 1e-9);
+        // still capped
+        assertEquals(60.0, SurvivalLogic.mobPowerMultiplier(59000, 0.001, 60, 2.0), 1e-9);
+    }
+
+    @Test
+    void beyondFromDamageBonusInvertsTheCurve() {
+        for (double e : new double[]{1.0, 1.5, 2.0}) {
+            double mult = SurvivalLogic.mobPowerMultiplier(3200, 0.001, 60, e);
+            assertEquals(3200, SurvivalLogic.beyondFromDamageBonus(mult - 1.0, 0.001, e), 1e-6);
+        }
+    }
+
+    @Test
+    void fuzzedBeyondClampsAndNeverGoesNegative() {
+        assertEquals(2000, SurvivalLogic.fuzzedBeyond(2000, 0.0, 0.12), 1e-9);       // no jitter at mean
+        assertEquals(2240, SurvivalLogic.fuzzedBeyond(2000, 1.0, 0.12), 1e-9);       // +1 sigma = +12%
+        assertEquals(2720, SurvivalLogic.fuzzedBeyond(2000, 99.0, 0.12), 1e-9);      // clamped to +3 sigma
+        assertEquals(1280, SurvivalLogic.fuzzedBeyond(2000, -99.0, 0.12), 1e-9);     // clamped to -3 sigma
+        assertEquals(0.0, SurvivalLogic.fuzzedBeyond(100, -99.0, 0.5), 1e-9);        // floors at 0
+        assertEquals(0.0, SurvivalLogic.fuzzedBeyond(-5, 1.0, 0.12), 1e-9);          // safe zone stays safe
+    }
 }

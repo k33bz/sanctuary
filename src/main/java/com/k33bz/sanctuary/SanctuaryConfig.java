@@ -78,6 +78,12 @@ public class SanctuaryConfig {
         public boolean enabled = true;
         public double healthPerBlock = 0.0015;
         public double damagePerBlock = 0.001;    // +1x damage per 1000 blocks
+        // Damage/XP curve shape: 1.0 = linear; >1 ramps the deep wildlands superlinearly
+        // (1.5 at 4000 blocks: 1+4^1.5 = 9x instead of 5x). Health/speed stay linear.
+        public double damageCurveExponent = 1.0;
+        // Fuzzy zone edges: each spawn's effective distance is jittered by a gaussian with this
+        // sigma (fraction of distance). Near a tier boundary mobs can roll a tier up or down.
+        public double edgeFuzz = 0.12;
         public double speedPerBlock = 0.00003;   // gentle
         public double healthMaxMultiplier = 12.0;
         public double damageMaxMultiplier = 60.0; // deep wildlands one-shot fresh AND geared players

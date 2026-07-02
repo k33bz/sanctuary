@@ -46,6 +46,26 @@ public class BlockItemPlaceMixin {
         if (!Permissions.check(player, "sanctuary.anchor.create", true)) {
             player.sendOverlayMessage(Component.literal("You don't have permission to raise a sanctuary."));
             cir.setReturnValue(InteractionResult.FAIL);
+            return;
+        }
+        // Anchor spacing: survival placements keep their distance from existing sanctuaries
+        // (config or placed). Creative bypasses, so admins can build monuments anywhere.
+        if (!player.isCreative()) {
+            BlockPos pos = context.getClickedPos();
+            double px = pos.getX() + 0.5;
+            double pz = pos.getZ() + 0.5;
+            double nearest = AnchorState.get().nearestAnchorDistance(px, pz);
+            if (Sanctuary.CONFIG.anchors != null) {
+                for (com.k33bz.sanctuary.SanctuaryConfig.Anchor a : Sanctuary.CONFIG.anchors) {
+                    nearest = Math.min(nearest, Math.hypot(px - a.x, pz - a.z));
+                }
+            }
+            if (nearest < Sanctuary.CONFIG.anchorMinSpacing) {
+                player.sendOverlayMessage(Component.literal(String.format(java.util.Locale.ROOT,
+                        "Too close to another sanctuary — anchors need %.0f blocks of separation (nearest is %.0f).",
+                        Sanctuary.CONFIG.anchorMinSpacing, nearest)));
+                cir.setReturnValue(InteractionResult.FAIL);
+            }
         }
     }
 

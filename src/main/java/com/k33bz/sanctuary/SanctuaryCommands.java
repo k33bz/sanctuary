@@ -82,6 +82,7 @@ public final class SanctuaryCommands {
         num("anchor.hoursPerEgg", () -> cfg().anchorHoursPerEgg, v -> cfg().anchorHoursPerEgg = v, 0, 1000000);
         num("anchor.maxFuelHours", () -> cfg().anchorMaxFuelHours, v -> cfg().anchorMaxFuelHours = v, 1, 1000000);
         num("anchor.flanClaimRadius", () -> cfg().flanClaimRadius, v -> cfg().flanClaimRadius = (int) Math.round(v), 1, 128);
+        num("anchor.minSpacing", () -> cfg().anchorMinSpacing, v -> cfg().anchorMinSpacing = v, 0, 100000);
         num("mobscaling.particleRange", () -> cfg().mobScaling.particleRange, v -> cfg().mobScaling.particleRange = v, 0, 256);
         num("lethalSave.levelsPerDamage", () -> cfg().lethalSaveLevelsPerDamage, v -> cfg().lethalSaveLevelsPerDamage = (float) v, 0, 100);
         num("lethalSave.minLevels", () -> cfg().lethalSaveMinLevels, v -> cfg().lethalSaveMinLevels = (int) Math.round(v), 0, 1000);

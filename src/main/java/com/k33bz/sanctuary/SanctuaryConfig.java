@@ -68,6 +68,10 @@ public class SanctuaryConfig {
     public double anchorLabelHeight = 1.6;   // height of the label above the crystal
     public int crystalDropMinTier = 3;       // Ferocious+ mobs may drop a crystal
     public double crystalDropChance = 0.03;  // per qualifying player-kill
+    // Minimum center-to-center distance between anchors (config or placed). 1.5x the 128 radius:
+    // close enough to chain overlapping safe corridors, far enough to prevent stacking. Creative
+    // placement bypasses (admins can build monuments wherever).
+    public double anchorMinSpacing = 192.0;
 
     // Upkeep: player-raised sanctuaries burn fuel (real hours of server uptime). Feed the crystal
     // emeralds to extend it (right-click; sneak = whole stack; emerald block = 9 emeralds). A dry

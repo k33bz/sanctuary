@@ -341,6 +341,8 @@ state silently. The glyph is `☠` (U+2620); emoji are not in Minecraft's font.
 | `scalingDimensions` | overworld | §1 |
 | `anchorShowLabel` / `anchorLabelHeight` | true / 1.6 | cosmetic |
 | `crystalDropMinTier` / `crystalDropChance` | 3 / 0.03 | §1 |
+| `anchorMinSpacing` | 192 | §1 — min center distance between anchors (creative bypasses) |
+| `suppressHostileSpawnsInSanctuary` | true | §1 — no natural hostile spawns in active zones |
 | `anchorUpkeepEnabled` / `anchorStartHours` | true / 24 | §1 |
 | `anchorHoursPerEmerald` / `anchorHoursPerEmeraldBlock` / `anchorHoursPerEgg` / `anchorMaxFuelHours` | 2.5 / 24 / 168 / 1536 | §1 |
 | `flanIntegration` / `flanClaimRadius` | true / 16 | §1 |

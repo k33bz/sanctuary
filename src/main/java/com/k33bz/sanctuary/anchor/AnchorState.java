@@ -107,6 +107,18 @@ public class AnchorState {
                 pos.getX(), pos.getZ(), defaultRadius, expiry <= 0 ? "eternal" : "fueled");
     }
 
+    /** Center distance to the nearest placed anchor ({@code Double.MAX_VALUE} if none). */
+    public double nearestAnchorDistance(double x, double z) {
+        double best = Double.MAX_VALUE;
+        for (PlacedAnchor a : anchors) {
+            double d = Math.hypot(x - a.x, z - a.z);
+            if (d < best) {
+                best = d;
+            }
+        }
+        return best;
+    }
+
     /** The placed anchor at this block position, or {@code null}. */
     public PlacedAnchor anchorAt(BlockPos pos) {
         double px = pos.getX() + 0.5;

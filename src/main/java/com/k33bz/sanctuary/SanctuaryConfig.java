@@ -46,6 +46,15 @@ public class SanctuaryConfig {
     public double oxygenPerLevel = 1.0;   // level 500 -> ~2 hours underwater
     public double oxygenMax = 1000.0;
 
+    // System 8 — soul retention: keep a level-scaled fraction of XP levels on death, so a
+    // veteran's death is a setback instead of a total reset (vanilla zeroes everything, which
+    // in this mod also strips armor/hearts/shield — a rage-quit generator). Higher level =
+    // higher retained fraction, via the milestone count.
+    public boolean deathKeepEnabled = true;
+    public double deathKeepBase = 0.30;         // fraction kept before any milestones
+    public double deathKeepPerMilestone = 0.05; // extra per milestone reached
+    public double deathKeepMax = 0.80;          // ceiling
+
     // System 3 — XP-funded lethal save
     public boolean lethalSaveEnabled = true;
     public float lethalSaveLevelsPerDamage = 0.5f; // levels per point of killing-hit damage

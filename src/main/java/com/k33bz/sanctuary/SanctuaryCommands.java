@@ -83,6 +83,9 @@ public final class SanctuaryCommands {
         num("anchor.maxFuelHours", () -> cfg().anchorMaxFuelHours, v -> cfg().anchorMaxFuelHours = v, 1, 1000000);
         num("anchor.flanClaimRadius", () -> cfg().flanClaimRadius, v -> cfg().flanClaimRadius = (int) Math.round(v), 1, 128);
         num("anchor.minSpacing", () -> cfg().anchorMinSpacing, v -> cfg().anchorMinSpacing = v, 0, 100000);
+        num("deathKeep.base", () -> cfg().deathKeepBase, v -> cfg().deathKeepBase = v, 0, 1);
+        num("deathKeep.perMilestone", () -> cfg().deathKeepPerMilestone, v -> cfg().deathKeepPerMilestone = v, 0, 1);
+        num("deathKeep.max", () -> cfg().deathKeepMax, v -> cfg().deathKeepMax = v, 0, 1);
         num("mobscaling.particleRange", () -> cfg().mobScaling.particleRange, v -> cfg().mobScaling.particleRange = v, 0, 256);
         num("lethalSave.levelsPerDamage", () -> cfg().lethalSaveLevelsPerDamage, v -> cfg().lethalSaveLevelsPerDamage = (float) v, 0, 100);
         num("lethalSave.minLevels", () -> cfg().lethalSaveMinLevels, v -> cfg().lethalSaveMinLevels = (int) Math.round(v), 0, 1000);
@@ -102,6 +105,7 @@ public final class SanctuaryCommands {
         bool("lethalSave", () -> cfg().lethalSaveEnabled, b -> cfg().lethalSaveEnabled = b);
         bool("danger", () -> cfg().danger.enabled, b -> cfg().danger.enabled = b);
         bool("anchorUpkeep", () -> cfg().anchorUpkeepEnabled, b -> cfg().anchorUpkeepEnabled = b);
+        bool("deathKeep", () -> cfg().deathKeepEnabled, b -> cfg().deathKeepEnabled = b);
         bool("sanctuarySpawnSuppression", () -> cfg().suppressHostileSpawnsInSanctuary,
                 b -> cfg().suppressHostileSpawnsInSanctuary = b);
         bool("flanIntegration", () -> cfg().flanIntegration, b -> cfg().flanIntegration = b);

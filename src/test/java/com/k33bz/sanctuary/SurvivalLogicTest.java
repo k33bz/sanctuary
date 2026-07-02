@@ -148,4 +148,17 @@ class SurvivalLogicTest {
         assertEquals(0.0, SurvivalLogic.fuzzedBeyond(100, -99.0, 0.5), 1e-9);        // floors at 0
         assertEquals(0.0, SurvivalLogic.fuzzedBeyond(-5, 1.0, 0.12), 1e-9);          // safe zone stays safe
     }
+
+    @Test
+    void deathRetentionScalesWithLevel() {
+        // level 15: 1 milestone -> 35% -> keeps 5
+        assertEquals(5, SurvivalLogic.deathKeptLevels(15, MILES, 0.30, 0.05, 0.80));
+        // level 100: 4 milestones -> 50% -> keeps 50
+        assertEquals(50, SurvivalLogic.deathKeptLevels(100, MILES, 0.30, 0.05, 0.80));
+        // level 1000: 7 milestones -> 65% -> keeps 650
+        assertEquals(650, SurvivalLogic.deathKeptLevels(1000, MILES, 0.30, 0.05, 0.80));
+        // cap respected
+        assertEquals(4000, SurvivalLogic.deathKeptLevels(5000, MILES, 0.30, 0.20, 0.80));
+        assertEquals(0, SurvivalLogic.deathKeptLevels(0, MILES, 0.30, 0.05, 0.80));
+    }
 }

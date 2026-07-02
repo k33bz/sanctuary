@@ -64,6 +64,7 @@ public class Sanctuary implements ModInitializer {
         registerMobScaling();
         registerAnchorBreak();
         registerCrystalDrops();
+        registerSoulRetention();
         com.k33bz.sanctuary.anchor.AnchorUpkeep.register();
         // Forget zone tracking on disconnect so the next login re-announces the player's zone.
         net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents.DISCONNECT.register(
@@ -137,6 +138,31 @@ public class Sanctuary implements ModInitializer {
                     com.k33bz.sanctuary.anchor.SanctuaryCrystal.create());
             LOGGER.info("[sanctuary] A tier-{} {} dropped a Sanctuary Crystal", tier,
                     mob.getType().getDescription().getString());
+        });
+    }
+
+    /**
+     * System 8 — soul retention: on respawn after death, restore a level-scaled fraction of the
+     * levels the player died with. Runs in the respawn copy, after vanilla has already dropped
+     * the (small, capped) XP orb at the death site — that recovery orb is unchanged.
+     */
+    private void registerSoulRetention() {
+        net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents.COPY_FROM.register((oldPlayer, newPlayer, alive) -> {
+            SanctuaryConfig cfg = CONFIG;
+            if (alive || cfg == null || !cfg.deathKeepEnabled) {
+                return;
+            }
+            int level = oldPlayer.experienceLevel;
+            int kept = SurvivalLogic.deathKeptLevels(level, cfg.milestonesArray(),
+                    cfg.deathKeepBase, cfg.deathKeepPerMilestone, cfg.deathKeepMax);
+            if (kept > 0) {
+                newPlayer.setExperienceLevels(kept);
+                newPlayer.sendSystemMessage(net.minecraft.network.chat.Component
+                        .literal(String.format(java.util.Locale.ROOT,
+                                "The sanctuaries preserve part of your soul: %d of %d levels retained.",
+                                kept, level))
+                        .withStyle(net.minecraft.ChatFormatting.LIGHT_PURPLE));
+            }
         });
     }
 

@@ -119,6 +119,19 @@ public final class SurvivalLogic {
         return Math.max(min, base - milestonesReached * perMilestone);
     }
 
+    /**
+     * Levels retained on death: {@code floor(level * min(max, base + perMilestone*reached))}.
+     * The fraction GROWS with level (via milestones), so veterans lose proportionally less — a
+     * death at level 100 keeps 50%, at level 1000 keeps 65% (defaults). Vanilla would zero it.
+     */
+    public static int deathKeptLevels(int level, int[] milestones, double base, double perMilestone, double max) {
+        if (level <= 0) {
+            return 0;
+        }
+        double frac = Math.min(max, base + perMilestone * milestonesReached(level, milestones));
+        return (int) Math.floor(level * Math.max(0.0, frac));
+    }
+
     // --- System 7: spawn-based wild-mob difficulty ---
 
     /** Mob power multiplier from distance beyond the nearest safe anchor: {@code min(max, 1 + perBlock*beyond)}. */

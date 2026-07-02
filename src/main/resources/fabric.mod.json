@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "id": "sanctuary",
+  "version": "${version}",
+  "name": "Sanctuary",
+  "description": "Turns XP into a survival resource, with placeable sanctuary anchors: passive regen, level-scaled damage mitigation, an XP-funded lethal save, and world-danger damage scaling. Server-authoritative; vanilla clients can connect.",
+  "authors": [
+    "k33bz"
+  ],
+  "contact": {},
+  "license": "MIT",
+  "environment": "server",
+  "entrypoints": {
+    "main": [
+      "com.k33bz.sanctuary.Sanctuary"
+    ]
+  },
+  "mixins": [
+    "sanctuary.mixins.json"
+  ],
+  "accessWidener": "sanctuary.accesswidener",
+  "depends": {
+    "fabricloader": ">=0.19.3",
+    "minecraft": "~26.1.2",
+    "java": ">=25",
+    "fabric-api": "*"
+  }
+}

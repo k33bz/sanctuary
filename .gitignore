@@ -1,0 +1,23 @@
+# Gradle
+.gradle/
+build/
+out/
+
+# Loom / Fabric
+.fabric/
+run/
+remappedSrc/
+
+# Dev-server console logs (from ./gradlew runServer)
+run_*.log
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.kiro/
+*.ipr
+*.iws
+
+# OS
+.DS_Store

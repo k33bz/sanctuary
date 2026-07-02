@@ -1,0 +1,121 @@
+package com.k33bz.sanctuary;
+
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+class SurvivalLogicTest {
+
+    private static final int[] MILES = {10, 25, 50, 100, 250, 500, 1000, 2500, 5000};
+
+    private static SurvivalLogic.DangerParams danger(float diffW, double dayW, double blockW, float max) {
+        return new SurvivalLogic.DangerParams() {
+            public float difficultyWeight() {
+                return diffW;
+            }
+
+            public double perDayWeight() {
+                return dayW;
+            }
+
+            public double perBlockWeight() {
+                return blockW;
+            }
+
+            public float maxMultiplier() {
+                return max;
+            }
+        };
+    }
+
+    @Test
+    void worldDangerNeverBelowOneAndRespectsCap() {
+        SurvivalLogic.DangerParams p = danger(0.15f, 0.02, 0.0005, 4.0f);
+        assertEquals(1.0f, SurvivalLogic.worldDangerMultiplier(0, 0, 0, p), 1e-6);
+        assertTrue(SurvivalLogic.worldDangerMultiplier(3, 2_400_000L, 5000, p) <= 4.0f);
+        assertTrue(SurvivalLogic.worldDangerMultiplier(3, 240_000L, 1000, p) > 1.0f);
+    }
+
+    @Test
+    void regenCostRoundsUp() {
+        assertEquals(2, SurvivalLogic.regenXpCost(1.0f, 2.0f));
+        assertEquals(3, SurvivalLogic.regenXpCost(1.0f, 2.5f)); // ceil(2.5)
+    }
+
+    @Test
+    void lethalSaveRespectsMinimumAndScales() {
+        assertEquals(1, SurvivalLogic.lethalSaveLevelCost(0.5f, 0.5f, 1));   // min floor
+        assertEquals(10, SurvivalLogic.lethalSaveLevelCost(20.0f, 0.5f, 1)); // 20 * 0.5
+    }
+
+    @Test
+    void milestonesAndBonusHearts() {
+        assertEquals(0, SurvivalLogic.milestonesReached(9, MILES));
+        assertEquals(1, SurvivalLogic.milestonesReached(10, MILES));
+        assertEquals(2, SurvivalLogic.milestonesReached(40, MILES));  // 10, 25
+        assertEquals(4, SurvivalLogic.milestonesReached(120, MILES)); // 10, 25, 50, 100
+        assertEquals(8.0, SurvivalLogic.bonusHealth(120, MILES, 2.0), 1e-9); // 4 hearts
+    }
+
+    @Test
+    void shieldFractionMatchesDesignExamples() {
+        // Design spec: level 15 -> 15/10 - 1 = 0.50, level 40 -> 40/25 - 1 = 0.60
+        assertEquals(0.5, SurvivalLogic.shieldFraction(15, MILES), 1e-9);
+        assertEquals(0.6, SurvivalLogic.shieldFraction(40, MILES), 1e-9);
+        assertEquals(0.0, SurvivalLogic.shieldFraction(10, MILES), 1e-9); // resets when a milestone is crossed
+        assertEquals(0.5, SurvivalLogic.shieldFraction(5, MILES), 1e-9);  // below first milestone: 5/10
+    }
+
+    @Test
+    void shieldAmountClampsAndScalesWithHealth() {
+        // Level 40: 60% of 20 HP = 12, under a generous cap.
+        assertEquals(12.0f, SurvivalLogic.shieldAmount(40, MILES, 20.0, 2.0), 1e-4);
+        // Just before level 25 the raw fraction is 1.4; a 1.0 cap clamps it -> full 20 HP shield.
+        assertEquals(20.0f, SurvivalLogic.shieldAmount(24, MILES, 20.0, 1.0), 1e-4);
+    }
+
+    @Test
+    void absorptionAmplifierStepsAndFloor() {
+        assertEquals(-1, SurvivalLogic.absorptionAmplifier(1.9f)); // below one heart -> no shield
+        assertEquals(0, SurvivalLogic.absorptionAmplifier(4.0f));  // 4 HP -> level I
+        assertEquals(1, SurvivalLogic.absorptionAmplifier(8.8f));  // ~2 hearts -> level II (8 HP)
+        assertEquals(3, SurvivalLogic.absorptionAmplifier(14.4f)); // -> level IV (16 HP)
+    }
+
+    @Test
+    void armorCapsAtMax() {
+        assertEquals(2.5, SurvivalLogic.armorForLevel(10, 0.25, 20), 1e-9);
+        assertEquals(20.0, SurvivalLogic.armorForLevel(1000, 0.25, 20), 1e-9); // capped
+    }
+
+    @Test
+    void shieldCooldownShrinksPerMilestoneWithFloor() {
+        // base 10s, -1s per milestone, floor 1s
+        assertEquals(10.0, SurvivalLogic.shieldRegenCooldownSeconds(0, 10, 1, 1), 1e-9);
+        assertEquals(6.0, SurvivalLogic.shieldRegenCooldownSeconds(4, 10, 1, 1), 1e-9);  // 4 milestones
+        assertEquals(1.0, SurvivalLogic.shieldRegenCooldownSeconds(20, 10, 1, 1), 1e-9); // floored
+    }
+
+    @Test
+    void mobPowerScalesWithDistanceAndCaps() {
+        assertEquals(1.0, SurvivalLogic.mobPowerMultiplier(0, 0.0015, 8), 1e-9);       // in safe zone
+        assertEquals(2.5, SurvivalLogic.mobPowerMultiplier(1000, 0.0015, 8), 1e-9);    // 1 + 1.5
+        assertEquals(8.0, SurvivalLogic.mobPowerMultiplier(100000, 0.0015, 8), 1e-9);  // capped
+    }
+
+    @Test
+    void mobTierBoundaries() {
+        assertEquals(0, SurvivalLogic.mobTier(0.2));
+        assertEquals(1, SurvivalLogic.mobTier(1.0));
+        assertEquals(2, SurvivalLogic.mobTier(2.0));
+        assertEquals(3, SurvivalLogic.mobTier(4.0));
+        assertEquals(4, SurvivalLogic.mobTier(6.0));
+    }
+
+    @Test
+    void oxygenBonusScalesAndCaps() {
+        assertEquals(500.0, SurvivalLogic.oxygenBonusForLevel(500, 1.0, 1000), 1e-9); // ~2h underwater
+        assertEquals(1000.0, SurvivalLogic.oxygenBonusForLevel(5000, 1.0, 1000), 1e-9); // capped
+    }
+}

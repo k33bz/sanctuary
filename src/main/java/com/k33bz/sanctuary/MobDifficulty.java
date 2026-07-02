@@ -44,7 +44,7 @@ public final class MobDifficulty {
     };
 
     /** Buff a freshly-loaded hostile by its spawn distance from the nearest anchor. Idempotent. */
-    public static void onSpawn(Monster mob, SanctuaryConfig cfg) {
+    public static void onSpawn(Mob mob, SanctuaryConfig cfg) {
         SanctuaryConfig.MobScaling ms = cfg.mobScaling;
         if (!ms.enabled) {
             return;
@@ -286,7 +286,7 @@ public final class MobDifficulty {
     }
 
     /** Attach the any-difficulty door-break goal to a mob carrying the door-breaker tag. */
-    private static void attachDoorBreakGoalIfMarked(Monster mob) {
+    private static void attachDoorBreakGoalIfMarked(Mob mob) {
         if (mob instanceof Zombie && mob.entityTags().contains(DOOR_BREAKER_TAG)) {
             // Vanilla gates door-breaking behind Hard difficulty; wildlands hunters ignore that.
             // Still respects the mobGriefing gamerule (checked inside the goal).
@@ -346,12 +346,49 @@ public final class MobDifficulty {
             return SurvivalLogic.mobTier(SurvivalLogic.mobPowerMultiplier(beyond, ms.damagePerBlock,
                     ms.damageMaxMultiplier, ms.damageCurveExponent) - 1.0);
         }
-        if (mob instanceof Monster) {
+        if (mob instanceof net.minecraft.world.entity.monster.Enemy) {
             AttributeInstance dmg = mob.getAttribute(Attributes.ATTACK_DAMAGE);
             AttributeModifier mod = dmg == null ? null : dmg.getModifier(DAMAGE_ID);
-            return mod == null ? -1 : SurvivalLogic.mobTier(mod.amount());
+            if (mod != null) {
+                return SurvivalLogic.mobTier(mod.amount());
+            }
+            // No attack attribute (ghasts etc.): recover the tier from the health buff.
+            return tierFromHealthBuff(mob, ms);
         }
         return -1;
+    }
+
+    /** Tier recovered from the (linear, always-present) health buff; −1 if unbuffed. */
+    private static int tierFromHealthBuff(Mob mob, SanctuaryConfig.MobScaling ms) {
+        AttributeInstance hp = mob.getAttribute(Attributes.MAX_HEALTH);
+        AttributeModifier mod = hp == null ? null : hp.getModifier(HEALTH_ID);
+        if (mod == null || ms.healthPerBlock <= 0) {
+            return -1;
+        }
+        double beyond = mod.amount() / ms.healthPerBlock;
+        return SurvivalLogic.mobTier(SurvivalLogic.mobPowerMultiplier(beyond, ms.damagePerBlock,
+                ms.damageMaxMultiplier, ms.damageCurveExponent) - 1.0);
+    }
+
+    /**
+     * Damage multiplier for INDIRECT attacks (projectiles, explosions), which bypass the
+     * ATTACK_DAMAGE attribute entirely. Prefer the exact baked damage modifier; for mobs without
+     * an attack attribute (ghasts), recover it from the health buff. 1.0 for unbuffed mobs.
+     */
+    public static double indirectDamageMultiplier(Mob mob, SanctuaryConfig.MobScaling ms) {
+        AttributeInstance dmg = mob.getAttribute(Attributes.ATTACK_DAMAGE);
+        AttributeModifier mod = dmg == null ? null : dmg.getModifier(DAMAGE_ID);
+        if (mod != null) {
+            return 1.0 + mod.amount();
+        }
+        AttributeInstance hp = mob.getAttribute(Attributes.MAX_HEALTH);
+        AttributeModifier hmod = hp == null ? null : hp.getModifier(HEALTH_ID);
+        if (hmod != null && ms.healthPerBlock > 0) {
+            double beyond = hmod.amount() / ms.healthPerBlock;
+            return SurvivalLogic.mobPowerMultiplier(beyond, ms.damagePerBlock,
+                    ms.damageMaxMultiplier, ms.damageCurveExponent);
+        }
+        return 1.0;
     }
 
     /**

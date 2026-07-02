@@ -147,7 +147,10 @@ public class Sanctuary implements ModInitializer {
             if (cfg == null || !cfg.isScalingDimension(world)) {
                 return;
             }
-            if (entity instanceof Monster mob) {
+            // Enemy (not Monster): slimes, phantoms, and ghasts don't extend Monster but are
+            // hostiles all the same — they scale too.
+            if (entity instanceof net.minecraft.world.entity.Mob mob
+                    && entity instanceof net.minecraft.world.entity.monster.Enemy) {
                 MobDifficulty.onSpawn(mob, cfg);
             } else if (entity instanceof net.minecraft.world.entity.animal.Animal animal) {
                 MobDifficulty.onAnimalLoad(animal, cfg);

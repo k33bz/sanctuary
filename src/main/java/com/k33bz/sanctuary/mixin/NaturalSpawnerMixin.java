@@ -2,7 +2,7 @@ package com.k33bz.sanctuary.mixin;
 
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Mob;
-import net.minecraft.world.entity.monster.Monster;
+import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.level.NaturalSpawner;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -24,7 +24,7 @@ public class NaturalSpawnerMixin {
                                                         CallbackInfoReturnable<Boolean> cir) {
         SanctuaryConfig cfg = Sanctuary.CONFIG;
         if (cfg == null || !cfg.suppressHostileSpawnsInSanctuary
-                || !(mob instanceof Monster) || !cfg.isScalingDimension(level)) {
+                || !(mob instanceof Enemy) || !cfg.isScalingDimension(level)) {
             return;
         }
         if (Sanctuary.blocksBeyondNearestAnchor(cfg, mob.getX(), mob.getZ()) <= 0.0) {

@@ -58,7 +58,9 @@ public class LivingEntityDamageMixin {
     }
 
     private static boolean hasLivingAttacker(DamageSource source) {
+        // Players are excluded: the world-danger multiplier is about the WORLD getting harder,
+        // and letting it amplify PvP would quietly inflate player damage with world age.
         Entity attacker = source.getEntity();
-        return attacker instanceof LivingEntity;
+        return attacker instanceof LivingEntity && !(attacker instanceof Player);
     }
 }

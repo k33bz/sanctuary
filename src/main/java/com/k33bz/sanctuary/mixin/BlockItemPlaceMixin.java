@@ -61,9 +61,10 @@ public class BlockItemPlaceMixin {
                 }
             }
             if (nearest < Sanctuary.CONFIG.anchorMinSpacing) {
+                // Actionbar is a single line — keep it short: "distance / required".
                 player.sendOverlayMessage(Component.literal(String.format(java.util.Locale.ROOT,
-                        "Too close to another sanctuary — anchors need %.0f blocks of separation (nearest is %.0f).",
-                        Sanctuary.CONFIG.anchorMinSpacing, nearest)));
+                        "Too close to another sanctuary (%.0f / %.0f blocks)",
+                        nearest, Sanctuary.CONFIG.anchorMinSpacing)));
                 cir.setReturnValue(InteractionResult.FAIL);
             }
         }

@@ -133,9 +133,8 @@ public final class AnchorUpkeep {
     }
 
     private static Component status(AnchorState.PlacedAnchor anchor, long now) {
-        String who = anchor.owner == null ? "server" : anchor.owner;
         String[] t = remaining(anchor, now);
-        return Component.literal("SA [" + who + "] ")
+        return Component.literal("Sanctuary ")
                 .withStyle(ChatFormatting.LIGHT_PURPLE)
                 .append(Component.literal("(" + t[0] + ")").withStyle(ChatFormatting.valueOf(t[1])));
     }

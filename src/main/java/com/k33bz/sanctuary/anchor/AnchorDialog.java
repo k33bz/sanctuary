@@ -13,11 +13,8 @@ import net.minecraft.server.dialog.DialogAction;
 import net.minecraft.server.dialog.MultiActionDialog;
 import net.minecraft.server.dialog.action.StaticAction;
 import net.minecraft.server.dialog.body.DialogBody;
-import net.minecraft.server.dialog.body.ItemBody;
 import net.minecraft.server.dialog.body.PlainMessage;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.item.ItemStackTemplate;
-import net.minecraft.world.item.Items;
 import com.k33bz.sanctuary.Sanctuary;
 import com.k33bz.sanctuary.SanctuaryConfig;
 
@@ -42,14 +39,11 @@ public final class AnchorDialog {
         String who = anchor.owner == null ? "server" : anchor.owner;
         String[] t = AnchorUpkeep.remaining(anchor, now);
 
+        // One combined text block right under the title — the icon row was pushing everything
+        // down, and separate body elements each get their own padded row.
         List<DialogBody> body = new ArrayList<>();
-        body.add(new ItemBody(new ItemStackTemplate(Items.PLAYER_HEAD),
-                Optional.of(new PlainMessage(Component.literal("Owner: " + who)
-                        .withStyle(ChatFormatting.GRAY), 200)),
-                true, false, 16, 16));
-        // One combined message block: separate body elements each get their own padded row,
-        // so multi-line-in-one keeps the dialog compact.
-        var status = Component.literal(t[0]).withStyle(ChatFormatting.valueOf(t[1]));
+        var status = Component.literal("Owner: " + who).withStyle(ChatFormatting.GRAY);
+        status.append(Component.literal("\n" + t[0]).withStyle(ChatFormatting.valueOf(t[1])));
         if (!anchor.isExempt()) {
             double cap = cfg == null ? 1536.0 : cfg.anchorMaxFuelHours;
             status.append(Component.literal(String.format(Locale.ROOT,

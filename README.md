@@ -31,6 +31,9 @@ something you carve out of the wilds, anchor by anchor.
 | Door-breakers | deep zombies break wooden doors on **any** difficulty — and smash the frame blocks of a *player-placed* door when the way through is blocked |
 | Rabid wildlife | in Savage+ zones, 25% of animals spawn hostile and hunt players |
 | Sanctuary anchors | place a **Sanctuary Crystal** (rare drop from Ferocious+ mobs) to raise one; union of safe circles; breaking drops the crystal back |
+| Anchor cap | start at **1**; Warden kills of rising tiers raise it (any → 2, Feral+ → 3, up to Nightmare); admins can bless more |
+| Soul retention | death keeps 30% of levels +5%/milestone (cap 80%) — veterans lose proportionally less |
+| Kill observability | invisible spawn-source tags + per-cell kill metrics + NDJSON event history (SQLite-convertible) |
 | Sanctuary upkeep | player anchors burn fuel (24 h to start) — feed the crystal emeralds (2.5 h) or emerald blocks (24 h = 1 day, the efficient rate); the label shows owner + fuzzy time left, going red near expiry. A dormant anchor needs a **dragon egg** (+7 days) to rekindle; admin anchors are eternal |
 | Flan integration | active anchors auto-carry a Flan admin claim (grief protection); released when dormant/broken. Soft dependency |
 | Permissions | `sanctuary.anchor.create` / `.break` / `.admin` nodes via fabric-permissions-api (bundled) — LuckPerms-ready, safe defaults without it |
@@ -80,6 +83,8 @@ the tick handler and damage mixin read the config fresh every tick/hit:
 | `/sanctuary danger status\|reset` | Show the world-age damage pressure, or re-zero it without touching the world clock |
 | `/sanctuary crystal give` | Give yourself a Sanctuary Crystal (admin seeding/testing) |
 | `/sanctuary anchor exempt` | Toggle eternal/fueled on the nearest placed anchor |
+| `/sanctuary cap get\|set <player> [n]` | Show or set a player's anchor cap |
+| `/sanctuary metrics top\|clear` | Kill hotspots (farm detection) / reset |
 
 `set`/`toggle`/`anchor` mutate the in-memory config (instant); `save` writes it to disk; `reload`
 reads it back — tune live then `save`, or hand-edit the file and `reload`.

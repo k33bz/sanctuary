@@ -55,7 +55,9 @@ public class Sanctuary implements ModInitializer {
     @Override
     public void onInitialize() {
         CONFIG = SanctuaryConfig.load();
-        LOGGER.info("[sanctuary] v0.4.0 initialized (server-authoritative) for Minecraft 26.1.2");
+        String version = net.fabricmc.loader.api.FabricLoader.getInstance().getModContainer(MOD_ID)
+                .map(c -> c.getMetadata().getVersion().getFriendlyString()).orElse("?");
+        LOGGER.info("[sanctuary] v{} initialized (server-authoritative) for Minecraft 26.1.2", version);
 
         AnchorState.get();        // load persisted sanctuary anchors (beacon + dragon egg)
 
@@ -141,6 +143,20 @@ public class Sanctuary implements ModInitializer {
                 return;
             }
             int tier = MobDifficulty.tierOf(mob, cfg.mobScaling);
+            // Warden kills attune players to bind more sanctuaries (any Warden, then Feral+, ...).
+            if (mob.getType() == net.minecraft.world.entity.EntityType.WARDEN
+                    && source.getEntity() instanceof ServerPlayer slayer) {
+                int newCap = com.k33bz.sanctuary.anchor.PlayerProgress.tryRaise(
+                        slayer.getUUID().toString(), Math.max(0, tier), cfg.anchorCapBase, cfg.anchorCapMax);
+                if (newCap > 0) {
+                    slayer.sendSystemMessage(net.minecraft.network.chat.Component.literal(String.format(
+                            java.util.Locale.ROOT,
+                            "The Warden's heart attunes to you — you may now bind %d sanctuaries.", newCap))
+                            .withStyle(net.minecraft.ChatFormatting.LIGHT_PURPLE));
+                    LOGGER.info("[sanctuary] {} attuned to anchor cap {} (tier-{} warden)",
+                            slayer.getGameProfile().name(), newCap, tier);
+                }
+            }
             if (tier < cfg.crystalDropMinTier
                     || mob.getRandom().nextDouble() >= cfg.crystalDropChance) {
                 return;

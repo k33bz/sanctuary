@@ -107,6 +107,17 @@ public class AnchorState {
                 pos.getX(), pos.getZ(), defaultRadius, expiry <= 0 ? "eternal" : "fueled");
     }
 
+    /** How many placed anchors this player owns. */
+    public int countOwnedBy(String ownerId) {
+        int n = 0;
+        for (PlacedAnchor a : anchors) {
+            if (ownerId.equals(a.ownerId)) {
+                n++;
+            }
+        }
+        return n;
+    }
+
     /** Center distance to the nearest placed anchor ({@code Double.MAX_VALUE} if none). */
     public double nearestAnchorDistance(double x, double z) {
         double best = Double.MAX_VALUE;

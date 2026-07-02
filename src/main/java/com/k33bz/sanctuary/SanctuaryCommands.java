@@ -83,6 +83,8 @@ public final class SanctuaryCommands {
         num("anchor.maxFuelHours", () -> cfg().anchorMaxFuelHours, v -> cfg().anchorMaxFuelHours = v, 1, 1000000);
         num("anchor.flanClaimRadius", () -> cfg().flanClaimRadius, v -> cfg().flanClaimRadius = (int) Math.round(v), 1, 128);
         num("anchor.minSpacing", () -> cfg().anchorMinSpacing, v -> cfg().anchorMinSpacing = v, 0, 100000);
+        num("anchor.capBase", () -> cfg().anchorCapBase, v -> cfg().anchorCapBase = (int) Math.round(v), 1, 100);
+        num("anchor.capMax", () -> cfg().anchorCapMax, v -> cfg().anchorCapMax = (int) Math.round(v), 1, 100);
         num("deathKeep.base", () -> cfg().deathKeepBase, v -> cfg().deathKeepBase = v, 0, 1);
         num("deathKeep.perMilestone", () -> cfg().deathKeepPerMilestone, v -> cfg().deathKeepPerMilestone = v, 0, 1);
         num("deathKeep.max", () -> cfg().deathKeepMax, v -> cfg().deathKeepMax = v, 0, 1);
@@ -136,6 +138,14 @@ public final class SanctuaryCommands {
                                 .executes(safe(SanctuaryCommands::toggle))))
                 .then(Commands.literal("save").executes(safe(SanctuaryCommands::save)))
                 .then(Commands.literal("reload").executes(safe(SanctuaryCommands::reload)))
+                .then(Commands.literal("cap")
+                        .then(Commands.literal("get")
+                                .then(Commands.argument("player", net.minecraft.commands.arguments.EntityArgument.player())
+                                        .executes(safe(SanctuaryCommands::capGet))))
+                        .then(Commands.literal("set")
+                                .then(Commands.argument("player", net.minecraft.commands.arguments.EntityArgument.player())
+                                        .then(Commands.argument("cap", com.mojang.brigadier.arguments.IntegerArgumentType.integer(0, 100))
+                                                .executes(safe(SanctuaryCommands::capSet))))))
                 .then(Commands.literal("metrics")
                         .then(Commands.literal("top").executes(safe(SanctuaryCommands::metricsTop)))
                         .then(Commands.literal("clear").executes(safe(SanctuaryCommands::metricsClear))))
@@ -181,6 +191,29 @@ public final class SanctuaryCommands {
             ctx.getSource().sendSuccess(() -> Component.literal("Anchor is now eternal (upkeep exempt)."), true);
         }
         state.save();
+        return 1;
+    }
+
+    private static int capGet(CommandContext<CommandSourceStack> ctx) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        var player = net.minecraft.commands.arguments.EntityArgument.getPlayer(ctx, "player");
+        String uuid = player.getUUID().toString();
+        int cap = com.k33bz.sanctuary.anchor.PlayerProgress.capOf(uuid, cfg().anchorCapBase);
+        int owned = com.k33bz.sanctuary.anchor.AnchorState.get().countOwnedBy(uuid);
+        int req = com.k33bz.sanctuary.anchor.PlayerProgress.requiredTierForNextRaise(uuid, cfg().anchorCapBase);
+        String next = cap >= cfg().anchorCapMax ? "admin only"
+                : (req <= 0 ? "any Warden" : com.k33bz.sanctuary.MobDifficulty.tierName(req) + "+ Warden");
+        ctx.getSource().sendSuccess(() -> Component.literal(String.format(java.util.Locale.ROOT,
+                "%s: %d/%d anchors bound (next raise: %s)",
+                player.getGameProfile().name(), owned, cap, next)), false);
+        return 1;
+    }
+
+    private static int capSet(CommandContext<CommandSourceStack> ctx) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        var player = net.minecraft.commands.arguments.EntityArgument.getPlayer(ctx, "player");
+        int cap = com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(ctx, "cap");
+        com.k33bz.sanctuary.anchor.PlayerProgress.setCap(player.getUUID().toString(), cap);
+        ctx.getSource().sendSuccess(() -> Component.literal(String.format(java.util.Locale.ROOT,
+                "%s's anchor cap set to %d.", player.getGameProfile().name(), cap)), true);
         return 1;
     }
 

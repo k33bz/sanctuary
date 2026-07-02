@@ -77,6 +77,29 @@ mod is installed, every **active** anchor automatically carries a Flan **admin c
 and its town core, created on activation and released on dormancy or break. Without Flan
 installed the integration silently does nothing.
 
+**Anchor cap — Warden attunement** (`anchorCapBase` 1, `anchorCapMax` 3): every player starts
+able to bind **one** sanctuary. Each raise demands a player-kill of a Warden of the next tier up:
+
+| Raise | Requirement |
+|---|---|
+| cap 1 → 2 | any Warden |
+| cap 2 → 3 | **Feral+** Warden (spawned 500+ blocks out) |
+| cap 3 → 4 (admin-raised max) | Savage+ Warden |
+| … | Ferocious+, then **Nightmare** Wardens |
+
+Wardens scale like everything else — a Nightmare Warden is ~6,000 HP hitting at 60×: a raid
+boss. Admins can set any player's cap directly (`/sanctuary cap set <player> <n>`, may exceed
+the max); `/sanctuary cap get <player>` shows bound/cap/next requirement. Creative placement
+ignores the cap. Breaking an anchor frees its slot.
+
+**Dormant anchors are raidable — by design.** A dry anchor releases its Flan claim, so anyone
+may break the crystal and take it. Keeping the flame lit IS the defense.
+
+**Decay runs on real server time, not playtime.** Offline players' anchors keep burning —
+bank fuel before a trip (one emerald-block stack = 64 days), or accept the risk. **Any player
+can refuel any anchor** (upkeep is communal); restricting refueling to owners/claim members is
+possible via a future permission node if it's ever abused.
+
 **Permissions (LuckPerms-compatible).** Anchor actions check
 [fabric-permissions-api](https://github.com/lucko/fabric-permissions-api) nodes (bundled; LuckPerms
 implements them when installed, otherwise the defaults apply):
@@ -301,7 +324,57 @@ shield progress against the next, bigger milestone.)
 
 ---
 
-## 8. Threat readout (boundary messages & skulls)
+## 8. Equipment, armor & enchantments
+
+The mod adds no gear mechanics of its own — it slots into vanilla's damage pipeline, which
+produces sharp emergent rules. Pipeline order for a player taking a hit:
+
+```
+danger multiplier (§6) → armor reduction → Protection (EPF) → Resistance → absorption (shield) → health
+```
+
+### 8.1 Armor and the penetration formula
+
+Vanilla armor is not a flat percentage — big hits punch through:
+
+```
+reduction = min(20, max(armor/5, armor − damage/(2 + toughness/4))) / 25
+```
+
+Sanctuary's level-armor (§7) grants **armor points but zero toughness**, so it collapses
+against exactly the huge hits the deep wildlands deal:
+
+| Scenario (60-damage Nightmare hit) | armor | toughness | effective reduction |
+|---|---|---|---|
+| naked level-80 player | 20 | 0 | `20 − 60/2 = −10` → floor `armor/5` → **16%** |
+| full netherite, level 0 | 20 | 12 | `20 − 60/5 = 8` → **32%** |
+| full netherite + level 80 | 40 | 12 | `40 − 60/5 = 28` → clamp 20 → **80%** |
+
+Against a small hit (≤ ~10 damage) all three sit at ~80%. **Conclusion: levels protect you
+where you live; gear is what lets you leave.** The two stack additively in armor points, and
+the toughness only comes from worn armor.
+
+### 8.2 Protection enchantments
+
+Protection applies AFTER armor, at 4%/EPF capped at EPF 20 (80%): full Prot IV (EPF 16) = 64%.
+Multiplied with capped armor: `0.20 × 0.36 ≈ 7%` of the original hit — ~93% total reduction.
+Since the absorption shield soaks post-reduction damage, every reduction layer effectively
+multiplies the shield's size. Gear tiers translate directly into survivable depth.
+
+### 8.3 Weapons, Mending, totems
+
+- **Player damage output is untouched** — deep mobs have up to 12× health, so Sharpness,
+  crits, and potions are the offense ladder while XP is the defense ladder.
+- **Mending** repairs from XP orbs *before* they become levels: durability is literally paid
+  in life force. Affordable out deep (16–20× XP mobs); noticeable drag near home.
+- **Totem of Undying** triggers before the lethal save — the totem is consumed first, levels
+  are only spent as the fallback. Carrying totems is level-insurance.
+- **Fall/environmental damage** is never scaled by the mod (danger scaling requires a living
+  attacker), so Feather Falling and MLG tricks work at vanilla rates everywhere.
+
+---
+
+## 9. Threat readout (boundary messages & skulls)
 
 Zone = tier of the **exact** local damage multiplier (no fuzz — the readout describes the zone;
 individual mobs vary around it). On crossing a zone edge (and ~3 s after every login), the
@@ -326,7 +399,7 @@ state silently. The glyph is `☠` (U+2620); emoji are not in Minecraft's font.
 
 ---
 
-## 9. Config reference
+## 10. Config reference
 
 | Key | Default | Section |
 |-----|---------|---------|
@@ -342,6 +415,7 @@ state silently. The glyph is `☠` (U+2620); emoji are not in Minecraft's font.
 | `anchorShowLabel` / `anchorLabelHeight` | true / 1.6 | cosmetic |
 | `crystalDropMinTier` / `crystalDropChance` | 3 / 0.03 | §1 |
 | `anchorMinSpacing` | 192 | §1 — min center distance between anchors (creative bypasses) |
+| `anchorCapBase` / `anchorCapMax` | 1 / 3 | §1 — per-player anchor cap, raised by Warden kills |
 | `suppressHostileSpawnsInSanctuary` | true | §1 — no natural hostile spawns in active zones |
 | `anchorUpkeepEnabled` / `anchorStartHours` | true / 24 | §1 |
 | `anchorHoursPerEmerald` / `anchorHoursPerEmeraldBlock` / `anchorHoursPerEgg` / `anchorMaxFuelHours` | 2.5 / 24 / 168 / 1536 | §1 |
@@ -359,7 +433,7 @@ state silently. The glyph is `☠` (U+2620); emoji are not in Minecraft's font.
 
 ---
 
-## 10. Implementation notes (for contributors)
+## 11. Implementation notes (for contributors)
 
 - **Server-authoritative**: no client entrypoint (`environment: server`); vanilla clients connect.
   All visuals are vanilla-renderable: attributes, effects, display entities, actionbar text.

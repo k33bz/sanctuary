@@ -82,6 +82,13 @@ public class SanctuaryConfig {
     public double anchorLabelHeight = 1.6;   // height of the label above the crystal
     public int crystalDropMinTier = 3;       // Ferocious+ mobs may drop a crystal
     public double crystalDropChance = 0.03;  // per qualifying player-kill
+    // Per-player anchor cap: everyone starts able to bind ONE sanctuary. Each raise demands a
+    // Warden kill of the next tier up (any Warden -> cap 2, Feral+ -> 3, Savage+ -> 4, ... to
+    // Nightmare), bounded by anchorCapMax unless an admin sets a player's cap directly
+    // (/sanctuary cap set <player> <n>). Creative placement ignores the cap.
+    public int anchorCapBase = 1;
+    public int anchorCapMax = 3;
+
     // Minimum center-to-center distance between anchors (config or placed). 1.5x the 128 radius:
     // close enough to chain overlapping safe corridors, far enough to prevent stacking. Creative
     // placement bypasses (admins can build monuments wherever).

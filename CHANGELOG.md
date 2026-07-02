@@ -1,6 +1,51 @@
 # Changelog
 
-All notable changes to XP Vitality.
+All notable changes to Sanctuary (formerly XP Vitality).
+
+## [0.5.0] — 2026-07-02
+
+### Renamed
+- **xpvitality → Sanctuary** (`com.k33bz.sanctuary`, `/sanctuary`, `config/sanctuary.json`).
+
+### Anchors reimagined
+- **Sanctuary Crystal replaces beacon + dragon egg**: a textured player head IS the anchor.
+  Drops from tier-3+ (Ferocious+) mobs killed by players (3%); place to raise a sanctuary,
+  break to recover it. `/sanctuary crystal give` for admins.
+- **Upkeep & decay**: fresh crystals carry 24 h; emeralds add 2.5 h, emerald **blocks 24 h
+  (1 block = 1 day, ~6.7% more efficient than loose)**, bank cap 1536 h (= one stack of
+  blocks). Dry anchors go **dormant** (no safety, claim released, raidable) and only a
+  **dragon egg** (+7 days) rekindles them. Decay runs on real server time — offline players'
+  anchors need banked fuel, and ANY player may refuel.
+- **Visual state language**: spinning shell = alive, still = dormant, campfire smoke = final
+  24 h; label "Sanctuary Anchor (fuzzy timer)" in purple (heats to red), gold for eternal.
+- **Furnace-style menu** (empty-hand click): fuel input (left = stack, right = one), live
+  per-second countdown with owner + UUID, flame gauge = banked fraction.
+- **Anchor cap progression**: start at 1; Warden kills of rising tiers raise it (any → 2,
+  Feral+ → 3, … Nightmare), max 3 unless admins `/sanctuary cap set`. Min spacing 192 blocks.
+- **Flan integration** (soft dep): active anchors auto-carry an admin claim (r16); released on
+  dormancy/break. **fabric-permissions-api** bundled: `sanctuary.anchor.create/break/admin`.
+- **Spawn suppression**: no natural hostile spawns inside active sanctuaries.
+- **Sanctuary revert**: buffed mobs (and their scaled XP) revert to vanilla inside safe zones.
+
+### World & combat
+- **Dimension gating**: scaling/anchors Overworld-only (`scalingDimensions`); Nether/End vanilla.
+- **Danger rebalance**: `perDayWeight` 0.02→0.0005 (was capping in ~2.5 real days),
+  `perBlockWeight` →0 (double-dipped with mob attributes); `/sanctuary danger status|reset`
+  re-zeroes the age pressure via a persisted epoch.
+- **Enemy-wide scaling**: slimes, phantoms, ghasts now scale (were Monster-gated).
+- **Indirect damage scaled**: projectiles/explosions from buffed mobs (arrows, creepers, ghast
+  fireballs) now carry the attacker's multiplier; PvP excluded from world-danger scaling.
+- **Fuzzy zone edges** (σ=12% per spawn) and an optional `damageCurveExponent` (damage+XP).
+- **Hunters** (follow-range up to 3×), **door-breakers** (any difficulty past 1000 blocks,
+  distance-scaled chance), **frame smashing** (soft blocks around player-placed doors when the
+  path is blocked), **rabid wildlife** (25% of Savage+ animals hunt players).
+- **Threat readout**: boundary + login actionbar messages with a personalized 5-skull scale.
+- **Soul retention**: death keeps 30% of levels +5%/milestone (cap 80%) — veterans lose
+  proportionally less. Vanilla recovery orb unchanged.
+
+### Observability
+- **Spawn-source tags** (invisible) on every mob; **kill-metrics ledger** (64-block cells,
+  `/sanctuary metrics top`) and **NDJSON kill event log** (per-day files, SQLite-convertible).
 
 ## [0.4.0] — 2026-07-01 (in progress)
 ### Added

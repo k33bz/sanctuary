@@ -48,6 +48,24 @@ public class BlockItemPlaceMixin {
             cir.setReturnValue(InteractionResult.FAIL);
             return;
         }
+        // Anchor cap: binding more sanctuaries takes Warden kills (creative bypasses).
+        if (!player.isCreative()) {
+            String uuid = player.getUUID().toString();
+            int cap = com.k33bz.sanctuary.anchor.PlayerProgress.capOf(uuid, Sanctuary.CONFIG.anchorCapBase);
+            int owned = AnchorState.get().countOwnedBy(uuid);
+            if (owned >= cap) {
+                int req = com.k33bz.sanctuary.anchor.PlayerProgress
+                        .requiredTierForNextRaise(uuid, Sanctuary.CONFIG.anchorCapBase);
+                String need = cap >= Sanctuary.CONFIG.anchorCapMax
+                        ? "an admin's blessing"
+                        : "slaying " + (req <= 0 ? "a Warden" : "a "
+                                + com.k33bz.sanctuary.MobDifficulty.tierName(req) + "+ Warden");
+                deny(player, context, String.format(java.util.Locale.ROOT,
+                        "Anchor limit reached (%d/%d) — raising it takes %s", owned, cap, need));
+                cir.setReturnValue(InteractionResult.FAIL);
+                return;
+            }
+        }
         // Anchor spacing: survival placements keep their distance from existing sanctuaries
         // (config or placed). Creative bypasses, so admins can build monuments anywhere.
         if (!player.isCreative()) {

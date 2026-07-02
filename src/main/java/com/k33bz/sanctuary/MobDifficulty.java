@@ -285,6 +285,11 @@ public final class MobDifficulty {
         animal.goalSelector.addGoal(1, new RabidAttackGoal(animal));
     }
 
+    /** Human name for a tier (1..4); "any" for 0 and below. */
+    public static String tierName(int tier) {
+        return tier > 0 && tier < TITLES.length ? TITLES[tier] : "any";
+    }
+
     /** Attach the any-difficulty door-break goal to a mob carrying the door-breaker tag. */
     private static void attachDoorBreakGoalIfMarked(Mob mob) {
         if (mob instanceof Zombie && mob.entityTags().contains(DOOR_BREAKER_TAG)) {

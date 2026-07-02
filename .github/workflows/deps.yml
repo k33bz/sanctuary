@@ -1,0 +1,42 @@
+name: dependency-updates
+
+on:
+  schedule:
+    - cron: "17 6 * * 1" # weekly, Monday 06:17 UTC
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 25
+          cache: gradle
+      - name: Check for dependency updates
+        id: check
+        run: |
+          python3 scripts/check_deps.py | tee /tmp/dep_report.txt
+          if git diff --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Verify the bumped build still compiles
+        if: steps.check.outputs.changed == 'true'
+        run: ./gradlew build
+      - name: Open update PR
+        if: steps.check.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: deps/auto-update
+          title: "Dependency updates (auto)"
+          commit-message: "Bump mod dependencies (automated weekly check)"
+          body-path: /tmp/dep_report.txt
+          labels: dependencies

@@ -26,7 +26,7 @@ dependencies {
     implementation "net.fabricmc:fabric-loader:${project.loader_version}"
     implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
     // sgui — standalone server-side GUI library (vanilla-client compatible, no Polymer needed).
-    include(implementation("eu.pb4:sgui:2.0.0-beta.2+26.1"))
+    include(implementation("eu.pb4:sgui:2.0.0+26.1"))
     // Permission nodes (sanctuary.anchor.create/break). LuckPerms implements this API when
     // installed; without a permission mod the defaults apply, so it is safely optional.
     include(implementation("me.lucko:fabric-permissions-api:0.7.0"))

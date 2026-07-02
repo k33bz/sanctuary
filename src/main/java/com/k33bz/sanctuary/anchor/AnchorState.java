@@ -25,6 +25,9 @@ public class AnchorState {
         public double radius;
         /** Block Y of the crystal (0 for legacy entries). */
         public int y;
+        /** Display name + UUID of the placing player (null for legacy/server anchors). */
+        public String owner;
+        public String ownerId;
         /**
          * Game time when the fuel runs out. {@code <= 0} = exempt/eternal (admin anchors and
          * grandfathered legacy entries). Dormant anchors keep their entry but grant no safety.
@@ -81,6 +84,11 @@ public class AnchorState {
 
     /** Register an anchor with an explicit fuel expiry ({@code <= 0} = exempt/eternal). */
     public void ensureRegistered(BlockPos pos, long expiry) {
+        ensureRegistered(pos, expiry, null, null);
+    }
+
+    /** Register an anchor with expiry and owner identity. */
+    public void ensureRegistered(BlockPos pos, long expiry, String owner, String ownerId) {
         double px = pos.getX() + 0.5;
         double pz = pos.getZ() + 0.5;
         for (PlacedAnchor a : anchors) {
@@ -91,6 +99,8 @@ public class AnchorState {
         PlacedAnchor a = new PlacedAnchor(px, pz, defaultRadius);
         a.y = pos.getY();
         a.expiry = expiry;
+        a.owner = owner;
+        a.ownerId = ownerId;
         anchors.add(a);
         save();
         Sanctuary.LOGGER.info("[sanctuary] Sanctuary anchor formed at {},{} (radius {}, {})",

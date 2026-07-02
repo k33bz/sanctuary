@@ -75,7 +75,8 @@ public class BlockItemPlaceMixin {
                     || Permissions.check(placer, "sanctuary.anchor.admin", 2);
             long expiry = exempt || !Sanctuary.CONFIG.anchorUpkeepEnabled ? -1L
                     : level.getGameTime() + (long) (Sanctuary.CONFIG.anchorStartHours * 72000.0);
-            AnchorState.get().ensureRegistered(pos, expiry);
+            AnchorState.get().ensureRegistered(pos, expiry,
+                    placer.getGameProfile().name(), placer.getUUID().toString());
             AnchorInteraction.playConversionEffect(level.getServer(), pos);
             AnchorInteraction.spawnAnchorDisplays(level.getServer(), pos);
             return;

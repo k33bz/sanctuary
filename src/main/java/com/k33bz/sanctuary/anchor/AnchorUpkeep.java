@@ -59,12 +59,21 @@ public final class AnchorUpkeep {
 
         ItemStack held = player.getItemInHand(hand);
         double hoursPerItem = cfg == null ? 1.0 : cfg.anchorHoursPerEmerald;
-        double worth = held.is(Items.EMERALD) ? hoursPerItem
+        boolean egg = held.is(Items.DRAGON_EGG);
+        double worth = egg ? (cfg == null ? 168.0 : cfg.anchorHoursPerEgg)
+                : held.is(Items.EMERALD) ? hoursPerItem
                 : held.is(Items.EMERALD_BLOCK) ? hoursPerItem * 9.0 : 0.0;
 
         if (worth <= 0.0 || anchor.isExempt() || cfg == null || !cfg.anchorUpkeepEnabled) {
             sp.sendOverlayMessage(status(anchor, now));
             return InteractionResult.PASS;
+        }
+        // A dormant anchor's flame is out — emeralds can't relight it. Only a dragon egg can.
+        if (!anchor.isActive(now) && !egg) {
+            sp.sendOverlayMessage(Component
+                    .literal("The sanctuary is dormant — only a dragon egg can rekindle it.")
+                    .withStyle(ChatFormatting.DARK_RED));
+            return InteractionResult.SUCCESS;
         }
 
         // Feed: one item per click, the whole stack while sneaking.
@@ -96,18 +105,39 @@ public final class AnchorUpkeep {
     }
 
     private static Component status(AnchorState.PlacedAnchor anchor, long now) {
-        if (anchor.isExempt()) {
-            return Component.literal("This sanctuary is eternal.").withStyle(ChatFormatting.LIGHT_PURPLE);
+        String who = anchor.owner == null ? "server" : anchor.owner;
+        String[] t = remaining(anchor, now);
+        return Component.literal("SA [" + who + "] ")
+                .withStyle(ChatFormatting.LIGHT_PURPLE)
+                .append(Component.literal("(" + t[0] + ")").withStyle(ChatFormatting.valueOf(t[1])));
+    }
+
+    /**
+     * Fuzzy remaining time + color name. Fuzzy buckets above a day; under 24h it goes exact and
+     * heats up toward expiry: yellow (12–24h) → gold (6–12h) → red (<6h).
+     */
+    public static String[] remaining(AnchorState.PlacedAnchor a, long now) {
+        if (a.isExempt()) {
+            return new String[]{"eternal", "LIGHT_PURPLE"};
         }
-        double hours = anchor.hoursLeft(now);
-        if (hours <= 0.0) {
-            return Component.literal("This sanctuary lies dormant — feed it emeralds.")
-                    .withStyle(ChatFormatting.RED);
+        double h = a.hoursLeft(now);
+        if (h <= 0.0) {
+            return new String[]{"dormant — needs a dragon egg", "DARK_RED"};
         }
-        ChatFormatting color = hours < 6 ? ChatFormatting.RED : hours < 24 ? ChatFormatting.YELLOW
-                : ChatFormatting.GREEN;
-        return Component.literal(String.format(Locale.ROOT, "Sanctuary: %.1f hours of protection remaining.", hours))
-                .withStyle(color);
+        if (h > 24 * 365) {
+            return new String[]{"> 1 year remaining", "GREEN"};
+        }
+        if (h > 24 * 30) {
+            return new String[]{"> 30 days remaining", "GREEN"};
+        }
+        if (h > 24 * 7) {
+            return new String[]{"> 7 days remaining", "GREEN"};
+        }
+        if (h > 24) {
+            return new String[]{"> 1 day remaining", "GREEN"};
+        }
+        String txt = String.format(Locale.ROOT, "%.1fh remaining", h);
+        return new String[]{txt, h < 6 ? "RED" : h < 12 ? "GOLD" : "YELLOW"};
     }
 
     // --- expiry sweep (dormancy transitions, Flan claim lifecycle, label text) ---
@@ -129,15 +159,20 @@ public final class AnchorUpkeep {
             BlockPos pos = BlockPos.containing(a.x, a.y, a.z);
             boolean active = a.isActive(now);
             Boolean last = LAST_ACTIVE.put(pos.asLong(), active);
+            // Label always reflects owner + remaining time (fuzzy above a day, hot colors below).
+            String who = a.owner == null ? "server" : a.owner;
+            String[] t = remaining(a, now);
+            setLabel(server, pos, String.format(Locale.ROOT,
+                    "{text:\"SA [%s] \",color:\"light_purple\",bold:1b,"
+                            + "extra:[{text:\"(%s)\",color:\"%s\",bold:0b}]}",
+                    who, t[0], t[1].toLowerCase(Locale.ROOT)));
             if (last != null && last == active) {
                 continue; // no transition
             }
-            // First sighting or a transition: sync claim + label to the current state.
             if (active) {
                 if (flan) {
                     FlanIntegration.createClaim(overworld, pos, cfg.flanClaimRadius);
                 }
-                setLabel(server, pos, "{text:\"Sanctuary Anchor\",color:\"light_purple\",bold:1b}");
                 if (last != null) {
                     Sanctuary.LOGGER.info("[sanctuary] Anchor at {},{} reawakened", pos.getX(), pos.getZ());
                 }
@@ -145,7 +180,6 @@ public final class AnchorUpkeep {
                 if (flan) {
                     FlanIntegration.removeClaim(overworld, pos);
                 }
-                setLabel(server, pos, "{text:\"Sanctuary Anchor (dormant)\",color:\"gray\"}");
                 if (last != null) {
                     Sanctuary.LOGGER.info("[sanctuary] Anchor at {},{} went dormant (out of fuel)",
                             pos.getX(), pos.getZ());

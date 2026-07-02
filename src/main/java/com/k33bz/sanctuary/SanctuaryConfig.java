@@ -76,6 +76,8 @@ public class SanctuaryConfig {
     public boolean anchorUpkeepEnabled = true;
     public double anchorStartHours = 24.0;     // charge a fresh crystal comes with
     public double anchorHoursPerEmerald = 1.0;
+    public double anchorHoursPerEgg = 168.0;   // a dragon egg adds 7 days — and is the ONLY way
+                                               // to rekindle a dormant anchor
     public double anchorMaxFuelHours = 720.0;  // 30 days banked max
 
     // Optional Flan integration: active anchors carry an auto-created admin claim of this radius

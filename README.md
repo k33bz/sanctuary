@@ -31,7 +31,7 @@ something you carve out of the wilds, anchor by anchor.
 | Door-breakers | deep zombies break wooden doors on **any** difficulty — and smash the frame blocks of a *player-placed* door when the way through is blocked |
 | Rabid wildlife | in Savage+ zones, 25% of animals spawn hostile and hunt players |
 | Sanctuary anchors | place a **Sanctuary Crystal** (rare drop from Ferocious+ mobs) to raise one; union of safe circles; breaking drops the crystal back |
-| Sanctuary upkeep | player anchors burn fuel (24 h to start) — feed the crystal emeralds (1 h each, blocks = 9 h) or it goes dormant; admin anchors are eternal |
+| Sanctuary upkeep | player anchors burn fuel (24 h to start) — feed the crystal emeralds (1 h each, blocks = 9 h); the label shows owner + fuzzy time left, going red near expiry. A dormant anchor needs a **dragon egg** (+7 days) to rekindle; admin anchors are eternal |
 | Flan integration | active anchors auto-carry a Flan admin claim (grief protection); released when dormant/broken. Soft dependency |
 | Permissions | `sanctuary.anchor.create` / `.break` / `.admin` nodes via fabric-permissions-api (bundled) — LuckPerms-ready, safe defaults without it |
 | Anti-farming | buffed mobs inside a sanctuary revert to vanilla — scaled XP included |

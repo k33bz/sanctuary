@@ -42,13 +42,22 @@ one with `/sanctuary crystal give`.
 fresh crystal        = anchorStartHours (24 h)
 +1 emerald           = anchorHoursPerEmerald (1 h)      right-click the crystal to feed
 +1 emerald block     = 9 × anchorHoursPerEmerald (9 h)  sneak-click feeds the whole stack
++1 dragon egg        = anchorHoursPerEgg (168 h = 7 days)
 bank cap             = anchorMaxFuelHours (720 h = 30 days)
 ```
 
-Right-clicking the crystal empty-handed shows the remaining charge. A dry anchor goes
-**dormant**: the crystal stays placed, but the zone reverts to wildlands (players inside see the
-boundary message fire naturally), the label greys out to "(dormant)", and its Flan claim is
-released — feeding emeralds reawakens it. **Exempt anchors never decay**: creative-mode
+The anchor's floating label shows **owner + remaining time**: `SA [k33bz] (> 7 days remaining)` —
+fuzzy buckets (> 1 year / > 30 days / > 7 days / > 1 day) while healthy, then exact hours under
+24 h, heating up yellow (12–24 h) → gold (6–12 h) → red (< 6 h). Right-clicking the crystal
+empty-handed shows the same readout; `/sanctuary anchor list` gives ops every anchor's (x, y, z),
+owner, and precise hours (config anchors are listed as *global, server-owned*).
+
+A dry anchor goes **dormant**: the crystal stays placed, but the zone reverts to wildlands
+(players inside see the boundary message fire naturally), the label shows *dormant — needs a
+dragon egg* in dark red, and its Flan claim is released. **Emeralds cannot relight a dormant
+anchor — only a dragon egg can** (which also works as a +7-day top-up on a living one). Pairs
+well with the Vanilla Tweaks *dragon drops* datapack, which makes the ender dragon drop an egg
+on every kill — so rekindling a sanctuary means someone has to go slay the dragon. **Exempt anchors never decay**: creative-mode
 placement, placers with `sanctuary.anchor.admin` (default: op), legacy pre-upkeep anchors, and
 anything toggled with `/sanctuary anchor exempt` (nearest anchor within 16 blocks).
 

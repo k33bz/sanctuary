@@ -288,16 +288,24 @@ public final class SanctuaryCommands {
 
     private static int anchorList(CommandContext<CommandSourceStack> ctx) {
         CommandSourceStack src = ctx.getSource();
+        src.sendSuccess(() -> Component.literal("Sanctuary anchors:"), false);
         List<SanctuaryConfig.Anchor> anchors = cfg().anchors;
-        if (anchors == null || anchors.isEmpty()) {
-            src.sendSuccess(() -> Component.literal("No danger anchors configured."), false);
-            return 1;
+        if (anchors != null) {
+            for (SanctuaryConfig.Anchor a : anchors) {
+                src.sendSuccess(() -> Component.literal(String.format(java.util.Locale.ROOT,
+                        "  config (%.0f, %.0f) r=%.0f — global (server-owned)", a.x, a.z, a.safeRadius)), false);
+            }
         }
-        src.sendSuccess(() -> Component.literal("Danger anchors:"), false);
-        for (int i = 0; i < anchors.size(); i++) {
-            SanctuaryConfig.Anchor a = anchors.get(i);
-            int idx = i;
-            src.sendSuccess(() -> Component.literal("  #" + idx + " (" + a.x + ", " + a.z + ") safeRadius=" + a.safeRadius), false);
+        long now = src.getServer().overworld().getGameTime();
+        for (com.k33bz.sanctuary.anchor.AnchorState.PlacedAnchor a
+                : com.k33bz.sanctuary.anchor.AnchorState.get().anchors) {
+            String owner = a.owner == null ? "server" : a.owner;
+            String[] t = com.k33bz.sanctuary.anchor.AnchorUpkeep.remaining(a, now);
+            String precise = a.isExempt() ? ""
+                    : String.format(java.util.Locale.ROOT, " [%.1fh]", a.hoursLeft(now));
+            src.sendSuccess(() -> Component.literal(String.format(java.util.Locale.ROOT,
+                    "  placed (%.0f, %d, %.0f) r=%.0f — %s — %s%s",
+                    a.x, a.y, a.z, a.radius, owner, t[0], precise)), false);
         }
         return 1;
     }

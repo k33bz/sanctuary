@@ -122,11 +122,24 @@ public final class MobDifficulty {
         double zoneMult = beyond <= 0.0 ? 1.0
                 : SurvivalLogic.mobPowerMultiplier(beyond, ms.damagePerBlock, ms.damageMaxMultiplier);
         int zone = beyond <= 0.0 ? 0 : 1 + SurvivalLogic.mobTier(zoneMult - 1.0);
-        Integer prev = LAST_ZONE.put(id, zone);
-        if (prev == null || prev == zone) {
-            return; // first sighting (silent baseline) or no change
-        }
         long now = player.level().getGameTime();
+
+        Integer prev = LAST_ZONE.get(id);
+        if (prev == null) {
+            // Fresh login: tell them where they woke up — but give the loading screen ~3s to clear
+            // first, or the actionbar message plays to nobody.
+            if (player.tickCount < 60) {
+                return;
+            }
+            LAST_ZONE.put(id, zone);
+            LAST_ZONE_MSG.put(id, now);
+            player.sendOverlayMessage(currentZoneMessage(player, ms, zone, zoneMult));
+            return;
+        }
+        LAST_ZONE.put(id, zone);
+        if (prev == zone) {
+            return;
+        }
         long cooldown = (long) (ms.boundaryMessageCooldownSeconds * 20.0);
         Long lastMsg = LAST_ZONE_MSG.get(id);
         if (lastMsg != null && now - lastMsg < cooldown) {
@@ -134,6 +147,12 @@ public final class MobDifficulty {
         }
         LAST_ZONE_MSG.put(id, now);
         player.sendOverlayMessage(zoneMessage(player, ms, prev, zone, zoneMult));
+    }
+
+    /** Forget a player's zone tracking (on disconnect), so the next login re-announces their zone. */
+    public static void clearPlayer(java.util.UUID id) {
+        LAST_ZONE.remove(id);
+        LAST_ZONE_MSG.remove(id);
     }
 
     /** Skull glyph that Minecraft's font actually renders (emoji like U+1F480 show as boxes). */
@@ -161,14 +180,27 @@ public final class MobDifficulty {
         if (to == 0) {
             return Component.literal("The sanctuary shelters you.").withStyle(ChatFormatting.GREEN);
         }
-        int filled = skulls(player, ms, zoneMult);
-        ChatFormatting color = THREAT_COLORS[filled];
         String text;
         if (to > from) {
             text = to == 1 ? "Entering the wildlands " : "Entering " + TITLES[to - 1] + " wildlands ";
         } else {
             text = "The wilds grow calmer ";
         }
+        return withSkulls(text, skulls(player, ms, zoneMult));
+    }
+
+    /** Login readout: where the player currently stands, same skull scale. */
+    private static Component currentZoneMessage(ServerPlayer player, SanctuaryConfig.MobScaling ms,
+                                                int zone, double zoneMult) {
+        if (zone == 0) {
+            return Component.literal("The sanctuary shelters you.").withStyle(ChatFormatting.GREEN);
+        }
+        String text = zone == 1 ? "You are in the wildlands " : "You are in " + TITLES[zone - 1] + " wildlands ";
+        return withSkulls(text, skulls(player, ms, zoneMult));
+    }
+
+    private static Component withSkulls(String text, int filled) {
+        ChatFormatting color = THREAT_COLORS[filled];
         MutableComponent msg = Component.literal(text).withStyle(color);
         if (filled > 0) {
             msg.append(Component.literal(SKULL.repeat(filled)).withStyle(color));

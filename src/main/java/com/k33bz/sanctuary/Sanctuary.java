@@ -63,6 +63,9 @@ public class Sanctuary implements ModInitializer {
         registerLethalSave();
         registerMobScaling();
         registerAnchorBreak();
+        // Forget zone tracking on disconnect so the next login re-announces the player's zone.
+        net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents.DISCONNECT.register(
+                (handler, server) -> MobDifficulty.clearPlayer(handler.player.getUUID()));
         AnchorInteraction.register();
         SanctuaryCommands.register();
     }

@@ -13,6 +13,13 @@ base {
 
 loom {
     accessWidenerPath = file("src/main/resources/sanctuary.accesswidener")
+    // 26.2 branch: isolated run dir — never let a 26.2 server touch (and upgrade!) the
+    // 26.1.2 dev world that lives in run/.
+    runs {
+        server {
+            runDir "run262"
+        }
+    }
 }
 
 repositories {
@@ -27,12 +34,14 @@ dependencies {
     implementation "net.fabricmc:fabric-loader:${project.loader_version}"
     implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
     // sgui — standalone server-side GUI library (vanilla-client compatible, no Polymer needed).
-    include(implementation("eu.pb4:sgui:2.0.0+26.1"))
+    include(implementation("eu.pb4:sgui:2.1.0+26.2"))
     // Permission nodes (sanctuary.anchor.create/break). LuckPerms implements this API when
     // installed; without a permission mod the defaults apply, so it is safely optional.
     include(implementation("me.lucko:fabric-permissions-api:0.7.0"))
     // Flan (soft dependency): compile against its claim API; at runtime the integration only
     // activates when the Flan mod is actually installed (FlanIntegration guards on isModLoaded).
+    // NOTE: no Flan build for 26.2 yet — compiling against the 26.1.2 API jar is fine
+    // (compileOnly needs signatures only; runtime is gated on isModLoaded). Re-pin when it ports.
     compileOnly "io.github.flemmli97:flan:26.1.2-1.12.7-fabric"
 
     // Pure-logic unit tests (SurvivalLogic) — no game runtime required.

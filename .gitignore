@@ -6,6 +6,7 @@ out/
 # Loom / Fabric
 .fabric/
 run/
+run262/
 remappedSrc/
 
 # Dev-server console logs (from ./gradlew runServer)

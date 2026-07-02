@@ -85,6 +85,14 @@ public class SanctuaryConfig {
         public double xpPerBlock = 0.0015;        // deeper mobs drop more XP (risk/reward)
         public double xpMaxMultiplier = 20.0;
         public double particleRange = 48.0;       // emit threat particles within this range of a player
+
+        // Hunters: deep mobs notice and track players from farther away (FOLLOW_RANGE multiplier).
+        public double followPerBlock = 0.0001;    // +1x notice range per 10k blocks
+        public double followMaxMultiplier = 3.0;
+        // Door-breakers: zombies spawning past the start distance roll a chance to break wooden
+        // doors on ANY difficulty (vanilla only allows this on Hard). Needs mobGriefing=true.
+        public double doorBreakStartBlocks = 1000.0;
+        public double doorBreakChancePerBlock = 0.00015; // +15% per 1000 blocks past start (100% ~7.6k)
     }
 
     public static class DangerScaling implements SurvivalLogic.DangerParams {

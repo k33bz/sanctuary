@@ -11,7 +11,9 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.ai.goal.BreakDoorGoal;
 import net.minecraft.world.entity.monster.Monster;
+import net.minecraft.world.entity.monster.zombie.Zombie;
 
 import java.util.List;
 
@@ -28,6 +30,10 @@ public final class MobDifficulty {
     private static final Identifier HEALTH_ID = Identifier.fromNamespaceAndPath(Sanctuary.MOD_ID, "wild_health");
     private static final Identifier DAMAGE_ID = Identifier.fromNamespaceAndPath(Sanctuary.MOD_ID, "wild_damage");
     private static final Identifier SPEED_ID = Identifier.fromNamespaceAndPath(Sanctuary.MOD_ID, "wild_speed");
+    private static final Identifier FOLLOW_ID = Identifier.fromNamespaceAndPath(Sanctuary.MOD_ID, "wild_follow");
+
+    /** Persistent entity tag marking a door-breaker (goals are transient, this survives reloads). */
+    private static final String DOOR_BREAKER_TAG = "sanctuary_door_breaker";
 
     private static final String[] TITLES = {"", "Feral", "Savage", "Ferocious", "Nightmare"};
     private static final ChatFormatting[] COLORS = {
@@ -41,8 +47,14 @@ public final class MobDifficulty {
             return;
         }
         AttributeInstance hp = mob.getAttribute(Attributes.MAX_HEALTH);
-        if (hp == null || hp.getModifier(HEALTH_ID) != null) {
-            return; // no health attribute, or already baked (permanent modifier survived the reload)
+        if (hp == null) {
+            return;
+        }
+        if (hp.getModifier(HEALTH_ID) != null) {
+            // Already baked (permanent modifiers survived the reload) — but goals are transient,
+            // so a marked door-breaker needs its goal re-attached on every load.
+            attachDoorBreakGoalIfMarked(mob);
+            return;
         }
         double beyond = Sanctuary.blocksBeyondNearestAnchor(cfg, mob.getX(), mob.getZ());
         if (beyond <= 0.0) {
@@ -52,11 +64,24 @@ public final class MobDifficulty {
         double healthMult = SurvivalLogic.mobPowerMultiplier(beyond, ms.healthPerBlock, ms.healthMaxMultiplier);
         double damageMult = SurvivalLogic.mobPowerMultiplier(beyond, ms.damagePerBlock, ms.damageMaxMultiplier);
         double speedMult = SurvivalLogic.mobPowerMultiplier(beyond, ms.speedPerBlock, ms.speedMaxMultiplier);
+        double followMult = SurvivalLogic.mobPowerMultiplier(beyond, ms.followPerBlock, ms.followMaxMultiplier);
 
         addMult(hp, HEALTH_ID, healthMult - 1.0);
         mob.setHealth(mob.getMaxHealth());
         addMult(mob.getAttribute(Attributes.ATTACK_DAMAGE), DAMAGE_ID, damageMult - 1.0);
         addMult(mob.getAttribute(Attributes.MOVEMENT_SPEED), SPEED_ID, speedMult - 1.0);
+        // Hunters: deep mobs notice players from much farther away.
+        addMult(mob.getAttribute(Attributes.FOLLOW_RANGE), FOLLOW_ID, followMult - 1.0);
+
+        // Door-breakers: past the start distance, zombies roll a distance-scaled chance to smash
+        // wooden doors on any difficulty. The tag persists; the goal is re-attached each load.
+        if (mob instanceof Zombie) {
+            double chance = (beyond - ms.doorBreakStartBlocks) * ms.doorBreakChancePerBlock;
+            if (chance > 0 && mob.getRandom().nextDouble() < Math.min(1.0, chance)) {
+                mob.addTag(DOOR_BREAKER_TAG);
+                attachDoorBreakGoalIfMarked(mob);
+            }
+        }
 
         // Deeper mobs drop proportionally more XP — the payoff for braving the death zone.
         double xpMult = SurvivalLogic.mobPowerMultiplier(beyond, ms.xpPerBlock, ms.xpMaxMultiplier);
@@ -69,6 +94,15 @@ public final class MobDifficulty {
             mob.setCustomName(name);
             // Not always-visible: the name shows when a player looks at the mob, keeping the world uncluttered.
             mob.setCustomNameVisible(false);
+        }
+    }
+
+    /** Attach the any-difficulty door-break goal to a mob carrying the door-breaker tag. */
+    private static void attachDoorBreakGoalIfMarked(Monster mob) {
+        if (mob instanceof Zombie && mob.entityTags().contains(DOOR_BREAKER_TAG)) {
+            // Vanilla gates door-breaking behind Hard difficulty; wildlands hunters ignore that.
+            // Still respects the mobGriefing gamerule (checked inside the goal).
+            mob.goalSelector.addGoal(1, new BreakDoorGoal(mob, difficulty -> true));
         }
     }
 

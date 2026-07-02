@@ -124,9 +124,11 @@ public class Sanctuary implements ModInitializer {
         net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents.AFTER_DEATH.register((entity, source) -> {
             SanctuaryConfig cfg = CONFIG;
             if (cfg == null || !(entity instanceof net.minecraft.world.entity.Mob mob)
-                    || !(entity.level() instanceof ServerLevel level)
-                    || !cfg.isScalingDimension(level)
-                    || !(source.getEntity() instanceof ServerPlayer)) {
+                    || !(entity.level() instanceof ServerLevel level)) {
+                return;
+            }
+            com.k33bz.sanctuary.metrics.KillMetrics.record(mob, level, source);
+            if (!cfg.isScalingDimension(level) || !(source.getEntity() instanceof ServerPlayer)) {
                 return;
             }
             int tier = MobDifficulty.tierOf(mob, cfg.mobScaling);
@@ -210,6 +212,7 @@ public class Sanctuary implements ModInitializer {
             }
             AnchorInteraction.pulseAnchors(server); // focus pulse at active anchors
             com.k33bz.sanctuary.anchor.AnchorUpkeep.tick(server, cfg);
+            com.k33bz.sanctuary.metrics.KillMetrics.flush(); // no-op unless new kills landed
         });
     }
 

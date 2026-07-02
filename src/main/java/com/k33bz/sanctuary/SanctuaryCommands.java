@@ -135,6 +135,9 @@ public final class SanctuaryCommands {
                                 .executes(safe(SanctuaryCommands::toggle))))
                 .then(Commands.literal("save").executes(safe(SanctuaryCommands::save)))
                 .then(Commands.literal("reload").executes(safe(SanctuaryCommands::reload)))
+                .then(Commands.literal("metrics")
+                        .then(Commands.literal("top").executes(safe(SanctuaryCommands::metricsTop)))
+                        .then(Commands.literal("clear").executes(safe(SanctuaryCommands::metricsClear))))
                 .then(Commands.literal("crystal")
                         .then(Commands.literal("give").executes(safe(SanctuaryCommands::crystalGive))))
                 .then(Commands.literal("danger")
@@ -177,6 +180,33 @@ public final class SanctuaryCommands {
             ctx.getSource().sendSuccess(() -> Component.literal("Anchor is now eternal (upkeep exempt)."), true);
         }
         state.save();
+        return 1;
+    }
+
+    /** The busiest 64-block kill cells — a spawner-heavy hotspot is somebody's farm. */
+    private static int metricsTop(CommandContext<CommandSourceStack> ctx) {
+        CommandSourceStack src = ctx.getSource();
+        var top = com.k33bz.sanctuary.metrics.KillMetrics.top(10);
+        if (top.isEmpty()) {
+            src.sendSuccess(() -> Component.literal("No kills recorded yet."), false);
+            return 1;
+        }
+        src.sendSuccess(() -> Component.literal(String.format(java.util.Locale.ROOT,
+                "Kill hotspots (%d cells tracked, %d-block bins):",
+                com.k33bz.sanctuary.metrics.KillMetrics.size(),
+                com.k33bz.sanctuary.metrics.KillMetrics.CELL_SIZE)), false);
+        for (var e : top) {
+            var c = e.getValue();
+            src.sendSuccess(() -> Component.literal(String.format(java.util.Locale.ROOT,
+                    "  %s — %d kills (%d by players, %d spawner-born, %d XP paid)",
+                    e.getKey(), c.kills, c.playerKills, c.spawnerBorn, c.xp)), false);
+        }
+        return 1;
+    }
+
+    private static int metricsClear(CommandContext<CommandSourceStack> ctx) {
+        com.k33bz.sanctuary.metrics.KillMetrics.clear();
+        ctx.getSource().sendSuccess(() -> Component.literal("Kill metrics cleared."), true);
         return 1;
     }
 

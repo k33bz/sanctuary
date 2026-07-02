@@ -5,7 +5,8 @@
   "mixins": [
     "BlockItemPlaceMixin",
     "NaturalSpawnerMixin",
-    "LivingEntityDamageMixin"
+    "LivingEntityDamageMixin",
+    "MobFinalizeSpawnMixin"
   ],
   "injectors": {
     "defaultRequire": 1

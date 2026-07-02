@@ -97,6 +97,58 @@ public final class MobDifficulty {
         }
     }
 
+    // --- threat-zone boundary messages ---
+
+    /** Last known threat zone per player: 0 = sanctuary, 1 = wild (unnamed), 2..5 = named tiers. */
+    private static final java.util.Map<java.util.UUID, Integer> LAST_ZONE = new java.util.concurrent.ConcurrentHashMap<>();
+    /** Game time of the last boundary message per player (rate limit). */
+    private static final java.util.Map<java.util.UUID, Long> LAST_ZONE_MSG = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /**
+     * Show an actionbar message when the player crosses into a different threat zone. Zone changes are
+     * always tracked, but messages are rate-limited so bouncing on a boundary can't spam.
+     */
+    public static void tickBoundary(ServerPlayer player, SanctuaryConfig cfg) {
+        SanctuaryConfig.MobScaling ms = cfg.mobScaling;
+        java.util.UUID id = player.getUUID();
+        if (!ms.enabled || !ms.boundaryMessages) {
+            return;
+        }
+        if (!cfg.isScalingDimension(player.level())) {
+            LAST_ZONE.remove(id); // re-baseline silently when they come back from the Nether/End
+            return;
+        }
+        double beyond = Sanctuary.blocksBeyondNearestAnchor(cfg, player.getX(), player.getZ());
+        int zone = beyond <= 0.0 ? 0
+                : 1 + SurvivalLogic.mobTier(
+                        SurvivalLogic.mobPowerMultiplier(beyond, ms.damagePerBlock, ms.damageMaxMultiplier) - 1.0);
+        Integer prev = LAST_ZONE.put(id, zone);
+        if (prev == null || prev == zone) {
+            return; // first sighting (silent baseline) or no change
+        }
+        long now = player.level().getGameTime();
+        long cooldown = (long) (ms.boundaryMessageCooldownSeconds * 20.0);
+        Long lastMsg = LAST_ZONE_MSG.get(id);
+        if (lastMsg != null && now - lastMsg < cooldown) {
+            return; // zone updated silently; next change after the cooldown may speak
+        }
+        LAST_ZONE_MSG.put(id, now);
+        player.sendOverlayMessage(zoneMessage(prev, zone));
+    }
+
+    private static Component zoneMessage(int from, int to) {
+        if (to == 0) {
+            return Component.literal("The sanctuary shelters you.").withStyle(ChatFormatting.GREEN);
+        }
+        if (to > from) {
+            if (to == 1) {
+                return Component.literal("You leave the sanctuary's shelter.").withStyle(ChatFormatting.YELLOW);
+            }
+            return Component.literal("You enter " + TITLES[to - 1] + " wildlands.").withStyle(COLORS[to - 1]);
+        }
+        return Component.literal("The wilds grow calmer.").withStyle(ChatFormatting.GRAY);
+    }
+
     /** Attach the any-difficulty door-break goal to a mob carrying the door-breaker tag. */
     private static void attachDoorBreakGoalIfMarked(Monster mob) {
         if (mob instanceof Zombie && mob.entityTags().contains(DOOR_BREAKER_TAG)) {

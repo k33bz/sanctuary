@@ -118,6 +118,7 @@ public class Sanctuary implements ModInitializer {
                 if (player.level() instanceof ServerLevel serverLevel) {
                     MobDifficulty.tickParticles(serverLevel, player, cfg);
                 }
+                MobDifficulty.tickBoundary(player, cfg);
             }
             AnchorInteraction.pulseAnchors(server); // focus pulse at active anchors
         });

@@ -93,6 +93,11 @@ public class SanctuaryConfig {
         // doors on ANY difficulty (vanilla only allows this on Hard). Needs mobGriefing=true.
         public double doorBreakStartBlocks = 1000.0;
         public double doorBreakChancePerBlock = 0.00015; // +15% per 1000 blocks past start (100% ~7.6k)
+
+        // Actionbar message when a player crosses a threat-zone boundary (safe <-> wild, tier ups/downs),
+        // rate-limited so bouncing on a boundary doesn't spam.
+        public boolean boundaryMessages = true;
+        public double boundaryMessageCooldownSeconds = 10.0;
     }
 
     public static class DangerScaling implements SurvivalLogic.DangerParams {

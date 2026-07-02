@@ -98,6 +98,9 @@ public class SanctuaryConfig {
         // rate-limited so bouncing on a boundary doesn't spam.
         public boolean boundaryMessages = true;
         public double boundaryMessageCooldownSeconds = 10.0;
+        // Skull scale calibration: player levels that offset one +1x of zone damage. At this
+        // default a level-25 player entering a 2.5x zone reads ~3/5 skulls (an even fight).
+        public double skullLevelsPerMultiplier = 15.0;
 
         // Frame smashing: door-breaker zombies that can't path to their target may smash a few
         // soft blocks around a PLAYER-PLACED wooden door (never world-generated structures).

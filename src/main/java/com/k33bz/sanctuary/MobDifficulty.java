@@ -119,9 +119,9 @@ public final class MobDifficulty {
             return;
         }
         double beyond = Sanctuary.blocksBeyondNearestAnchor(cfg, player.getX(), player.getZ());
-        int zone = beyond <= 0.0 ? 0
-                : 1 + SurvivalLogic.mobTier(
-                        SurvivalLogic.mobPowerMultiplier(beyond, ms.damagePerBlock, ms.damageMaxMultiplier) - 1.0);
+        double zoneMult = beyond <= 0.0 ? 1.0
+                : SurvivalLogic.mobPowerMultiplier(beyond, ms.damagePerBlock, ms.damageMaxMultiplier);
+        int zone = beyond <= 0.0 ? 0 : 1 + SurvivalLogic.mobTier(zoneMult - 1.0);
         Integer prev = LAST_ZONE.put(id, zone);
         if (prev == null || prev == zone) {
             return; // first sighting (silent baseline) or no change
@@ -133,20 +133,50 @@ public final class MobDifficulty {
             return; // zone updated silently; next change after the cooldown may speak
         }
         LAST_ZONE_MSG.put(id, now);
-        player.sendOverlayMessage(zoneMessage(prev, zone));
+        player.sendOverlayMessage(zoneMessage(player, ms, prev, zone, zoneMult));
     }
 
-    private static Component zoneMessage(int from, int to) {
+    /** Skull glyph that Minecraft's font actually renders (emoji like U+1F480 show as boxes). */
+    private static final String SKULL = "☠";
+
+    /** Message color by how outmatched the player is (skull count 0-5). */
+    private static final ChatFormatting[] THREAT_COLORS = {
+            ChatFormatting.GREEN, ChatFormatting.GREEN, ChatFormatting.YELLOW,
+            ChatFormatting.GOLD, ChatFormatting.RED, ChatFormatting.DARK_RED
+    };
+
+    /**
+     * 0-5 skulls: the zone's mob-damage multiplier measured against this player's level-derived
+     * power. 3 skulls is an even fight; 5 is near-certain death; 0-1 is farmland.
+     */
+    private static int skulls(ServerPlayer player, SanctuaryConfig.MobScaling ms, double zoneMult) {
+        double perMult = Math.max(1.0, ms.skullLevelsPerMultiplier);
+        double playerPower = 1.0 + player.experienceLevel / perMult;
+        double ratio = zoneMult / playerPower;
+        return (int) Math.max(0, Math.min(5, Math.round(ratio * 3.0)));
+    }
+
+    private static Component zoneMessage(ServerPlayer player, SanctuaryConfig.MobScaling ms,
+                                         int from, int to, double zoneMult) {
         if (to == 0) {
             return Component.literal("The sanctuary shelters you.").withStyle(ChatFormatting.GREEN);
         }
+        int filled = skulls(player, ms, zoneMult);
+        ChatFormatting color = THREAT_COLORS[filled];
+        String text;
         if (to > from) {
-            if (to == 1) {
-                return Component.literal("You leave the sanctuary's shelter.").withStyle(ChatFormatting.YELLOW);
-            }
-            return Component.literal("You enter " + TITLES[to - 1] + " wildlands.").withStyle(COLORS[to - 1]);
+            text = to == 1 ? "Entering the wildlands " : "Entering " + TITLES[to - 1] + " wildlands ";
+        } else {
+            text = "The wilds grow calmer ";
         }
-        return Component.literal("The wilds grow calmer.").withStyle(ChatFormatting.GRAY);
+        MutableComponent msg = Component.literal(text).withStyle(color);
+        if (filled > 0) {
+            msg.append(Component.literal(SKULL.repeat(filled)).withStyle(color));
+        }
+        if (filled < 5) {
+            msg.append(Component.literal(SKULL.repeat(5 - filled)).withStyle(ChatFormatting.DARK_GRAY));
+        }
+        return msg;
     }
 
     /** Attach the any-difficulty door-break goal to a mob carrying the door-breaker tag. */

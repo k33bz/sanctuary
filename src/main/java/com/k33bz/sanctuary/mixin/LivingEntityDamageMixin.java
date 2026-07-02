@@ -39,7 +39,9 @@ public class LivingEntityDamageMixin {
         // Any incoming damage marks the player in-combat (gates shield regen).
         Sanctuary.markCombat(player.getUUID(), serverLevel.getGameTime());
 
-        if (!cfg.danger.enabled || !hasLivingAttacker(source)) {
+        // Danger scaling is distance-from-anchor based, so it only applies in scaling dimensions
+        // (default: Overworld). The Nether/End keep vanilla damage.
+        if (!cfg.danger.enabled || !cfg.isScalingDimension(serverLevel) || !hasLivingAttacker(source)) {
             return amount;
         }
 

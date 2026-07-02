@@ -90,7 +90,7 @@ public class Sanctuary implements ModInitializer {
     private void registerMobScaling() {
         ServerEntityEvents.ENTITY_LOAD.register((entity, world) -> {
             SanctuaryConfig cfg = CONFIG;
-            if (cfg != null && entity instanceof Monster mob) {
+            if (cfg != null && entity instanceof Monster mob && cfg.isScalingDimension(world)) {
                 MobDifficulty.onSpawn(mob, cfg);
             }
         });

@@ -56,6 +56,11 @@ public class SanctuaryConfig {
     public DangerScaling danger = new DangerScaling();
     public List<Anchor> anchors = defaultAnchors();
 
+    // Dimensions where distance-based scaling (Systems 4 & 7) and anchors apply. Anchor distances
+    // are Overworld x/z; in the Nether (coords are /8) or the End they'd be nonsense, so every
+    // other dimension stays vanilla unless explicitly added here.
+    public List<String> scalingDimensions = new ArrayList<>(List.of("minecraft:overworld"));
+
     // Cosmetic: the shrunk dragon egg shown inside an anchor beacon (block_display), live-tunable.
     public double anchorEggScale = 0.75;
     public double anchorEggHeight = 0.9; // vertical centre within the beacon (0 = bottom, 1 = top)
@@ -145,6 +150,12 @@ public class SanctuaryConfig {
                 .sorted()
                 .mapToInt(Integer::intValue)
                 .toArray();
+    }
+
+    /** Whether distance-based scaling + anchors apply in this dimension (default: Overworld only). */
+    public boolean isScalingDimension(net.minecraft.world.level.Level level) {
+        return scalingDimensions != null
+                && scalingDimensions.contains(level.dimension().identifier().toString());
     }
 
     /** Blocks the player is beyond the nearest anchor's safe radius (0 if inside any safe zone). */

@@ -50,6 +50,15 @@ public final class AnchorInteraction {
         if (!isAnchor && !holdingEgg) {
             return InteractionResult.PASS;
         }
+        // Anchors only bind where distance scaling applies (default: Overworld) — an anchor in the
+        // Nether/End would create a phantom safe zone at the same x/z of every scaling dimension.
+        if (Sanctuary.CONFIG != null && !Sanctuary.CONFIG.isScalingDimension(level)) {
+            if (holdingEgg) {
+                player.sendOverlayMessage(net.minecraft.network.chat.Component
+                        .literal("Sanctuary anchors can only be formed in the Overworld."));
+            }
+            return InteractionResult.PASS;
+        }
         if (player instanceof ServerPlayer serverPlayer) {
             AnchorGui.open(serverPlayer, pos.immutable());
         }

@@ -61,11 +61,13 @@ public class SanctuaryConfig {
     // other dimension stays vanilla unless explicitly added here.
     public List<String> scalingDimensions = new ArrayList<>(List.of("minecraft:overworld"));
 
-    // Cosmetic: the shrunk dragon egg shown inside an anchor beacon (block_display), live-tunable.
-    public double anchorEggScale = 0.75;
-    public double anchorEggHeight = 0.9; // vertical centre within the beacon (0 = bottom, 1 = top)
+    // Anchor visuals + the Sanctuary Crystal economy. The crystal (a textured player head) is
+    // the anchor block itself: placing one forms a sanctuary; it drops rarely from high-tier
+    // wildlands mobs killed by players, so expansion is gated on conquering the frontier.
     public boolean anchorShowLabel = true;   // floating "Sanctuary Anchor" text above the anchor
-    public double anchorLabelHeight = 1.6;   // height of the label above the beacon base
+    public double anchorLabelHeight = 1.6;   // height of the label above the crystal
+    public int crystalDropMinTier = 3;       // Ferocious+ mobs may drop a crystal
+    public double crystalDropChance = 0.03;  // per qualifying player-kill
 
     // System 7 — spawn-based wild-mob difficulty: hostiles are buffed by their distance from the
     // nearest anchor when they spawn (baked into their attributes), with tiered names + particles.

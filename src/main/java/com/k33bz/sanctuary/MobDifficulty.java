@@ -312,26 +312,8 @@ public final class MobDifficulty {
         }
         List<Mob> mobs = level.getEntitiesOfClass(Mob.class, player.getBoundingBox().inflate(ms.particleRange));
         for (Mob mob : mobs) {
-            int tier;
-            boolean rabid = mob instanceof Animal && mob.entityTags().contains(RabidAttackGoal.RABID_TAG);
-            if (rabid) {
-                // Recover the tier from the health buff (animals have no attack attribute).
-                AttributeInstance hp = mob.getAttribute(Attributes.MAX_HEALTH);
-                AttributeModifier mod = hp == null ? null : hp.getModifier(HEALTH_ID);
-                if (mod == null || ms.healthPerBlock <= 0) {
-                    continue;
-                }
-                double beyond = mod.amount() / ms.healthPerBlock;
-                tier = SurvivalLogic.mobTier(SurvivalLogic.mobPowerMultiplier(beyond, ms.damagePerBlock,
-                        ms.damageMaxMultiplier, ms.damageCurveExponent) - 1.0);
-            } else if (mob instanceof Monster) {
-                AttributeInstance dmg = mob.getAttribute(Attributes.ATTACK_DAMAGE);
-                AttributeModifier mod = dmg == null ? null : dmg.getModifier(DAMAGE_ID);
-                if (mod == null) {
-                    continue;
-                }
-                tier = SurvivalLogic.mobTier(mod.amount());
-            } else {
+            int tier = tierOf(mob, ms);
+            if (tier < 0) {
                 continue;
             }
             // Anti-farming: a wild mob standing inside a sanctuary loses its buffs (and its
@@ -347,6 +329,29 @@ public final class MobDifficulty {
             level.sendParticles(particleFor(tier), mob.getX(), mob.getY() + mob.getBbHeight() * 0.6, mob.getZ(),
                     tier + 1, 0.3, 0.4, 0.3, 0.01);
         }
+    }
+
+    /**
+     * A buffed mob's threat tier: from its damage buff (monsters) or recovered from its health
+     * buff (rabid animals, which have no attack attribute). Returns −1 for unbuffed mobs.
+     */
+    public static int tierOf(Mob mob, SanctuaryConfig.MobScaling ms) {
+        if (mob instanceof Animal && mob.entityTags().contains(RabidAttackGoal.RABID_TAG)) {
+            AttributeInstance hp = mob.getAttribute(Attributes.MAX_HEALTH);
+            AttributeModifier mod = hp == null ? null : hp.getModifier(HEALTH_ID);
+            if (mod == null || ms.healthPerBlock <= 0) {
+                return -1;
+            }
+            double beyond = mod.amount() / ms.healthPerBlock;
+            return SurvivalLogic.mobTier(SurvivalLogic.mobPowerMultiplier(beyond, ms.damagePerBlock,
+                    ms.damageMaxMultiplier, ms.damageCurveExponent) - 1.0);
+        }
+        if (mob instanceof Monster) {
+            AttributeInstance dmg = mob.getAttribute(Attributes.ATTACK_DAMAGE);
+            AttributeModifier mod = dmg == null ? null : dmg.getModifier(DAMAGE_ID);
+            return mod == null ? -1 : SurvivalLogic.mobTier(mod.amount());
+        }
+        return -1;
     }
 
     /**

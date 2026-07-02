@@ -11,9 +11,9 @@ buy back your life. The world scales the other way: the farther from a **sanctua
 stronger everything gets — until the deep wildlands one-shot the unprepared, the wildlife turns
 rabid, and zombies tear the door (and its frame) off your shelter.
 
-Sanctuaries are placeable: seat a **dragon egg in a beacon** and it becomes a spinning-crystal
-anchor that calms the region around it. Civilization is something you build outward, anchor by
-anchor.
+Sanctuaries are placeable: slay the frontier's strongest monsters for a rare **Sanctuary
+Crystal**, then place it to raise an anchor that calms the region around it. Civilization is
+something you carve out of the wilds, anchor by anchor.
 
 ## Systems at a glance
 
@@ -30,7 +30,8 @@ anchor.
 | Hunters | deep mobs track players from up to 3× vanilla range |
 | Door-breakers | deep zombies break wooden doors on **any** difficulty — and smash the frame blocks of a *player-placed* door when the way through is blocked |
 | Rabid wildlife | in Savage+ zones, 25% of animals spawn hostile and hunt players |
-| Sanctuary anchors | beacon + dragon egg; union of safe circles; breaking pops the egg back out |
+| Sanctuary anchors | place a **Sanctuary Crystal** (rare drop from Ferocious+ mobs) to raise one; union of safe circles; breaking drops the crystal back |
+| Permissions | `sanctuary.anchor.create` / `.break` nodes via fabric-permissions-api (bundled) — LuckPerms-ready, safe defaults without it |
 | Anti-farming | buffed mobs inside a sanctuary revert to vanilla — scaled XP included |
 | Threat readout | actionbar zone messages with a personalized 5-skull scale (☠), on crossing and on login |
 | World-danger scaling | difficulty/world-age damage multiplier on players (distance term off by default) |
@@ -74,6 +75,7 @@ the tick handler and damage mixin read the config fresh every tick/hit:
 | `/sanctuary reload` | Re-read the json from disk |
 | `/sanctuary anchor list\|add <x> <z> <radius>\|clear` | Manage config safe anchors |
 | `/sanctuary danger status\|reset` | Show the world-age damage pressure, or re-zero it without touching the world clock |
+| `/sanctuary crystal give` | Give yourself a Sanctuary Crystal (admin seeding/testing) |
 
 `set`/`toggle`/`anchor` mutate the in-memory config (instant); `save` writes it to disk; `reload`
 reads it back — tune live then `save`, or hand-edit the file and `reload`.

@@ -72,8 +72,9 @@ public final class SanctuaryCommands {
         num("mobscaling.speedMax", () -> cfg().mobScaling.speedMaxMultiplier, v -> cfg().mobScaling.speedMaxMultiplier = v, 1, 10);
         num("mobscaling.xpPerBlock", () -> cfg().mobScaling.xpPerBlock, v -> cfg().mobScaling.xpPerBlock = v, 0, 1);
         num("mobscaling.xpMax", () -> cfg().mobScaling.xpMaxMultiplier, v -> cfg().mobScaling.xpMaxMultiplier = v, 1, 200);
-        num("anchor.eggScale", () -> cfg().anchorEggScale, v -> cfg().anchorEggScale = v, 0.05, 1);
-        num("anchor.eggHeight", () -> cfg().anchorEggHeight, v -> cfg().anchorEggHeight = v, 0, 2);
+        num("anchor.crystalDropMinTier", () -> cfg().crystalDropMinTier,
+                v -> cfg().crystalDropMinTier = (int) Math.round(v), 0, 4);
+        num("anchor.crystalDropChance", () -> cfg().crystalDropChance, v -> cfg().crystalDropChance = v, 0, 1);
         num("anchor.labelHeight", () -> cfg().anchorLabelHeight, v -> cfg().anchorLabelHeight = v, 0, 4);
         num("mobscaling.particleRange", () -> cfg().mobScaling.particleRange, v -> cfg().mobScaling.particleRange = v, 0, 256);
         num("lethalSave.levelsPerDamage", () -> cfg().lethalSaveLevelsPerDamage, v -> cfg().lethalSaveLevelsPerDamage = (float) v, 0, 100);
@@ -119,6 +120,8 @@ public final class SanctuaryCommands {
                                 .executes(safe(SanctuaryCommands::toggle))))
                 .then(Commands.literal("save").executes(safe(SanctuaryCommands::save)))
                 .then(Commands.literal("reload").executes(safe(SanctuaryCommands::reload)))
+                .then(Commands.literal("crystal")
+                        .then(Commands.literal("give").executes(safe(SanctuaryCommands::crystalGive))))
                 .then(Commands.literal("danger")
                         .then(Commands.literal("status").executes(safe(SanctuaryCommands::dangerStatus)))
                         .then(Commands.literal("reset").executes(safe(SanctuaryCommands::dangerReset))))
@@ -130,6 +133,17 @@ public final class SanctuaryCommands {
                                         .then(Commands.argument("z", DoubleArgumentType.doubleArg())
                                                 .then(Commands.argument("radius", DoubleArgumentType.doubleArg(0))
                                                         .executes(safe(SanctuaryCommands::anchorAdd)))))));
+    }
+
+    /** Hand the executing player a Sanctuary Crystal (for testing/admin seeding). */
+    private static int crystalGive(CommandContext<CommandSourceStack> ctx) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        net.minecraft.server.level.ServerPlayer player = ctx.getSource().getPlayerOrException();
+        boolean added = player.getInventory().add(com.k33bz.sanctuary.anchor.SanctuaryCrystal.create());
+        if (!added) {
+            player.drop(com.k33bz.sanctuary.anchor.SanctuaryCrystal.create(), false);
+        }
+        ctx.getSource().sendSuccess(() -> Component.literal("Gave 1 Sanctuary Crystal."), true);
+        return 1;
     }
 
     /** The world-age pressure: days accrued since the epoch and the multiplier it produces. */

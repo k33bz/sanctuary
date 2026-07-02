@@ -23,8 +23,26 @@ beyond(x, z) = max(0,  min over all anchors A of:  dist2D((x,z), A) − A.safeRa
   forms a contiguous safe corridor, and a frontier anchor pulls the whole difficulty
   gradient down around itself.
 - Two anchor sources are merged (min of both): the config list (`anchors`, default spawn
-  `0,0 r=128`) and player-placed anchors (beacon + dragon egg, radius 128, persisted in
+  `0,0 r=128`) and player-placed anchors (radius 128, persisted in
   `config/sanctuary_anchors.json`).
+
+**The Sanctuary Crystal.** A placed anchor is a **Sanctuary Crystal** — a player head wearing the
+crystal skin (pure vanilla block; renders on every client). Placing one forms the anchor
+(activation flash + floating label + recurring particle pulse and sonic-boom accent); breaking it
+drops the crystal back (identity rides on the head's profile, which survives the place/break
+round-trip). Crystals drop from **tier ≥ `crystalDropMinTier` (3, Ferocious+) mobs killed by
+players**, at `crystalDropChance` (3%) per qualifying kill — so sanctuary expansion is gated on
+conquering the frontier, and the supply is renewable (unlike the one dragon egg). Ops can spawn
+one with `/sanctuary crystal give`.
+
+**Permissions (LuckPerms-compatible).** Anchor actions check
+[fabric-permissions-api](https://github.com/lucko/fabric-permissions-api) nodes (bundled; LuckPerms
+implements them when installed, otherwise the defaults apply):
+
+| Node | Default | Gates |
+|------|---------|-------|
+| `sanctuary.anchor.create` | allow | placing a crystal (forming an anchor) |
+| `sanctuary.anchor.break`  | allow | breaking an existing anchor |
 
 **Dimension gating** (`scalingDimensions`, default `["minecraft:overworld"]`): distance-based
 systems (mob scaling, world-danger scaling, anchors) exist **only** in listed dimensions.
@@ -278,7 +296,8 @@ state silently. The glyph is `☠` (U+2620); emoji are not in Minecraft's font.
 | `danger.*` | see §6 | §6 |
 | `anchors` | spawn 0,0 r128 | §1 |
 | `scalingDimensions` | overworld | §1 |
-| `anchorEggScale` / `anchorEggHeight` / `anchorShowLabel` / `anchorLabelHeight` | 0.75 / 0.9 / true / 1.6 | cosmetic |
+| `anchorShowLabel` / `anchorLabelHeight` | true / 1.6 | cosmetic |
+| `crystalDropMinTier` / `crystalDropChance` | 3 / 0.03 | §1 |
 | `mobScaling.enabled` | true | §2 |
 | `mobScaling.{health,damage,speed,xp,follow}PerBlock` + `…MaxMultiplier` | see §2 table | §2 |
 | `mobScaling.damageCurveExponent` | 1.0 | §2.2 |

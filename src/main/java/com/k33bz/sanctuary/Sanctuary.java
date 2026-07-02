@@ -63,10 +63,10 @@ public class Sanctuary implements ModInitializer {
         registerLethalSave();
         registerMobScaling();
         registerAnchorBreak();
+        registerCrystalDrops();
         // Forget zone tracking on disconnect so the next login re-announces the player's zone.
         net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents.DISCONNECT.register(
                 (handler, server) -> MobDifficulty.clearPlayer(handler.player.getUUID()));
-        AnchorInteraction.register();
         SanctuaryCommands.register();
     }
 
@@ -75,17 +75,63 @@ public class Sanctuary implements ModInitializer {
         return Math.min(cfg.blocksBeyondSafe(x, z), AnchorState.get().blocksBeyondSafe(x, z));
     }
 
-    /** When an anchor beacon is broken, deactivate it, remove the seated egg display, and pop the egg back out. */
+    /**
+     * Anchor breaking: permission-gated (sanctuary.anchor.break, default allowed — LuckPerms can
+     * restrict it), deactivates the anchor and cleans up its displays. The crystal head drops
+     * itself with its profile intact, so it can be re-placed; legacy beacon anchors pop their
+     * dragon egg back out.
+     */
     private void registerAnchorBreak() {
+        PlayerBlockBreakEvents.BEFORE.register((world, player, pos, state, blockEntity) -> {
+            if (!AnchorState.get().isAnchor(pos)) {
+                return true;
+            }
+            boolean isAnchorBlock = state.is(Blocks.BEACON) || state.getBlock() instanceof net.minecraft.world.level.block.AbstractSkullBlock;
+            if (!isAnchorBlock) {
+                return true;
+            }
+            if (player instanceof ServerPlayer sp
+                    && !me.lucko.fabric.api.permissions.v0.Permissions.check(sp, "sanctuary.anchor.break", true)) {
+                sp.sendOverlayMessage(net.minecraft.network.chat.Component
+                        .literal("This sanctuary anchor is protected."));
+                return false;
+            }
+            return true;
+        });
         PlayerBlockBreakEvents.AFTER.register((world, player, pos, state, blockEntity) -> {
-            if (state.is(Blocks.BEACON) && AnchorState.get().isAnchor(pos)) {
+            boolean isAnchorBlock = state.is(Blocks.BEACON) || state.getBlock() instanceof net.minecraft.world.level.block.AbstractSkullBlock;
+            if (isAnchorBlock && AnchorState.get().isAnchor(pos)) {
                 AnchorState.get().ensureUnregistered(pos);
                 MinecraftServer server = world.getServer();
                 if (server != null) {
-                    AnchorInteraction.removeEggDisplay(server, pos);
+                    AnchorInteraction.removeDisplays(server, pos);
                 }
-                Block.popResource(world, pos, new ItemStack(Items.DRAGON_EGG));
+                if (state.is(Blocks.BEACON)) {
+                    Block.popResource(world, pos, new ItemStack(Items.DRAGON_EGG)); // legacy anchors
+                }
             }
+        });
+    }
+
+    /** Sanctuary Crystals drop rarely from high-tier wildlands mobs killed by players. */
+    private void registerCrystalDrops() {
+        net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents.AFTER_DEATH.register((entity, source) -> {
+            SanctuaryConfig cfg = CONFIG;
+            if (cfg == null || !(entity instanceof net.minecraft.world.entity.Mob mob)
+                    || !(entity.level() instanceof ServerLevel level)
+                    || !cfg.isScalingDimension(level)
+                    || !(source.getEntity() instanceof ServerPlayer)) {
+                return;
+            }
+            int tier = MobDifficulty.tierOf(mob, cfg.mobScaling);
+            if (tier < cfg.crystalDropMinTier
+                    || mob.getRandom().nextDouble() >= cfg.crystalDropChance) {
+                return;
+            }
+            Block.popResource(level, mob.blockPosition(),
+                    com.k33bz.sanctuary.anchor.SanctuaryCrystal.create());
+            LOGGER.info("[sanctuary] A tier-{} {} dropped a Sanctuary Crystal", tier,
+                    mob.getType().getDescription().getString());
         });
     }
 

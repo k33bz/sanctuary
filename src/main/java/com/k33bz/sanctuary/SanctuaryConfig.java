@@ -98,6 +98,14 @@ public class SanctuaryConfig {
         // rate-limited so bouncing on a boundary doesn't spam.
         public boolean boundaryMessages = true;
         public double boundaryMessageCooldownSeconds = 10.0;
+
+        // Frame smashing: door-breaker zombies that can't path to their target may smash a few
+        // soft blocks around a PLAYER-PLACED wooden door (never world-generated structures).
+        public boolean frameSmashEnabled = true;
+        public int frameRadius = 1;             // blocks around the door that are at risk
+        public double frameSearchRange = 4.0;   // mob must be this close to a tracked door to start
+        public double frameMaxHardness = 2.0;   // only blocks this soft break (planks=2.0, obsidian never)
+        public int frameSmashTimeTicks = 160;   // ~8s of pounding per block
     }
 
     public static class DangerScaling implements SurvivalLogic.DangerParams {

@@ -3,6 +3,7 @@
   "package": "com.k33bz.sanctuary.mixin",
   "compatibilityLevel": "JAVA_25",
   "mixins": [
+    "BlockItemPlaceMixin",
     "LivingEntityDamageMixin"
   ],
   "injectors": {

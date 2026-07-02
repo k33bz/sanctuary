@@ -155,6 +155,8 @@ public final class MobDifficulty {
             // Vanilla gates door-breaking behind Hard difficulty; wildlands hunters ignore that.
             // Still respects the mobGriefing gamerule (checked inside the goal).
             mob.goalSelector.addGoal(1, new BreakDoorGoal(mob, difficulty -> true));
+            // And when the way through is blocked, smash the frame of a player-placed door.
+            mob.goalSelector.addGoal(2, new com.k33bz.sanctuary.siege.SmashDoorFrameGoal(mob));
         }
     }
 

@@ -15,7 +15,9 @@ public final class SurvivalLogic {
     public static float worldDangerMultiplier(int difficultyId, long gameTimeTicks,
                                               double blocksBeyondSafe, DangerParams p) {
         float difficultyTerm = 1.0f + p.difficultyWeight() * Math.max(0, difficultyId);
-        double days = Math.max(0L, gameTimeTicks) / 24000.0;
+        // Age is measured from the epoch (a persisted reset point), not from tick 0 — so ops can
+        // reset the pressure without touching the world's actual clock.
+        double days = Math.max(0L, gameTimeTicks - p.epochTick()) / 24000.0;
         float timeTerm = 1.0f + (float) (p.perDayWeight() * days);
         float distanceTerm = 1.0f + (float) (p.perBlockWeight() * Math.max(0.0, blocksBeyondSafe));
         float mult = difficultyTerm * timeTerm * distanceTerm;
@@ -195,5 +197,10 @@ public final class SurvivalLogic {
         double perBlockWeight();
 
         float maxMultiplier();
+
+        /** Game time the age pressure is measured from (see {@code /sanctuary danger reset}). */
+        default long epochTick() {
+            return 0L;
+        }
     }
 }

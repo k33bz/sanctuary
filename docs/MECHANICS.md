@@ -192,9 +192,14 @@ Multiplies damage **players take from living attackers** (never environmental da
 *before* armor so the world can outpace mitigation:
 
 ```
+days   = max(0, gameTime − epochTick) / 24000
 danger = clamp( (1 + 0.15·difficultyId) · (1 + perDayWeight·days) · (1 + perBlockWeight·beyond),
                 1, maxMultiplier=4 )
 ```
+
+The age is measured from a persisted **epoch**, not from tick 0: `/sanctuary danger reset`
+re-zeroes the pressure without touching the world clock (and saves immediately), and
+`/sanctuary danger status` shows the days accrued and the multiplier they currently produce.
 
 | Knob | Default | Note |
 |------|---------|------|
@@ -202,6 +207,7 @@ danger = clamp( (1 + 0.15·difficultyId) · (1 + perDayWeight·days) · (1 + per
 | `perDayWeight` | **0.0005** | per *in-game* day. An always-on server burns ~72 in-game days per real day → ≈ +3.6%/real-day, cap after ~3 months. (0.02 hit the cap in 2.5 real days — do not raise casually.) |
 | `perBlockWeight` | **0** | mob attributes already scale with distance; a nonzero value **multiplies** with them (0.0005 made 5k blocks ~24× instead of 6×). Kept as a knob for experiments. |
 | `maxMultiplier` | 4.0 | hard ceiling |
+| `epochTick` | 0 | set by `/sanctuary danger reset`; age counts from here |
 
 Only applies in scaling dimensions.
 

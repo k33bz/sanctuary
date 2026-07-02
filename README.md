@@ -73,6 +73,7 @@ the tick handler and damage mixin read the config fresh every tick/hit:
 | `/sanctuary save` | Persist current live values to the json |
 | `/sanctuary reload` | Re-read the json from disk |
 | `/sanctuary anchor list\|add <x> <z> <radius>\|clear` | Manage config safe anchors |
+| `/sanctuary danger status\|reset` | Show the world-age damage pressure, or re-zero it without touching the world clock |
 
 `set`/`toggle`/`anchor` mutate the in-memory config (instant); `save` writes it to disk; `reload`
 reads it back — tune live then `save`, or hand-edit the file and `reload`.

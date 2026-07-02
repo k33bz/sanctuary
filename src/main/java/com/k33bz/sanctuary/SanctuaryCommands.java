@@ -119,6 +119,9 @@ public final class SanctuaryCommands {
                                 .executes(safe(SanctuaryCommands::toggle))))
                 .then(Commands.literal("save").executes(safe(SanctuaryCommands::save)))
                 .then(Commands.literal("reload").executes(safe(SanctuaryCommands::reload)))
+                .then(Commands.literal("danger")
+                        .then(Commands.literal("status").executes(safe(SanctuaryCommands::dangerStatus)))
+                        .then(Commands.literal("reset").executes(safe(SanctuaryCommands::dangerReset))))
                 .then(Commands.literal("anchor")
                         .then(Commands.literal("list").executes(safe(SanctuaryCommands::anchorList)))
                         .then(Commands.literal("clear").executes(safe(SanctuaryCommands::anchorClear)))
@@ -127,6 +130,30 @@ public final class SanctuaryCommands {
                                         .then(Commands.argument("z", DoubleArgumentType.doubleArg())
                                                 .then(Commands.argument("radius", DoubleArgumentType.doubleArg(0))
                                                         .executes(safe(SanctuaryCommands::anchorAdd)))))));
+    }
+
+    /** The world-age pressure: days accrued since the epoch and the multiplier it produces. */
+    private static int dangerStatus(CommandContext<CommandSourceStack> ctx) {
+        CommandSourceStack src = ctx.getSource();
+        long gameTime = src.getServer().overworld().getGameTime();
+        double days = Math.max(0L, gameTime - cfg().danger.epochTick) / 24000.0;
+        float atSanctuary = SurvivalLogic.worldDangerMultiplier(
+                src.getServer().overworld().getDifficulty().getId(), gameTime, 0.0, cfg().danger);
+        String msg = String.format(
+                "World-age danger: %.1f in-game days since last reset -> x%.2f inside a sanctuary (cap x%.1f)",
+                days, atSanctuary, cfg().danger.maxMultiplier);
+        src.sendSuccess(() -> Component.literal(msg), false);
+        return 1;
+    }
+
+    /** Re-zero the age pressure without touching the world clock. Persists immediately. */
+    private static int dangerReset(CommandContext<CommandSourceStack> ctx) {
+        CommandSourceStack src = ctx.getSource();
+        cfg().danger.epochTick = src.getServer().overworld().getGameTime();
+        cfg().save();
+        src.sendSuccess(() -> Component.literal(
+                "World-age danger reset — the world feels young again (saved to config)."), true);
+        return 1;
     }
 
     /** Wraps a handler so any exception is logged with a full trace and reported, instead of a bare

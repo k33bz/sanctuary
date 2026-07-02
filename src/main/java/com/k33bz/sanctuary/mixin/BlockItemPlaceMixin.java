@@ -39,12 +39,12 @@ public class BlockItemPlaceMixin {
             return;
         }
         if (Sanctuary.CONFIG == null || !Sanctuary.CONFIG.isScalingDimension(level)) {
-            player.sendOverlayMessage(Component.literal("Sanctuary anchors can only be formed in the Overworld."));
+            deny(player, context, "Sanctuary anchors can only be formed in the Overworld.");
             cir.setReturnValue(InteractionResult.FAIL);
             return;
         }
         if (!Permissions.check(player, "sanctuary.anchor.create", true)) {
-            player.sendOverlayMessage(Component.literal("You don't have permission to raise a sanctuary."));
+            deny(player, context, "You don't have permission to raise a sanctuary.");
             cir.setReturnValue(InteractionResult.FAIL);
             return;
         }
@@ -62,11 +62,27 @@ public class BlockItemPlaceMixin {
             }
             if (nearest < Sanctuary.CONFIG.anchorMinSpacing) {
                 // Actionbar is a single line — keep it short: "distance / required".
-                player.sendOverlayMessage(Component.literal(String.format(java.util.Locale.ROOT,
+                deny(player, context, String.format(java.util.Locale.ROOT,
                         "Too close to another sanctuary (%.0f / %.0f blocks)",
-                        nearest, Sanctuary.CONFIG.anchorMinSpacing)));
+                        nearest, Sanctuary.CONFIG.anchorMinSpacing));
                 cir.setReturnValue(InteractionResult.FAIL);
             }
+        }
+    }
+
+    /**
+     * Deny placement + resync the client: it has already predicted the place (ghost block,
+     * decremented stack), and since the server changes nothing it would never correct itself —
+     * the crystal LOOKS consumed until a relog. Push the inventory and block state back.
+     */
+    private static void deny(ServerPlayer player, BlockPlaceContext context, String message) {
+        player.sendOverlayMessage(Component.literal(message));
+        player.containerMenu.sendAllDataToRemote();
+        if (context.getLevel() instanceof ServerLevel level) {
+            BlockPos pos = context.getClickedPos();
+            player.connection.send(new net.minecraft.network.protocol.game.ClientboundBlockUpdatePacket(level, pos));
+            player.connection.send(new net.minecraft.network.protocol.game.ClientboundBlockUpdatePacket(level,
+                    pos.relative(context.getClickedFace().getOpposite())));
         }
     }
 

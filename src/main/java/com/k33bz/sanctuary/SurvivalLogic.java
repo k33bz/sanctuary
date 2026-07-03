@@ -184,6 +184,23 @@ public final class SurvivalLogic {
         return Math.max(0.0, blocksBeyondSafe * (1.0 + g * fuzz));
     }
 
+    /**
+     * Feral-egg hatch drift: the chick's destined tier from its parent's. Roll in [0,1):
+     * {@code [0, down)} → one tier down, {@code [down, down+up)} → one tier up, else the parent's
+     * tier. Clamped to the rabid band (2 = Savage .. 4 = Nightmare) — a bloodline can never breed
+     * back to calm, and Nightmare is the ceiling (so a Nightmare parent yields Nightmare at
+     * {@code 1 − down}, not {@code 1 − down − up}).
+     */
+    public static int feralEggDestinyTier(int parentTier, double roll, double downChance, double upChance) {
+        int tier = parentTier;
+        if (roll < downChance) {
+            tier = parentTier - 1;
+        } else if (roll < downChance + upChance) {
+            tier = parentTier + 1;
+        }
+        return Math.max(2, Math.min(4, tier));
+    }
+
     /** Threat tier 0–4 from a damage-modifier bonus (= damageMultiplier − 1), for names/particles. */
     public static int mobTier(double damageBonus) {
         if (damageBonus < 0.5) {

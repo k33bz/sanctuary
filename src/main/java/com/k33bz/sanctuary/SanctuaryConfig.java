@@ -179,13 +179,14 @@ public class SanctuaryConfig {
         public double rabidBaseDamage = 2.0;
 
         // Feral eggs: an egg appearing within a block of a living feral (rabid) hen becomes a
-        // Feral Egg carrying her tier (named + tier-colored; stacks by grade). Hatchlings are
-        // born calm but destined — at adulthood they turn at the parent tier, drifted one tier
-        // down/same/up at hatch (defaults 25/50/25, clamped Savage..Nightmare). The bloodline is
-        // permanent: sanctuaries pacify a destined bird while inside, the wilds wake it again.
+        // Feral Egg carrying her tier (name color) and her bloodline's star quality (0-5 stars in
+        // the name; wild-turned hens lay 0-star). Hatch odds come from the star table in
+        // SurvivalLogic.feralEggHatchOutcome — most eggs hatch a plain chick; stars shift the
+        // odds toward the bloodline tier and, rarely, one above it. Destined chicks carry hidden
+        // destiny + generation tags (never shown on the bird), turn rabid at adulthood, and lay
+        // eggs one star deeper (cap 5). Sanctuaries pacify a destined bird while inside; the
+        // bloodline survives and the wilds wake it again.
         public boolean feralEggsEnabled = true;
-        public double feralEggDownChance = 0.25;
-        public double feralEggUpChance = 0.25;
 
         // Frame smashing: door-breaker zombies that can't path to their target may smash a few
         // soft blocks around a PLAYER-PLACED wooden door (never world-generated structures).

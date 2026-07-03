@@ -12,15 +12,19 @@ Feature concept by **Zugzuggin'** — every Feral Egg carries the credit in its 
   becomes a **Feral Egg** at her tier — still a vanilla egg, renamed and colored by grade
   (Savage gold, Ferocious red, Nightmare dark red), so grades stack separately and trade
   cleanly. The tier lives in the name's *color*, which an anvil cannot forge.
-- **Bloodline drift**: hatchlings hatch calm but destined. At hatch the parent tier drifts one
-  down / same / one up (`feralEggDownChance`/`feralEggUpChance`, defaults 25/50/25), clamped to
-  Savage..Nightmare — a bloodline never breeds back to calm, and a Ferocious egg pays out a
-  Nightmare chick one time in four.
+- **Star quality = generations**: every Feral Egg shows 0–5 stars in its name — the
+  bloodline's depth. A wild-turned hen lays 0★; each destined generation lays one star deeper
+  (cap 5★). The hen herself never shows stars — the lineage hides in her blood (an invisible
+  tag) and only reveals itself on her eggs.
+- **The hatch gamble** (odds by stars — normal chick / tier down / same / tier up):
+  0★ 90/–/9/1 · 1★ 75/5/19/1 · 2★ 66/8/24/2 · 3★ 50/10/35/5 · 4★ 33/10/47/10 ·
+  5★ 25/10/45/20, clamped Savage..Nightmare. Most eggs hatch ordinary chickens — five lucky
+  generations stand between a wild Savage hen and true 5★ Nightmare stock.
 - **The turn**: a destined bird goes feral the moment it loads as an adult — anywhere, no zone
   or chance roll (the gamble already happened). Sanctuaries still pacify it while it stands
   inside (the revert holds); the destiny survives, and the wilds wake it again. Arena fights,
   wilderness ambushes, and gift-wrapped livestock are all now on the table.
-- Config: `feralEggsEnabled`, `feralEggDownChance`, `feralEggUpChance` under `mobscaling`.
+- Config: `feralEggsEnabled` under `mobscaling`; the star table lives in code.
 - No new mixins — laying, hatching, and turning all ride the existing entity-load hooks, so the
   feature is identical on every supported Minecraft version.
 

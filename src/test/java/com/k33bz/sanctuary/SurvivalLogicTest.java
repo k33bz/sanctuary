@@ -150,20 +150,38 @@ class SurvivalLogicTest {
     }
 
     @Test
-    void feralEggDriftFollowsBandsAndClamps() {
-        // 25/50/25 bands: [0, .25) down, [.25, .50) up, [.50, 1) same
-        assertEquals(2, SurvivalLogic.feralEggDestinyTier(3, 0.10, 0.25, 0.25)); // down roll
-        assertEquals(4, SurvivalLogic.feralEggDestinyTier(3, 0.30, 0.25, 0.25)); // up roll
-        assertEquals(3, SurvivalLogic.feralEggDestinyTier(3, 0.75, 0.25, 0.25)); // same
-        assertEquals(2, SurvivalLogic.feralEggDestinyTier(2, 0.10, 0.25, 0.25)); // Savage floor holds
-        assertEquals(4, SurvivalLogic.feralEggDestinyTier(4, 0.30, 0.25, 0.25)); // Nightmare ceiling holds
-        assertEquals(3, SurvivalLogic.feralEggDestinyTier(4, 0.10, 0.25, 0.25)); // Nightmare can slip
-        assertEquals(3, SurvivalLogic.feralEggDestinyTier(2, 0.30, 0.25, 0.25)); // Savage can climb
-        // boundary exactness: roll == down is the first up-roll, roll == down+up is same
-        assertEquals(4, SurvivalLogic.feralEggDestinyTier(3, 0.25, 0.25, 0.25));
-        assertEquals(3, SurvivalLogic.feralEggDestinyTier(3, 0.50, 0.25, 0.25));
-        // zero-drift config pins the bloodline
-        assertEquals(3, SurvivalLogic.feralEggDestinyTier(3, 0.0, 0.0, 0.0));
+    void feralEggHatchOutcomeFollowsStarTable() {
+        // 0★ row: 90% normal / 0% down / 9% same / 1% up
+        assertEquals(-1, SurvivalLogic.feralEggHatchOutcome(3, 0, 0.89));   // normal chick
+        assertEquals(3, SurvivalLogic.feralEggHatchOutcome(3, 0, 0.90));    // first same-roll
+        assertEquals(3, SurvivalLogic.feralEggHatchOutcome(3, 0, 0.9899));
+        assertEquals(4, SurvivalLogic.feralEggHatchOutcome(3, 0, 0.99));    // the 1% miracle
+        // 1★ row: 75/5/19/1
+        assertEquals(-1, SurvivalLogic.feralEggHatchOutcome(3, 1, 0.74));
+        assertEquals(2, SurvivalLogic.feralEggHatchOutcome(3, 1, 0.75));    // down band starts
+        assertEquals(2, SurvivalLogic.feralEggHatchOutcome(3, 1, 0.7999));
+        assertEquals(3, SurvivalLogic.feralEggHatchOutcome(3, 1, 0.80));
+        assertEquals(4, SurvivalLogic.feralEggHatchOutcome(3, 1, 0.99));
+        // 4★ row: 33/10/47/10
+        assertEquals(-1, SurvivalLogic.feralEggHatchOutcome(3, 4, 0.32));
+        assertEquals(2, SurvivalLogic.feralEggHatchOutcome(3, 4, 0.40));
+        assertEquals(3, SurvivalLogic.feralEggHatchOutcome(3, 4, 0.50));
+        assertEquals(4, SurvivalLogic.feralEggHatchOutcome(3, 4, 0.95));
+        // 5★ row: 25/10/45/20 — the 1-in-5 climb
+        assertEquals(-1, SurvivalLogic.feralEggHatchOutcome(3, 5, 0.24));
+        assertEquals(2, SurvivalLogic.feralEggHatchOutcome(3, 5, 0.30));
+        assertEquals(3, SurvivalLogic.feralEggHatchOutcome(3, 5, 0.79));
+        assertEquals(4, SurvivalLogic.feralEggHatchOutcome(3, 5, 0.80));
+        // clamps: Savage can't slip below, Nightmare can't climb above
+        assertEquals(2, SurvivalLogic.feralEggHatchOutcome(2, 5, 0.30));
+        assertEquals(4, SurvivalLogic.feralEggHatchOutcome(4, 5, 0.90));
+        // out-of-range stars clamp to the table edges
+        assertEquals(4, SurvivalLogic.feralEggHatchOutcome(3, 99, 0.80));  // treated as 5★
+        assertEquals(-1, SurvivalLogic.feralEggHatchOutcome(3, -1, 0.89)); // treated as 0★
+        // generation → star cap
+        assertEquals(0, SurvivalLogic.feralEggStars(0));
+        assertEquals(3, SurvivalLogic.feralEggStars(3));
+        assertEquals(5, SurvivalLogic.feralEggStars(12));
     }
 
     @Test

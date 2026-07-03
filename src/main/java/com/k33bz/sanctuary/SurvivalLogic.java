@@ -185,20 +185,42 @@ public final class SurvivalLogic {
     }
 
     /**
-     * Feral-egg hatch drift: the chick's destined tier from its parent's. Roll in [0,1):
-     * {@code [0, down)} → one tier down, {@code [down, down+up)} → one tier up, else the parent's
-     * tier. Clamped to the rabid band (2 = Savage .. 4 = Nightmare) — a bloodline can never breed
-     * back to calm, and Nightmare is the ceiling (so a Nightmare parent yields Nightmare at
-     * {@code 1 − down}, not {@code 1 − down − up}).
+     * Feral-egg hatch tables by egg quality (0–5 stars): {normal chick, tier down, same, tier up}.
+     * Stars are generations of selective breeding — a wild-turned hen lays 0★, each destined
+     * generation adds one, capped at 5★. Even a 5★ egg mostly disappoints; that's the market.
      */
-    public static int feralEggDestinyTier(int parentTier, double roll, double downChance, double upChance) {
+    private static final double[][] FERAL_EGG_TABLE = {
+            {0.90, 0.00, 0.09, 0.01}, // 0★ — a wild hen's clutch: almost always just breakfast
+            {0.75, 0.05, 0.19, 0.01}, // 1★
+            {0.66, 0.08, 0.24, 0.02}, // 2★
+            {0.50, 0.10, 0.35, 0.05}, // 3★
+            {0.33, 0.10, 0.47, 0.10}, // 4★
+            {0.25, 0.10, 0.45, 0.20}, // 5★ — 1-in-5 climbs a tier
+    };
+
+    /**
+     * Feral-egg hatch outcome. Roll in [0,1) against the star row's cumulative bands:
+     * normal → −1 (a plain chick, bloodline ends), else the destined tier — parent's, one down,
+     * or one up — clamped to the rabid band (2 = Savage .. 4 = Nightmare), so a Nightmare parent's
+     * up-roll stays Nightmare and a Savage parent's down-roll stays Savage.
+     */
+    public static int feralEggHatchOutcome(int parentTier, int stars, double roll) {
+        double[] row = FERAL_EGG_TABLE[Math.max(0, Math.min(FERAL_EGG_TABLE.length - 1, stars))];
+        if (roll < row[0]) {
+            return -1;
+        }
         int tier = parentTier;
-        if (roll < downChance) {
+        if (roll < row[0] + row[1]) {
             tier = parentTier - 1;
-        } else if (roll < downChance + upChance) {
+        } else if (roll >= row[0] + row[1] + row[2]) {
             tier = parentTier + 1;
         }
         return Math.max(2, Math.min(4, tier));
+    }
+
+    /** Star quality of the eggs a bloodline hen of this generation lays (capped at 5). */
+    public static int feralEggStars(int generation) {
+        return Math.max(0, Math.min(5, generation));
     }
 
     /** Threat tier 0–4 from a damage-modifier bonus (= damageMultiplier − 1), for names/particles. */

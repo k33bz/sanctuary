@@ -5,6 +5,9 @@ All notable changes to Sanctuary (formerly XP Vitality).
 ## [0.6.0] — 2026-07-03
 
 ### Added — Feral Eggs (breed your way to Nightmare poultry)
+
+Feature concept by **Zugzuggin'** — every Feral Egg carries the credit in its lore.
+
 - **Contaminated clutches**: an egg appearing within a block of a living feral (rabid) hen
   becomes a **Feral Egg** at her tier — still a vanilla egg, renamed and colored by grade
   (Savage gold, Ferocious red, Nightmare dark red), so grades stack separately and trade

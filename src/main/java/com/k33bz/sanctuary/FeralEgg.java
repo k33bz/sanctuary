@@ -59,7 +59,9 @@ public final class FeralEgg {
                 Component.literal("Something " + MobDifficulty.tierName(tier) + " stirs within.")
                         .withStyle(ChatFormatting.GRAY),
                 Component.literal("Hatchlings favor the bloodline... usually.")
-                        .withStyle(ChatFormatting.DARK_GRAY))));
+                        .withStyle(ChatFormatting.DARK_GRAY),
+                Component.literal("A Zugzuggin' original.")
+                        .withStyle(ChatFormatting.DARK_PURPLE))));
         out.set(DataComponents.RARITY, tier >= 4 ? Rarity.EPIC : tier == 3 ? Rarity.RARE : Rarity.UNCOMMON);
         return out;
     }

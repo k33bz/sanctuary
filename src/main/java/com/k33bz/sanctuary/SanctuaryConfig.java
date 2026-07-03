@@ -187,6 +187,10 @@ public class SanctuaryConfig {
         // eggs one star deeper (cap 5). Sanctuaries pacify a destined bird while inside; the
         // bloodline survives and the wilds wake it again.
         public boolean feralEggsEnabled = true;
+        // RESERVED, not wired yet: vanilla's egg->chick odds (1/8, quad 1/32) are untouched and
+        // changing this value currently has no effect. It exists so worlds already carry the
+        // setting the day feral eggs earn their own hatch odds as a balance lever.
+        public double eggChickChance = 0.125;
 
         // Frame smashing: door-breaker zombies that can't path to their target may smash a few
         // soft blocks around a PLAYER-PLACED wooden door (never world-generated structures).

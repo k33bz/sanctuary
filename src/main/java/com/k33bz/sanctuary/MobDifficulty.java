@@ -331,11 +331,25 @@ public final class MobDifficulty {
                 new AttributeModifier(id, amount, AttributeModifier.Operation.ADD_MULTIPLIED_BASE));
     }
 
+    /** A feral egg's smolder: a single dim red mote, so a dropped egg reads as *wrong* up close. */
+    private static final net.minecraft.core.particles.DustParticleOptions FERAL_EGG_MOTE =
+            new net.minecraft.core.particles.DustParticleOptions(0xB02020, 0.6f);
+
     /** Emit a threat aura around buffed hostiles near one player. Call on an interval. */
     public static void tickParticles(ServerLevel level, ServerPlayer player, SanctuaryConfig cfg) {
         SanctuaryConfig.MobScaling ms = cfg.mobScaling;
         if (!ms.enabled) {
             return;
+        }
+        // Feral eggs smolder: one subtle red mote per interval over any feral egg lying nearby.
+        if (ms.feralEggsEnabled) {
+            for (net.minecraft.world.entity.item.ItemEntity egg : level.getEntitiesOfClass(
+                    net.minecraft.world.entity.item.ItemEntity.class,
+                    player.getBoundingBox().inflate(ms.particleRange),
+                    it -> FeralEgg.tierOf(it.getItem()) >= 2)) {
+                level.sendParticles(FERAL_EGG_MOTE, egg.getX(), egg.getY() + 0.35, egg.getZ(),
+                        1, 0.06, 0.10, 0.06, 0.0);
+            }
         }
         List<Mob> mobs = level.getEntitiesOfClass(Mob.class, player.getBoundingBox().inflate(ms.particleRange));
         for (Mob mob : mobs) {

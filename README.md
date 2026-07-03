@@ -8,13 +8,13 @@ vanilla attributes, effects, and display entities.
 
 | Minecraft | Branch | Fabric API | Notes |
 |---|---|---|---|
-| 26.1.x | [`main`](../../tree/main) | 0.154.0+26.1.2 | active development |
-| 26.2 | [`26.2`](../../tree/26.2) | 0.154.0+26.2 | port branch — dependency pins only; Flan integration inert until Flan ships a 26.2 build |
+| 26.2 | [`main`](../../tree/main) | 0.154.0+26.2 | active development; Flan integration inert until Flan ships a 26.2 build |
+| 26.1.x | [`26.1`](../../tree/26.1) | 0.154.0+26.1.2 | maintenance — backports only |
 
 Downloads: [GitHub Releases](../../releases) · [Modrinth](https://modrinth.com/project/y5hXc8My).
 Jars are versioned `sanctuary-<modver>+<mcversion>.jar` — grab the one matching your server.
-New features land on `main` and are merged into version branches; version branches carry only
-their dependency pins on top.
+New features land on `main` (newest Minecraft); maintenance branches receive backports and
+carry only their dependency pins on top.
 
 ## The idea
 

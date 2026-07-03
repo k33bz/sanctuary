@@ -2,6 +2,28 @@
 
 All notable changes to Sanctuary (formerly XP Vitality).
 
+## [0.5.1] — 2026-07-03
+
+First multi-version release: jars for **Minecraft 26.2** (`main`) and **26.1.x** (branch
+`26.1`), named `sanctuary-0.5.1+<mcversion>.jar`.
+
+### Added
+- **Native-dialog anchor menu** alongside the sgui furnace menu (A/B), with polish pass:
+  text-first dialog, Owner label, compact 8-char anchor id.
+- **Per-anchor UUIDs**: precise admin targeting and a filterable
+  `/sanctuary anchor list [selector]` (full/8-char id, owner name, `wild*cards`).
+- **Admin anchor time commands**: `/sanctuary anchor time add|set <hours> [selector]` —
+  nearest anchor by default, or every anchor matching the selector.
+
+### Changed
+- Two-line anchor label: name over timer.
+- Init log reports the actual running Minecraft version; the Warden anchor-cap check is
+  version-stable (`instanceof`) so the same source compiles on 26.1.x and 26.2.
+
+### 26.2 port notes
+- Pins: fabric-api 0.154.0+26.2, sgui 2.1.0+26.2. **Flan integration is inert on 26.2**
+  (no Flan build published yet; it activates automatically once Flan ports, no update needed).
+
 ## [0.5.0] — 2026-07-02
 
 ### Renamed

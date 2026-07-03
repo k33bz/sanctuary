@@ -1,0 +1,9 @@
+Sanctuary bundles a selection of datapacks and crafting tweaks from:
+
+Vanilla Tweaks: https://vanillatweaks.net/
+
+All bundled packs are disabled by default and opt-in per world via
+/datapack enable "sanctuary:vt/<name>". They are redistributed within this
+substantially larger free project per the Vanilla Tweaks terms of use
+(https://vanillatweaks.net/terms/), with attribution here and on the
+project's download pages.

@@ -4,6 +4,21 @@ All notable changes to Sanctuary (formerly XP Vitality).
 
 ## [0.6.0] — 2026-07-03
 
+### Added — Bundled Vanilla Tweaks (all opt-in)
+18 [Vanilla Tweaks](https://vanillatweaks.net/) datapacks + crafting tweaks now ship inside the
+jar as built-in datapacks — **all disabled by default**, enabled individually and per world with
+vanilla `/datapack enable "sanctuary:vt/<name>"` (list them with `/datapack list available`).
+No separate downloads, no extra jars to keep updated.
+
+Datapacks: anti creeper/enderman grief, armor statues, coordinates hud, double shulker shells,
+dragon drops, fast leaf decay, more mob heads, multiplayer sleep, player head drops, silence
+mobs, xp bottling. Crafting tweaks: back to blocks, craftable gravel, double slabs, dropper to
+dispenser, universal dyeing, unpackable ice.
+
+Notable synergies: **dragon drops** makes the dragon egg renewable (each respawned dragon drops
+one), and **xp bottling** lets veterans bottle their life force — both deliberate fits for the
+sanctuary economy. Attribution in `credits.txt`; bundled per the Vanilla Tweaks terms.
+
 ### Added — Feral Eggs (breed your way to Nightmare poultry)
 
 Feature concept by **Zugzuggin'** — every Feral Egg carries the credit in its lore.

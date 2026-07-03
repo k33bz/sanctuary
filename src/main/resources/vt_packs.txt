@@ -10,6 +10,8 @@ multiplayer_sleep
 fast_leaf_decay
 coordinates_hud
 xp_bottling
+track_statistics
+track_raw_statistics
 ct_back_to_blocks
 ct_universal_dyeing
 ct_dropper_to_dispenser

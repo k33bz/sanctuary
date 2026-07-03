@@ -17,6 +17,13 @@ jobs:
           cache: gradle
       - name: Build + tests
         run: ./gradlew build
+      - name: Diagnose mappings (only on failure)
+        if: failure()
+        run: |
+          for j in $(find ~/.gradle/caches/fabric-loom -name "*.jar" 2>/dev/null | grep -viE "sources|javadoc|intermediary" | head -6); do
+            echo "== $j"
+            unzip -l "$j" 2>/dev/null | grep -E "entity/projectile" | head -60
+          done
       - name: Upload jar
         uses: actions/upload-artifact@v4
         with:

@@ -24,6 +24,12 @@ Feature concept by **Zugzuggin'** — every Feral Egg carries the credit in its 
   or chance roll (the gamble already happened). Sanctuaries still pacify it while it stands
   inside (the revert holds); the destiny survives, and the wilds wake it again. Arena fights,
   wilderness ambushes, and gift-wrapped livestock are all now on the table.
+- **Frontier ranching (by design)**: a pacified bloodline hen inside a sanctuary lays *plain*
+  eggs — starred eggs only come from a hen that is actively feral, which only happens outside
+  sanctuary ground. Store your prize stock safely at home; to harvest, run a coop in the wilds
+  and defend it. Sanctuaries are literally that — safe. Risk is the price of Nightmare poultry.
+- **Feral eggs smolder**: a dropped feral egg emits a subtle red dust mote — still a plain
+  vanilla egg item, the aura sells it.
 - Config: `feralEggsEnabled` under `mobscaling`; the star table lives in code.
 - No new mixins — laying, hatching, and turning all ride the existing entity-load hooks, so the
   feature is identical on every supported Minecraft version.

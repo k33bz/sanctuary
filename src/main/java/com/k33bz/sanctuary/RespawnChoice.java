@@ -126,7 +126,7 @@ public final class RespawnChoice {
         offer.deathX = oldPlayer.getX();
         offer.deathY = oldPlayer.getY();
         offer.deathZ = oldPlayer.getZ();
-        offer.deathDim = oldPlayer.level().dimension().location().toString();
+        offer.deathDim = oldPlayer.level().dimension().identifier().toString();
         // Costs are priced on the level they'll have AFTER soul retention, which hasn't run yet —
         // priced here on the death level and charged only if affordable at click time.
         int level = oldPlayer.experienceLevel;
@@ -149,7 +149,7 @@ public final class RespawnChoice {
             return;
         }
         ServerLevel level = (ServerLevel) player.level();
-        String dimNow = level.dimension().location().toString();
+        String dimNow = level.dimension().identifier().toString();
 
         // Vanilla put them at bed/respawn-block if they have one; far from world spawn = a bed.
         var spawn = level.getSharedSpawnPos();
@@ -248,7 +248,7 @@ public final class RespawnChoice {
             return 0;
         }
         boolean back = "back".equals(choice);
-        if (back && !offer.deathDim.equals(level.dimension().location().toString())) {
+        if (back && !offer.deathDim.equals(level.dimension().identifier().toString())) {
             player.sendSystemMessage(Component.literal("Your death lies in another world.")
                     .withStyle(ChatFormatting.GRAY));
             return 0;

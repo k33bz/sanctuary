@@ -4,8 +4,8 @@ All notable changes to Sanctuary (formerly XP Vitality).
 
 ## [0.5.1] — 2026-07-03
 
-First multi-version release: jars for **Minecraft 26.1.x** (`main`) and **26.2** (branch
-`26.2`), named `sanctuary-0.5.1+<mcversion>.jar`.
+First multi-version release: jars for **Minecraft 26.2** (`main`) and **26.1.x** (branch
+`26.1`), named `sanctuary-0.5.1+<mcversion>.jar`.
 
 ### Added
 - **Native-dialog anchor menu** alongside the sgui furnace menu (A/B), with polish pass:

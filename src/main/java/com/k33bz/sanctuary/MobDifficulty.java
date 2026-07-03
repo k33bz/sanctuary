@@ -244,6 +244,17 @@ public final class MobDifficulty {
                         && horse.isTamed())) {
             return;
         }
+        // Feral-egg bloodline: a destined bird turns at its hatched tier the moment it loads as
+        // an adult — anywhere, no zone or chance roll (the gamble already happened at hatch).
+        // The sanctuary revert still pacifies it while it stands inside a safe zone; the destiny
+        // tag survives that, so the wilds wake the bloodline again on the next load.
+        int destiny = FeralEgg.destinyOf(animal);
+        if (destiny >= 2) {
+            double beyond = SurvivalLogic.beyondFromDamageBonus(FeralEgg.representativeDamageBonus(destiny),
+                    ms.damagePerBlock, ms.damageCurveExponent);
+            turnRabid(animal, ms, hp, beyond, destiny);
+            return;
+        }
         double beyond = Sanctuary.blocksBeyondNearestAnchor(cfg, animal.getX(), animal.getZ());
         if (beyond <= 0.0) {
             return;
@@ -255,7 +266,13 @@ public final class MobDifficulty {
         if (tier < 2 || animal.getRandom().nextDouble() >= ms.rabidChance) {
             return; // calm below Savage, and only a fraction of Savage+ wildlife turns
         }
+        turnRabid(animal, ms, hp, beyond, tier);
+    }
 
+    /** Buff, tag, arm, and title a rabid animal for the given distance-equivalent and tier. */
+    private static void turnRabid(net.minecraft.world.entity.animal.Animal animal,
+                                  SanctuaryConfig.MobScaling ms, AttributeInstance hp,
+                                  double beyond, int tier) {
         double healthMult = SurvivalLogic.mobPowerMultiplier(beyond, ms.healthPerBlock, ms.healthMaxMultiplier);
         double speedMult = SurvivalLogic.mobPowerMultiplier(beyond, ms.speedPerBlock, ms.speedMaxMultiplier);
         double followMult = SurvivalLogic.mobPowerMultiplier(beyond, ms.followPerBlock, ms.followMaxMultiplier);
@@ -288,6 +305,11 @@ public final class MobDifficulty {
     /** Human name for a tier (1..4); "any" for 0 and below. */
     public static String tierName(int tier) {
         return tier > 0 && tier < TITLES.length ? TITLES[tier] : "any";
+    }
+
+    /** Display color for a tier (0..4), clamped. */
+    public static ChatFormatting tierColor(int tier) {
+        return COLORS[Math.max(0, Math.min(COLORS.length - 1, tier))];
     }
 
     /** Attach the any-difficulty door-break goal to a mob carrying the door-breaker tag. */

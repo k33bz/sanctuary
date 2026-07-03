@@ -2,6 +2,25 @@
 
 All notable changes to Sanctuary (formerly XP Vitality).
 
+## [0.6.0] — 2026-07-03
+
+### Added — Feral Eggs (breed your way to Nightmare poultry)
+- **Contaminated clutches**: an egg appearing within a block of a living feral (rabid) hen
+  becomes a **Feral Egg** at her tier — still a vanilla egg, renamed and colored by grade
+  (Savage gold, Ferocious red, Nightmare dark red), so grades stack separately and trade
+  cleanly. The tier lives in the name's *color*, which an anvil cannot forge.
+- **Bloodline drift**: hatchlings hatch calm but destined. At hatch the parent tier drifts one
+  down / same / one up (`feralEggDownChance`/`feralEggUpChance`, defaults 25/50/25), clamped to
+  Savage..Nightmare — a bloodline never breeds back to calm, and a Ferocious egg pays out a
+  Nightmare chick one time in four.
+- **The turn**: a destined bird goes feral the moment it loads as an adult — anywhere, no zone
+  or chance roll (the gamble already happened). Sanctuaries still pacify it while it stands
+  inside (the revert holds); the destiny survives, and the wilds wake it again. Arena fights,
+  wilderness ambushes, and gift-wrapped livestock are all now on the table.
+- Config: `feralEggsEnabled`, `feralEggDownChance`, `feralEggUpChance` under `mobscaling`.
+- No new mixins — laying, hatching, and turning all ride the existing entity-load hooks, so the
+  feature is identical on every supported Minecraft version.
+
 ## [0.5.1] — 2026-07-03
 
 First multi-version release: jars for **Minecraft 26.2** (`main`) and **26.1.x** (branch

@@ -150,6 +150,23 @@ class SurvivalLogicTest {
     }
 
     @Test
+    void feralEggDriftFollowsBandsAndClamps() {
+        // 25/50/25 bands: [0, .25) down, [.25, .50) up, [.50, 1) same
+        assertEquals(2, SurvivalLogic.feralEggDestinyTier(3, 0.10, 0.25, 0.25)); // down roll
+        assertEquals(4, SurvivalLogic.feralEggDestinyTier(3, 0.30, 0.25, 0.25)); // up roll
+        assertEquals(3, SurvivalLogic.feralEggDestinyTier(3, 0.75, 0.25, 0.25)); // same
+        assertEquals(2, SurvivalLogic.feralEggDestinyTier(2, 0.10, 0.25, 0.25)); // Savage floor holds
+        assertEquals(4, SurvivalLogic.feralEggDestinyTier(4, 0.30, 0.25, 0.25)); // Nightmare ceiling holds
+        assertEquals(3, SurvivalLogic.feralEggDestinyTier(4, 0.10, 0.25, 0.25)); // Nightmare can slip
+        assertEquals(3, SurvivalLogic.feralEggDestinyTier(2, 0.30, 0.25, 0.25)); // Savage can climb
+        // boundary exactness: roll == down is the first up-roll, roll == down+up is same
+        assertEquals(4, SurvivalLogic.feralEggDestinyTier(3, 0.25, 0.25, 0.25));
+        assertEquals(3, SurvivalLogic.feralEggDestinyTier(3, 0.50, 0.25, 0.25));
+        // zero-drift config pins the bloodline
+        assertEquals(3, SurvivalLogic.feralEggDestinyTier(3, 0.0, 0.0, 0.0));
+    }
+
+    @Test
     void deathRetentionScalesWithLevel() {
         // level 15: 1 milestone -> 35% -> keeps 5
         assertEquals(5, SurvivalLogic.deathKeptLevels(15, MILES, 0.30, 0.05, 0.80));

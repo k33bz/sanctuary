@@ -42,6 +42,7 @@ something you carve out of the wilds, anchor by anchor.
 | Hunters | deep mobs track players from up to 3× vanilla range |
 | Door-breakers | deep zombies break wooden doors on **any** difficulty — and smash the frame blocks of a *player-placed* door when the way through is blocked |
 | Rabid wildlife | in Savage+ zones, 25% of animals spawn hostile and hunt players |
+| Feral eggs | a feral hen's eggs become tier-graded **Feral Eggs**; hatchlings hatch calm but turn at adulthood — parent tier ±1 (25/50/25, clamped Savage..Nightmare). Breed toward Nightmare poultry |
 | Sanctuary anchors | place a **Sanctuary Crystal** (rare drop from Ferocious+ mobs) to raise one; union of safe circles; breaking drops the crystal back |
 | Anchor cap | start at **1**; Warden kills of rising tiers raise it (any → 2, Feral+ → 3, up to Nightmare); admins can bless more |
 | Soul retention | death keeps 30% of levels +5%/milestone (cap 80%) — veterans lose proportionally less |

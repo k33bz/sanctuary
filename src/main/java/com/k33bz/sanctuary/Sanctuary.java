@@ -209,7 +209,15 @@ public class Sanctuary implements ModInitializer {
                     && entity instanceof net.minecraft.world.entity.monster.Enemy) {
                 MobDifficulty.onSpawn(mob, cfg);
             } else if (entity instanceof net.minecraft.world.entity.animal.Animal animal) {
+                if (animal.isBaby()) {
+                    // Hatched beside a Feral Egg projectile? Stamp the bloodline before the
+                    // (baby-exempt) rabid pass ignores it.
+                    FeralEgg.onBabyLoad(animal, world, cfg);
+                }
                 MobDifficulty.onAnimalLoad(animal, cfg);
+            } else if (entity instanceof net.minecraft.world.entity.item.ItemEntity item) {
+                // A fresh egg beside a feral hen becomes a Feral Egg at her tier.
+                FeralEgg.onItemLoad(item, world, cfg);
             }
         });
     }

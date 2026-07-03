@@ -56,6 +56,8 @@ public class Sanctuary implements ModInitializer {
     public void onInitialize() {
         CONFIG = SanctuaryConfig.load();
         VanillaTweaksPacks.register();
+        net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STARTED
+                .register(StatBoards::ensureObjectives);
         var loader = net.fabricmc.loader.api.FabricLoader.getInstance();
         String version = loader.getModContainer(MOD_ID)
                 .map(c -> c.getMetadata().getVersion().getFriendlyString()).orElse("?");
@@ -246,6 +248,7 @@ public class Sanctuary implements ModInitializer {
      */
     private void registerPlayerTick() {
         ServerTickEvents.END_SERVER_TICK.register(server -> {
+            StatBoards.tick(server); // renders on its own slower interval
             SanctuaryConfig cfg = CONFIG;
             if (++updateTickCounter < cfg.regenIntervalTicks) {
                 return;

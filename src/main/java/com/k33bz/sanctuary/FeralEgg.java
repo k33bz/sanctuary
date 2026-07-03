@@ -184,8 +184,13 @@ public final class FeralEgg {
         if (destiny < 2) {
             return; // a perfectly ordinary chick — the line ends here
         }
+        int generation = SurvivalLogic.feralEggStars(stars + 1);
         baby.addTag(DESTINY_TAG_PREFIX + destiny);
-        baby.addTag(GENERATION_TAG_PREFIX + SurvivalLogic.feralEggStars(stars + 1));
+        baby.addTag(GENERATION_TAG_PREFIX + generation);
+        if (eggs.get(0).getOwner() instanceof net.minecraft.server.level.ServerPlayer breeder) {
+            StatBoards.addScore(breeder, "sanct_hatched", 1);
+            StatBoards.raiseScore(breeder, "sanct_gen_best", generation);
+        }
     }
 
     /** The tier a destined bird will turn at, or −1 if it carries no bloodline. */

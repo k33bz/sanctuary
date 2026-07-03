@@ -4,6 +4,14 @@ All notable changes to Sanctuary (formerly XP Vitality).
 
 ## [0.6.0] — 2026-07-03
 
+### Added — Stat boards (holographic leaderboards)
+`/sanctuaryboard add <objective> [title]` (ops) mounts a fixed text-display leaderboard facing
+you — top 10 of ANY scoreboard objective, refreshed every 5s, persisted across restarts
+(`/sanctuaryboard remove` deletes the nearest). Pairs with the bundled VT stat packs: enable
+`track_raw_statistics` and any vanilla stat becomes wall art. Sanctuary maintains its own
+objectives: `sanct_hatched` (destined chicks hatched), `sanct_gen_best` (deepest bloodline
+generation — the server's breeding crown), `sanct_toll` (levels paid to the death toll).
+
 ### Added — Respawn choice: your soul settles (System 9)
 Death sends you to the **nearest active sanctuary, free** — then a native dialog offers paid
 upgrades: **return to bed** (5% of the level you died with) or **resurrect where you fell**

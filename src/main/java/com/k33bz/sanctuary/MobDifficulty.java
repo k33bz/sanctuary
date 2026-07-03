@@ -284,7 +284,10 @@ public final class MobDifficulty {
         animal.addTag(RabidAttackGoal.RABID_TAG);
         attachRabidGoals(animal);
 
-        animal.setCustomName(Component.literal(TITLES[tier] + " ").append(animal.getName().copy())
+        // Animals all read "Feral <name>" — the tier speaks through the color alone, so a market
+        // buyer sizing up a hen learns nothing a colorblind glance wouldn't (monsters keep their
+        // tier titles; you're meant to KNOW a Nightmare Zombie is coming).
+        animal.setCustomName(Component.literal("Feral ").append(animal.getName().copy())
                 .withStyle(COLORS[tier]));
         animal.setCustomNameVisible(false);
     }
@@ -474,9 +477,11 @@ public final class MobDifficulty {
             mob.setTarget(null);
         }
 
-        // Clear OUR tier name only — an actual player-applied name tag is different text and survives.
+        // Clear OUR tier name only — an actual player-applied name tag is different text and
+        // survives. Animals carry the flat "Feral <name>"; monsters carry their tier title.
         if (tier > 0 && mob.hasCustomName()) {
-            String expected = TITLES[tier] + " " + mob.getType().getDescription().getString();
+            String typeName = mob.getType().getDescription().getString();
+            String expected = (mob instanceof Animal ? "Feral" : TITLES[tier]) + " " + typeName;
             if (expected.equals(mob.getCustomName().getString())) {
                 mob.setCustomName(null);
             }

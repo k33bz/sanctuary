@@ -9,11 +9,11 @@ All notable changes to Sanctuary (formerly XP Vitality).
 Feature concept by **Zugzuggin'** — every Feral Egg carries the credit in its lore.
 
 - **Contaminated clutches**: an egg appearing within a block of a living feral (rabid) hen
-  becomes a **Feral Egg** at her tier — still a vanilla egg, renamed and colored by grade
-  (Savage gold, Ferocious red, Nightmare dark red), so grades stack separately and trade
-  cleanly. The tier lives in the name's *color*, which an anvil cannot forge.
-- **Star quality = generations**: every Feral Egg shows 0–5 stars in its name — the
-  bloodline's depth. A wild-turned hen lays 0★; each destined generation lays one star deeper
+  becomes a **Feral Egg** at her tier — still a vanilla egg, always named plainly "Feral Egg";
+  the tier lives in the name's *color* (Savage gold, Ferocious red, Nightmare dark red), which
+  an anvil cannot forge. Grades stack separately and trade cleanly.
+- **Star quality = generations**: every Feral Egg carries 0–5 stars as a gold line atop its
+  tooltip — the bloodline's depth. A wild-turned hen lays 0★; each destined generation lays one star deeper
   (cap 5★). The hen herself never shows stars — the lineage hides in her blood (an invisible
   tag) and only reveals itself on her eggs.
 - **The hatch gamble** (odds by stars — normal chick / tier down / same / tier up):
@@ -22,7 +22,7 @@ Feature concept by **Zugzuggin'** — every Feral Egg carries the credit in its 
   generations stand between a wild Savage hen and true 5★ Nightmare stock.
 - **The turn**: a destined bird goes feral the moment it loads as an adult — anywhere, no zone
   or chance roll (the gamble already happened). Sanctuaries still pacify it while it stands
-  inside (the revert holds); the destiny survives, and the wilds wake it again. Arena fights,
+  inside (the revert holds); the destiny survives, and the wilds wake it again. Turned animals all read **Feral <name>** — color alone tells the tier. Arena fights,
   wilderness ambushes, and gift-wrapped livestock are all now on the table.
 - **Frontier ranching (by design)**: a pacified bloodline hen inside a sanctuary lays *plain*
   eggs — starred eggs only come from a hen that is actively feral, which only happens outside

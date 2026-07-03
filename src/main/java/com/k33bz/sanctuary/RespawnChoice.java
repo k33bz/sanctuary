@@ -151,10 +151,8 @@ public final class RespawnChoice {
         ServerLevel level = (ServerLevel) player.level();
         String dimNow = level.dimension().identifier().toString();
 
-        // Vanilla put them at bed/respawn-block if they have one; far from world spawn = a bed.
-        var spawn = level.getSharedSpawnPos();
-        double distSq = player.distanceToSqr(spawn.getX() + 0.5, player.getY(), spawn.getZ() + 0.5);
-        offer.hasBed = distSq > 24 * 24;
+        // A set respawn point (bed / respawn anchor) means vanilla just placed them at it.
+        offer.hasBed = player.getRespawnConfig() != null;
         offer.bedX = player.getX();
         offer.bedY = player.getY();
         offer.bedZ = player.getZ();

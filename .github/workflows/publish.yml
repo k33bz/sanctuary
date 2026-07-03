@@ -1,0 +1,38 @@
+name: publish
+
+# Publishes the mod jar to Modrinth when a GitHub release is published.
+# Manual backfill: Actions -> publish -> Run workflow, enter an existing tag.
+# Requires the MODRINTH_TOKEN repo secret (PAT with the "Create versions" scope).
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing release tag to publish (e.g. v0.5.1+26.2)"
+        required: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 25
+          cache: gradle
+      - name: Build
+        run: ./gradlew build
+      - name: Publish to Modrinth
+        uses: Kir-Antipov/mc-publish@v3.3
+        with:
+          modrinth-id: y5hXc8My
+          modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
+          files: build/libs/!(*-@(dev|sources|javadoc)).jar
+          loaders: fabric
+          # game version + Fabric API dependency are read from fabric.mod.json
+          changelog: ${{ github.event.release.body }}

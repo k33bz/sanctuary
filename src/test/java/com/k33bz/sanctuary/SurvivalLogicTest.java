@@ -185,6 +185,23 @@ class SurvivalLogicTest {
     }
 
     @Test
+    void respawnCostScalesWithEscalationAndFloors() {
+        assertEquals(50, SurvivalLogic.respawnCostLevels(1000, 0.05, 0.0, 1));   // 5% of 1000
+        assertEquals(63, SurvivalLogic.respawnCostLevels(1000, 0.05, 0.25, 1));  // +25% toll, ceil
+        assertEquals(150, SurvivalLogic.respawnCostLevels(1000, 0.15, 0.0, 1));  // resurrect base
+        assertEquals(1, SurvivalLogic.respawnCostLevels(5, 0.05, 0.0, 1));       // floor
+        assertEquals(3, SurvivalLogic.respawnCostLevels(0, 0.05, 0.0, 3));       // floor at zero level
+    }
+
+    @Test
+    void escalationDecaysWithPlayTimeAndFloorsAtZero() {
+        // 0.25 toll, shedding 0.01 per 10 min: 100 minutes sheds 0.10
+        assertEquals(0.15, SurvivalLogic.decayedEscalation(0.25, 100, 0.01), 1e-9);
+        assertEquals(0.0, SurvivalLogic.decayedEscalation(0.25, 100000, 0.01), 1e-9); // floors
+        assertEquals(0.25, SurvivalLogic.decayedEscalation(0.25, 0, 0.01), 1e-9);     // no time, no decay
+    }
+
+    @Test
     void deathRetentionScalesWithLevel() {
         // level 15: 1 milestone -> 35% -> keeps 5
         assertEquals(5, SurvivalLogic.deathKeptLevels(15, MILES, 0.30, 0.05, 0.80));

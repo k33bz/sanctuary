@@ -60,6 +60,19 @@ public class SanctuaryConfig {
     public double deathKeepPerMilestone = 0.05; // extra per milestone reached
     public double deathKeepMax = 0.80;          // ceiling
 
+    // System 9 — respawn choice: death sends you to the nearest active sanctuary for free; a
+    // dialog then offers paid upgrades (return to bed / resurrect at the death site), priced as
+    // a fraction of the level you died with, times (1 + escalation). Escalation grows per death,
+    // decays with time PLAYED (PLAY_TIME stat — can't be waited out offline), and resets fully
+    // when a new milestone is reached. The free option never charges.
+    public boolean respawnChoiceEnabled = true;
+    public double respawnBedCostFraction = 0.05;
+    public double respawnBackCostFraction = 0.15;
+    public int respawnMinCostLevels = 1;
+    public double respawnEscalationPerDeath = 0.25;     // +25% surcharge per recent death
+    public double respawnEscalationDecayPer10Min = 0.01; // shed per 10 minutes played
+    public int respawnOfferTimeoutSeconds = 120;
+
     // System 3 — XP-funded lethal save
     public boolean lethalSaveEnabled = true;
     public float lethalSaveLevelsPerDamage = 0.5f; // levels per point of killing-hit damage

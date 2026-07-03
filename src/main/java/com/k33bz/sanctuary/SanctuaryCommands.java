@@ -96,6 +96,11 @@ public final class SanctuaryCommands {
         num("danger.perDayWeight", () -> cfg().danger.perDayWeight, v -> cfg().danger.perDayWeight = v, 0, 100);
         num("danger.perBlockWeight", () -> cfg().danger.perBlockWeight, v -> cfg().danger.perBlockWeight = v, 0, 100);
         num("danger.maxMultiplier", () -> cfg().danger.maxMultiplier, v -> cfg().danger.maxMultiplier = (float) v, 1, 1000);
+        num("respawn.bedCost", () -> cfg().respawnBedCostFraction, v -> cfg().respawnBedCostFraction = v, 0, 1);
+        num("respawn.backCost", () -> cfg().respawnBackCostFraction, v -> cfg().respawnBackCostFraction = v, 0, 1);
+        num("respawn.minCostLevels", () -> cfg().respawnMinCostLevels, v -> cfg().respawnMinCostLevels = (int) Math.round(v), 0, 1000);
+        num("respawn.escalationPerDeath", () -> cfg().respawnEscalationPerDeath, v -> cfg().respawnEscalationPerDeath = v, 0, 10);
+        num("respawn.escalationDecayPer10Min", () -> cfg().respawnEscalationDecayPer10Min, v -> cfg().respawnEscalationDecayPer10Min = v, 0, 10);
 
         bool("regen", () -> cfg().regenEnabled, b -> cfg().regenEnabled = b);
         bool("armor", () -> cfg().armorEnabled, b -> cfg().armorEnabled = b);
@@ -113,6 +118,7 @@ public final class SanctuaryCommands {
         bool("sanctuarySpawnSuppression", () -> cfg().suppressHostileSpawnsInSanctuary,
                 b -> cfg().suppressHostileSpawnsInSanctuary = b);
         bool("flanIntegration", () -> cfg().flanIntegration, b -> cfg().flanIntegration = b);
+        bool("respawnChoice", () -> cfg().respawnChoiceEnabled, b -> cfg().respawnChoiceEnabled = b);
     }
 
     public static void register() {
@@ -124,6 +130,12 @@ public final class SanctuaryCommands {
                     .then(Commands.argument("type", StringArgumentType.word())
                             .then(Commands.argument("count", com.mojang.brigadier.arguments.IntegerArgumentType.integer(0, 64))
                                     .executes(safe(SanctuaryCommands::dialogFeed)))));
+            // Player-level (permission 0): backs the respawn-choice dialog's paid options.
+            dispatcher.register(Commands.literal("sanctuaryrespawn")
+                    .then(Commands.argument("choice", StringArgumentType.word())
+                            .executes(safe(ctx -> RespawnChoice.applyChoice(
+                                    ctx.getSource().getPlayerOrException(),
+                                    StringArgumentType.getString(ctx, "choice"))))));
         });
     }
 

@@ -223,6 +223,25 @@ public final class SurvivalLogic {
         return Math.max(0, Math.min(5, generation));
     }
 
+    // --- System 9: respawn choice (death toll) ---
+
+    /**
+     * Levels charged for a paid respawn option: {@code ceil(level * fraction * (1 + escalation))},
+     * floored at {@code minLevels}. Escalation is the repeat-death surcharge (0 = base price).
+     */
+    public static int respawnCostLevels(int level, double fraction, double escalation, int minLevels) {
+        double cost = Math.max(0, level) * Math.max(0.0, fraction) * (1.0 + Math.max(0.0, escalation));
+        return Math.max(minLevels, (int) Math.ceil(cost));
+    }
+
+    /**
+     * Repeat-death escalation after shedding {@code minutesPlayed} of online time at
+     * {@code decayPerTenMinutes} per ten minutes. Never below zero — patience always pays off.
+     */
+    public static double decayedEscalation(double escalation, double minutesPlayed, double decayPerTenMinutes) {
+        return Math.max(0.0, escalation - Math.max(0.0, minutesPlayed) / 10.0 * Math.max(0.0, decayPerTenMinutes));
+    }
+
     /** Threat tier 0–4 from a damage-modifier bonus (= damageMultiplier − 1), for names/particles. */
     public static int mobTier(double damageBonus) {
         if (damageBonus < 0.5) {

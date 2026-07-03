@@ -136,6 +136,21 @@ public final class SanctuaryCommands {
                             .executes(safe(ctx -> RespawnChoice.applyChoice(
                                     ctx.getSource().getPlayerOrException(),
                                     StringArgumentType.getString(ctx, "choice"))))));
+            // Ops: wall-mounted holographic leaderboards for any scoreboard objective.
+            dispatcher.register(Commands.literal("sanctuaryboard")
+                    .requires(source -> source.hasPermission(2))
+                    .then(Commands.literal("add")
+                            .then(Commands.argument("objective", StringArgumentType.word())
+                                    .executes(safe(ctx -> StatBoards.create(
+                                            ctx.getSource().getPlayerOrException(),
+                                            StringArgumentType.getString(ctx, "objective"), null)))
+                                    .then(Commands.argument("title", StringArgumentType.greedyString())
+                                            .executes(safe(ctx -> StatBoards.create(
+                                                    ctx.getSource().getPlayerOrException(),
+                                                    StringArgumentType.getString(ctx, "objective"),
+                                                    StringArgumentType.getString(ctx, "title")))))))
+                    .then(Commands.literal("remove")
+                            .executes(safe(ctx -> StatBoards.remove(ctx.getSource().getPlayerOrException())))));
         });
     }
 

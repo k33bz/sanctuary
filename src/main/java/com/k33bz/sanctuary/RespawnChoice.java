@@ -263,6 +263,7 @@ public final class RespawnChoice {
             return 0;
         }
         player.giveExperienceLevels(-cost);
+        StatBoards.addScore(player, "sanct_toll", cost);
         if (back) {
             player.teleportTo(offer.deathX, offer.deathY + 0.25, offer.deathZ);
             player.sendSystemMessage(Component.literal(String.format(Locale.ROOT,

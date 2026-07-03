@@ -2,7 +2,7 @@ name: build
 
 on:
   push:
-    branches: [main]
+    branches: [main, '26.*']
   pull_request:
 
 jobs:

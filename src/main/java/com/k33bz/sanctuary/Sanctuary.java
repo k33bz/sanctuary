@@ -55,6 +55,7 @@ public class Sanctuary implements ModInitializer {
     @Override
     public void onInitialize() {
         CONFIG = SanctuaryConfig.load();
+        VanillaTweaksPacks.register();
         var loader = net.fabricmc.loader.api.FabricLoader.getInstance();
         String version = loader.getModContainer(MOD_ID)
                 .map(c -> c.getMetadata().getVersion().getFriendlyString()).orElse("?");

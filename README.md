@@ -1,8 +1,20 @@
 # Sanctuary
 
-A server-side Fabric mod for **Minecraft 26.1.2** that turns **XP into a life force** and
+A server-side Fabric mod for **Minecraft 26.1.x / 26.2** that turns **XP into a life force** and
 **distance into danger**. Vanilla clients connect with no mods — everything renders through
 vanilla attributes, effects, and display entities.
+
+## Versions & branches
+
+| Minecraft | Branch | Fabric API | Notes |
+|---|---|---|---|
+| 26.1.x | [`main`](../../tree/main) | 0.154.0+26.1.2 | active development |
+| 26.2 | [`26.2`](../../tree/26.2) | 0.154.0+26.2 | port branch — dependency pins only; Flan integration inert until Flan ships a 26.2 build |
+
+Downloads: [GitHub Releases](../../releases) · [Modrinth](https://modrinth.com/project/y5hXc8My).
+Jars are versioned `sanctuary-<modver>+<mcversion>.jar` — grab the one matching your server.
+New features land on `main` and are merged into version branches; version branches carry only
+their dependency pins on top.
 
 ## The idea
 
@@ -62,7 +74,8 @@ and End stay vanilla.
 
 1. `./gradlew build`
 2. Copy `build/libs/sanctuary-<version>.jar` into the server's `mods/` folder.
-3. Server needs **Fabric Loader ≥ 0.19.3**, **Fabric API 0.153.0+26.1.2**, **Java 25**.
+3. Server needs **Fabric Loader ≥ 0.19.3**, **Fabric API** matching your MC version (see the
+   [versions table](#versions--branches)), **Java 25**.
 4. First launch writes `config/sanctuary.json` — tune the levers there (no recompile needed).
 
 ## Configuration & commands

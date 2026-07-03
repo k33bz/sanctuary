@@ -8,7 +8,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.entity.item.ItemEntity;
-import net.minecraft.world.entity.projectile.ThrowableItemProjectile;
+import net.minecraft.world.entity.projectile.throwableitemprojectile.ThrownEgg;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.Rarity;
@@ -127,10 +127,7 @@ public final class FeralEgg {
         if (!ms.enabled || !ms.rabidEnabled || !ms.feralEggsEnabled || destinyOf(baby) >= 0) {
             return;
         }
-        // Superclass instead of the egg projectile class (which moves between versions): any
-        // thrown-item projectile carrying a Feral Egg stack this close to a fresh baby is the egg
-        // that hatched it.
-        List<ThrowableItemProjectile> eggs = level.getEntitiesOfClass(ThrowableItemProjectile.class,
+        List<ThrownEgg> eggs = level.getEntitiesOfClass(ThrownEgg.class,
                 baby.getBoundingBox().inflate(HATCH_RANGE), egg -> tierOf(egg.getItem()) >= 2);
         if (eggs.isEmpty()) {
             return;

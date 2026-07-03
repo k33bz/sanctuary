@@ -4,6 +4,21 @@ All notable changes to Sanctuary (formerly XP Vitality).
 
 ## [0.6.0] — 2026-07-03
 
+### Added — Respawn choice: your soul settles (System 9)
+Death sends you to the **nearest active sanctuary, free** — then a native dialog offers paid
+upgrades: **return to bed** (5% of the level you died with) or **resurrect where you fell**
+(15% — the corpse-run skip). No sanctuary anywhere? Vanilla's spot stands and only resurrect
+is offered. Costs come on top of normal soul retention; the free option never charges, so a
+bad streak can't spiral you to zero.
+
+**The death toll**: every death raises your personal surcharge (+25% of the base price,
+configurable). It decays with time *played* (default 1% per 10 minutes — the PLAY_TIME stat,
+so it can't be waited out offline) and **clears completely when you reach a new XP milestone**.
+Config: `respawnChoice` toggle, `respawn.bedCost` / `respawn.backCost` /
+`respawn.escalationPerDeath` / `respawn.escalationDecayPer10Min` / `respawn.minCostLevels`.
+Ledger persists in `config/sanctuary_deaths.json`. Vanilla clients get the full dialog —
+same 26.x server-dialog system as the anchor menu.
+
 ### Added — Bundled Vanilla Tweaks (all opt-in)
 18 [Vanilla Tweaks](https://vanillatweaks.net/) datapacks + crafting tweaks now ship inside the
 jar as built-in datapacks — **all disabled by default**, enabled individually and per world with

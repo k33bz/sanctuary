@@ -46,6 +46,7 @@ something you carve out of the wilds, anchor by anchor.
 | Sanctuary anchors | place a **Sanctuary Crystal** (rare drop from Ferocious+ mobs) to raise one; union of safe circles; breaking drops the crystal back |
 | Anchor cap | start at **1**; Warden kills of rising tiers raise it (any → 2, Feral+ → 3, up to Nightmare); admins can bless more |
 | Soul retention | death keeps 30% of levels +5%/milestone (cap 80%) — veterans lose proportionally less |
+| Respawn choice | die → free respawn at the nearest sanctuary; pay levels to return to bed or resurrect where you fell. Repeat deaths raise the toll; it fades with play time and clears at your next milestone |
 | Kill observability | invisible spawn-source tags + per-cell kill metrics + NDJSON event history (SQLite-convertible) |
 | Sanctuary upkeep | player anchors burn fuel (24 h to start) — feed the crystal emeralds (2.5 h) or emerald blocks (24 h = 1 day, the efficient rate); the label shows owner + fuzzy time left, going red near expiry. A dormant anchor needs a **dragon egg** (+7 days) to rekindle; admin anchors are eternal |
 | Flan integration | active anchors auto-carry a Flan admin claim (grief protection); released when dormant/broken. Soft dependency |

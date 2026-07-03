@@ -180,7 +180,15 @@ public class Sanctuary implements ModInitializer {
     private void registerSoulRetention() {
         net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents.COPY_FROM.register((oldPlayer, newPlayer, alive) -> {
             SanctuaryConfig cfg = CONFIG;
-            if (alive || cfg == null || !cfg.deathKeepEnabled) {
+            if (alive || cfg == null) {
+                return;
+            }
+            // System 9 — record the death for the respawn-choice dialog (priced pre-retention).
+            if (cfg.respawnChoiceEnabled) {
+                double escalation = RespawnChoice.onDeath(oldPlayer, cfg);
+                RespawnChoice.recordDeath(oldPlayer, escalation, cfg);
+            }
+            if (!cfg.deathKeepEnabled) {
                 return;
             }
             int level = oldPlayer.experienceLevel;
@@ -195,6 +203,15 @@ public class Sanctuary implements ModInitializer {
                         .withStyle(net.minecraft.ChatFormatting.LIGHT_PURPLE));
             }
         });
+        // System 9 — after vanilla places the respawned player, move them to the nearest
+        // sanctuary (the free default) and open the paid-upgrade dialog.
+        net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents.AFTER_RESPAWN.register(
+                (oldPlayer, newPlayer, alive) -> {
+                    SanctuaryConfig cfg = CONFIG;
+                    if (!alive && cfg != null && cfg.respawnChoiceEnabled) {
+                        RespawnChoice.onRespawn(newPlayer, cfg);
+                    }
+                });
     }
 
     /** System 7 — buff hostiles by their spawn distance from the nearest anchor. */

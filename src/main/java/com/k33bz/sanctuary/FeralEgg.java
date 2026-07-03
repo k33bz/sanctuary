@@ -59,36 +59,43 @@ public final class FeralEgg {
         };
     }
 
-    /** Turn a laid egg stack into a Feral Egg of the given tier (2..4) and quality (0..5 stars). */
+    /**
+     * Turn a laid egg stack into a Feral Egg of the given tier (2..4) and quality (0..5 stars).
+     * The name is always plain "Feral Egg" — the tier speaks through its color, the quality
+     * through a gold star line at the top of the tooltip (absent on a 0★ egg).
+     */
     public static ItemStack create(int tier, int stars, ItemStack laid) {
         ItemStack out = laid.copy();
-        String display = stars > 0 ? NAME + " " + STAR.repeat(stars) : NAME;
-        out.set(DataComponents.CUSTOM_NAME, Component.literal(display)
+        out.set(DataComponents.CUSTOM_NAME, Component.literal(NAME)
                 .withStyle(style -> style.withColor(MobDifficulty.tierColor(tier)).withItalic(false)));
-        out.set(DataComponents.LORE, new ItemLore(List.of(
-                Component.literal("Something " + MobDifficulty.tierName(tier) + " stirs within.")
-                        .withStyle(ChatFormatting.GRAY),
-                Component.literal(stars > 0
-                                ? "Generation " + stars + " of a proud, unhinged line."
-                                : "First of her line. Probably just breakfast.")
-                        .withStyle(ChatFormatting.DARK_GRAY),
-                Component.literal("A Zugzuggin' original.")
-                        .withStyle(ChatFormatting.DARK_PURPLE))));
+        java.util.List<Component> lore = new java.util.ArrayList<>();
+        if (stars > 0) {
+            lore.add(Component.literal(STAR.repeat(stars))
+                    .withStyle(style -> style.withColor(ChatFormatting.GOLD).withItalic(false)));
+        }
+        lore.add(Component.literal("Something " + MobDifficulty.tierName(tier) + " stirs within.")
+                .withStyle(ChatFormatting.GRAY));
+        lore.add(Component.literal(stars > 0
+                        ? "Generation " + stars + " of a proud, unhinged line."
+                        : "First of her line. Probably just breakfast.")
+                .withStyle(ChatFormatting.DARK_GRAY));
+        lore.add(Component.literal("A Zugzuggin' original.").withStyle(ChatFormatting.DARK_PURPLE));
+        out.set(DataComponents.LORE, new ItemLore(List.copyOf(lore)));
         out.set(DataComponents.RARITY, tier >= 4 ? Rarity.EPIC : tier == 3 ? Rarity.RARE : Rarity.UNCOMMON);
         return out;
     }
 
     /**
      * The parent tier a Feral Egg carries, or −1 for a plain egg / non-egg. Identification is the
-     * styled name: the text must be "Feral Egg" (+ optional stars) AND the color must be a tier
-     * color — an anvil can rename an egg but writes unstyled text, so market fakes stay fake.
+     * styled name: the text must be exactly "Feral Egg" AND the color must be a tier color — an
+     * anvil can rename an egg but writes unstyled text, so market fakes stay fake.
      */
     public static int tierOf(ItemStack stack) {
         if (!stack.is(Items.EGG)) {
             return -1;
         }
         Component name = stack.get(DataComponents.CUSTOM_NAME);
-        if (name == null || parseStars(name.getString()) < 0) {
+        if (name == null || !NAME.equals(name.getString())) {
             return -1;
         }
         TextColor color = name.getStyle().getColor();
@@ -103,27 +110,26 @@ public final class FeralEgg {
         return -1;
     }
 
-    /** Star quality of a Feral Egg (0..5), or −1 if the stack isn't one. */
+    /**
+     * Star quality of a Feral Egg (0..5), or −1 if the stack isn't one. Read from the tooltip's
+     * star line: the first lore line consisting only of stars; no such line = 0★.
+     */
     public static int starsOf(ItemStack stack) {
         if (tierOf(stack) < 0) {
             return -1;
         }
-        return parseStars(stack.get(DataComponents.CUSTOM_NAME).getString());
-    }
-
-    /** Stars from a display name: "Feral Egg" → 0, "Feral Egg ★★★" → 3, anything else → −1. */
-    private static int parseStars(String display) {
-        if (NAME.equals(display)) {
+        ItemLore lore = stack.get(DataComponents.LORE);
+        if (lore == null) {
             return 0;
         }
-        if (!display.startsWith(NAME + " ")) {
-            return -1;
+        for (Component line : lore.lines()) {
+            String text = line.getString();
+            if (!text.isEmpty() && text.length() <= 5
+                    && text.chars().allMatch(c -> c == STAR.charAt(0))) {
+                return text.length();
+            }
         }
-        String suffix = display.substring(NAME.length() + 1);
-        if (suffix.isEmpty() || suffix.length() > 5 || !suffix.chars().allMatch(c -> c == STAR.charAt(0))) {
-            return -1;
-        }
-        return suffix.length();
+        return 0;
     }
 
     /**

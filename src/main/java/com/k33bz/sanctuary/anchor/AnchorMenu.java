@@ -36,8 +36,7 @@ public class AnchorMenu extends SimpleGui {
         super(MenuType.FURNACE, player, false);
         this.anchor = anchor;
         this.pos = pos;
-        String who = anchor.owner == null ? "server" : anchor.owner;
-        this.setTitle(Component.literal("Sanctuary — SA [" + who + "]"));
+        this.setTitle(Component.literal("Sanctuary Anchor"));
         refresh();
     }
 
@@ -107,12 +106,12 @@ public class AnchorMenu extends SimpleGui {
         String who = anchor.owner == null ? "server" : anchor.owner;
         String[] t = AnchorUpkeep.remaining(anchor, now);
         ItemStack crystal = SanctuaryCrystal.create();
-        crystal.set(DataComponents.CUSTOM_NAME, Component.literal("SA [" + who + "]")
+        crystal.set(DataComponents.CUSTOM_NAME, Component.literal("Sanctuary Anchor")
                 .withStyle(s -> s.withColor(ChatFormatting.LIGHT_PURPLE).withItalic(false).withBold(true)));
         java.util.List<Component> lore = new java.util.ArrayList<>();
         lore.add(Component.literal("Owner: " + who).withStyle(ChatFormatting.GRAY));
-        if (anchor.ownerId != null) {
-            lore.add(Component.literal("UUID: " + anchor.ownerId).withStyle(ChatFormatting.DARK_GRAY));
+        if (anchor.id != null) {
+            lore.add(Component.literal("id: " + anchor.id.substring(0, 8)).withStyle(ChatFormatting.DARK_GRAY));
         }
         if (!anchor.isExempt()) {
             lore.add(Component.literal(countdown(anchor.hoursLeft(now)))

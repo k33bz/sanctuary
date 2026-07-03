@@ -102,6 +102,11 @@ public class SanctuaryConfig {
     // zones (spawner blocks / eggs / commands unaffected; wanderers get the revert treatment).
     public boolean suppressHostileSpawnsInSanctuary = true;
 
+    // A/B experiment: use the native-dialog anchor menu (vanilla 1.21.6+ Dialog system, buttons
+    // pulling fuel from inventory) instead of the sgui furnace menu (cursor deposits + flame
+    // gauge). Toggle live: /sanctuary toggle dialogMenu.
+    public boolean anchorDialogMenu = false;
+
     public boolean anchorUpkeepEnabled = true;
     public double anchorStartHours = 24.0;          // charge a fresh crystal comes with
     // Fuel rates: a block is deliberately ~6.7% MORE efficient than 9 loose emeralds

@@ -3,14 +3,15 @@
 build/
 out/
 
-# Loom / Fabric
+# Loom / Fabric — run dirs for every MC-version branch (run/, run262/, ...)
 .fabric/
 run/
-run262/
+run[0-9]*/
 remappedSrc/
 
 # Dev-server console logs (from ./gradlew runServer)
 run_*.log
+run[0-9]*.log
 
 # IDE
 .idea/

@@ -57,7 +57,11 @@ public final class AnchorUpkeep {
         ItemStack held = player.getItemInHand(hand);
         if (fuelWorth(held) <= 0.0) {
             // Not fuel (empty hand, tools, whatever): open the sanctuary menu instead.
-            AnchorMenu.open(sp, pos.immutable(), anchor);
+            if (Sanctuary.CONFIG != null && Sanctuary.CONFIG.anchorDialogMenu) {
+                AnchorDialog.open(sp, pos.immutable(), anchor);
+            } else {
+                AnchorMenu.open(sp, pos.immutable(), anchor);
+            }
             return InteractionResult.SUCCESS;
         }
         // Fuel in hand: quick top-up without the menu. One item per click, stack while sneaking.
@@ -129,9 +133,8 @@ public final class AnchorUpkeep {
     }
 
     private static Component status(AnchorState.PlacedAnchor anchor, long now) {
-        String who = anchor.owner == null ? "server" : anchor.owner;
         String[] t = remaining(anchor, now);
-        return Component.literal("SA [" + who + "] ")
+        return Component.literal("Sanctuary ")
                 .withStyle(ChatFormatting.LIGHT_PURPLE)
                 .append(Component.literal("(" + t[0] + ")").withStyle(ChatFormatting.valueOf(t[1])));
     }
@@ -184,15 +187,15 @@ public final class AnchorUpkeep {
             boolean active = a.isActive(now);
             Boolean last = LAST_ACTIVE.put(pos.asLong(), active);
             // Label: eternal anchors read gold with no timer; fueled ones purple with the fuzzy
-            // timer (which heats yellow->gold->red inside the final 24h). Owner is menu-only.
+            // timer stacked on a second line (heats yellow->gold->red inside the final 24h).
             if (a.isExempt()) {
                 setLabel(server, pos, "{text:\"Sanctuary Anchor\",color:\"gold\",bold:1b}");
             } else {
                 String[] t = remaining(a, now);
                 String timerColor = t[1].equals("GREEN") ? "light_purple" : t[1].toLowerCase(Locale.ROOT);
                 setLabel(server, pos, String.format(Locale.ROOT,
-                        "{text:\"Sanctuary Anchor \",color:\"light_purple\",bold:1b,"
-                                + "extra:[{text:\"(%s)\",color:\"%s\",bold:0b}]}",
+                        "{text:\"Sanctuary Anchor\",color:\"light_purple\",bold:1b,"
+                                + "extra:[{text:\"\\n%s\",color:\"%s\",bold:0b}]}",
                         t[0], timerColor));
             }
             // Low fuel warning: the crystal smokes through its final 24 hours, harder under 6.

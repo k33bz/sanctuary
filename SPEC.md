@@ -44,3 +44,16 @@ This file is the design intent; the exact formulas, tables, and worked examples 
 - Client-side rendering of zone borders (would need a client mod).
 - Hard region protection beyond the anchor's Flan claim — that's Flan's job.
 - Punishing automated farms; the ledger observes, players build.
+
+## 0.6.1 candidates (noted 2026-07-04)
+
+Dialog input controls (26.x native dialogs: text fields incl. multiline, single_option
+dropdown-cycles, checkboxes, number_range sliders — already proven by the anchor/respawn/
+gravekeeper dialogs) open UI upgrades that container menus could not do:
+
+- Anchor rename: text input on the anchor dialog ("Name this sanctuary"), name shown on the
+  floating label and in /sanctuary anchor list.
+- Gravekeeper ledger search: text-input filter + re-open when a keeper holds many estates.
+- Feral egg wagers: number_range slider for arena/market bets (pairs with custom villager
+  shop stalls).
+- Respawn dialog: single_option to pick among multiple owned sanctuaries instead of nearest.

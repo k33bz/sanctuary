@@ -31,10 +31,9 @@ jobs:
           javap -cp "$J" net.minecraft.world.level.Level 2>/dev/null | grep -iE "time|night|day"
           javap -cp "$J" net.minecraft.world.level.storage.LevelData 2>/dev/null | grep -iE "time"
           echo "== GameRules location"
-          javap -cp "$J" net.minecraft.world.level.Level 2>/dev/null | grep -iE "rule"
-          RC=$(javap -cp "$J" net.minecraft.world.level.Level 2>/dev/null | grep -oE "net\.minecraft[a-zA-Z0-9.]*GameRules" | head -1)
-          echo "RC=$RC"
-          javap -cp "$J" "$RC" 2>/dev/null | grep -iE "keep|getBoolean|boolean" | head -8
+          unzip -l "$J" 2>/dev/null | grep -i gamerule | grep -v client | head -15 || true
+          javap -cp "$J" net.minecraft.server.MinecraftServer 2>/dev/null | grep -i rule || true
+          javap -cp "$J" net.minecraft.world.level.storage.LevelData 2>/dev/null | grep -i rule || true
           echo "== Scoreboard"
           javap -cp "$J" net.minecraft.world.scores.Scoreboard 2>/dev/null | grep -iE "objective|score"
           echo "== Objective/ScoreAccess"

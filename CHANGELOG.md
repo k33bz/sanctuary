@@ -5,6 +5,12 @@ All notable changes to Sanctuary (formerly XP Vitality).
 ## [0.6.0] — 2026-07-03
 
 ### Added — Graves & Graveyards (System 10)
+Grave lifecycle events stream to `config/sanctuary_grave_logs/*.ndjson` (created / drifted /
+held / claimed / summoned / decayed, with actor + `robbery:true` on non-owner claims), and two
+new scoreboard objectives feed the stat boards and external dashboards: `sanct_graves` (made)
+and `sanct_robbed` (robbed, credited to the robber). `/sanctuarydanger status|reset` (ops)
+finally exists — reset re-zeroes the persisted world-age epoch, which dashboards can watch to
+lap leaderboard seasons.
 Death seals your inventory into a **grave** at the death site — JSON-backed (despawn/hopper
 proof), headstone of block-display stone with your own shrunk head affixed on top, owner-only.
 After `grave.driftHours` (24h real time) it **drifts** to the nearest sanctuary graveyard;

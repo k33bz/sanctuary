@@ -62,15 +62,20 @@ public final class Gravekeeper {
 
     /** Summon the keeper at a freshly defined graveyard. */
     public static void spawnKeeper(ServerLevel level, Graves.Yard yard) {
+        spawnKeeper(level, yard, false);
+    }
+
+    /** Ritual keepers wander (AI on, fenced in by the sweep); command keepers stand vigil. */
+    public static void spawnKeeper(ServerLevel level, Graves.Yard yard, boolean wander) {
         Graves.run(level, String.format(Locale.ROOT,
                 "kill @e[type=minecraft:villager,tag=%s,x=%d,y=%d,z=%d,distance=..%d]",
                 KEEPER_TAG, yard.x, yard.y, yard.z, yard.radius + 8));
         Graves.run(level, String.format(Locale.ROOT,
-                "summon minecraft:villager %d %d %d {Tags:[\"%s\"],NoAI:1b,Invulnerable:1b,"
+                "summon minecraft:villager %d %d %d {Tags:[\"%s\"],NoAI:%db,Invulnerable:1b,"
                         + "PersistenceRequired:1b,Silent:1b,"
                         + "VillagerData:{profession:\"minecraft:cleric\",level:5,type:\"minecraft:swamp\"},"
                         + "CustomName:{text:\"Gravekeeper\",color:\"gold\"},CustomNameVisible:1b}",
-                yard.x, yard.y + 1, yard.z, KEEPER_TAG));
+                yard.x, yard.y + 1, yard.z, KEEPER_TAG, wander ? 0 : 1));
     }
 
     /** Right-click on the keeper: list summonable graves. */

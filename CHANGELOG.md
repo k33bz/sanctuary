@@ -18,6 +18,10 @@ walkable lane, stones shoulder-to-shoulder (display slabs never connect). A **fu
 room**: oldest looted memorial cleared first; failing that the oldest unlooted grave enters the
 **Gravekeeper's hold** -- off the lawn, loot intact, reclaimable via his menu with fees and the
 48h public timer still applying. Overflow abuse is visual, never a broken mechanic.
+**Survival consecration ritual**: no command needed — inside your own sanctuary, fence a pen
+(9x9 up to 81x81, gate allowed), build an iron-golem body and crown it with a skeleton or
+wither skeleton skull. The effigy is consumed and the Gravekeeper rises — wandering his
+grounds freely, never past the fence. One graveyard per sanctuary, owner-bound.
 
 ### Added — Native [AFK] tag
 Idle players (no movement or camera turn for `afk.minutes`, default 5) get a gray **[AFK]**

@@ -73,6 +73,9 @@ public final class Graves {
         public int x, y, z;       // center
         public int radius;
         public String keeperUuid; // gravekeeper entity uuid, if spawned
+        public String owner;      // consecrating player (ritual yards)
+        /** Fence bounds from the consecration flood-fill; 0/0/0/0 for command yards. */
+        public int bMinX, bMaxX, bMinZ, bMaxZ;
     }
 
     public static final class Store {
@@ -238,6 +241,25 @@ public final class Graves {
         }
         if (dirty) {
             save();
+        }
+        // Ritual keepers wander, but never past their fence.
+        for (Yard yard : store().yards) {
+            if (yard.bMaxX <= yard.bMinX) {
+                continue;
+            }
+            ServerLevel level = levelOf(server, yard.dim);
+            if (level == null || !level.isLoaded(new BlockPos(yard.x, yard.y, yard.z))) {
+                continue;
+            }
+            for (var keeper : level.getEntitiesOfClass(net.minecraft.world.entity.Mob.class,
+                    new net.minecraft.world.phys.AABB(yard.bMinX - 12, yard.y - 12, yard.bMinZ - 12,
+                            yard.bMaxX + 13, yard.y + 13, yard.bMaxZ + 13),
+                    m -> m.entityTags().contains(Gravekeeper.KEEPER_TAG))) {
+                if (keeper.getX() < yard.bMinX + 0.5 || keeper.getX() > yard.bMaxX + 0.5
+                        || keeper.getZ() < yard.bMinZ + 0.5 || keeper.getZ() > yard.bMaxZ + 0.5) {
+                    keeper.teleportTo(yard.x + 0.5, yard.y + 1.0, yard.z + 0.5);
+                }
+            }
         }
     }
 

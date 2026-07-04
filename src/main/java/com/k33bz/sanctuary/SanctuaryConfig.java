@@ -91,12 +91,13 @@ public class SanctuaryConfig {
     // Gravekeeper NPC summons remote loot-bearing graves for graveSummonFeeFraction. Never
     // enable the bundled VT graves pack alongside this.
     public boolean gravesEnabled = true;
-    public double graveDriftHours = 24.0;
+    public double graveDriftHours = 504.0; // 21 days; 15-30 days recommended
     public double gravePublicHours = 48.0;
     public double graveClaimFeeFraction = 0.02;
     public double graveSummonFeeFraction = 0.05;
     public int graveyardDefaultRadius = 8;
-    // Looted/empty memorials crumble after this many real days (0 = eternal necropolis).
+    // WILD looted/empty memorials crumble after this many real days (0 = never); stones
+    // standing in a graveyard never decay -- eviction is the cemetery's groundskeeper.
     // Unlooted graves NEVER decay -- drift, eviction-to-hold, and robbery are their only fates.
     public double graveMemorialDecayDays = 14.0;
     public int graveyardMinSize = 9;   // ritual pen minimum interior span (9x9)

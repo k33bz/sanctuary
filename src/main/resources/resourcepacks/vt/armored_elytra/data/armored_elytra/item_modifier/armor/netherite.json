@@ -1,0 +1,43 @@
+{
+	"function": "minecraft:sequence",
+	"functions": [
+		{
+			"function": "minecraft:set_custom_data",
+			"tag": "{armored_elytra:{armored:true}}"
+		},
+		{
+			"function": "minecraft:set_attributes",
+			"replace": false,
+			"modifiers": [
+				{
+					"id": "armored_elytra:armor",
+					"attribute": "minecraft:armor",
+					"operation": "add_value",
+					"amount": 8.0,
+					"slot": "chest"
+				},
+				{
+					"id": "armored_elytra:armor_toughness",
+					"attribute": "minecraft:armor_toughness",
+					"operation": "add_value",
+					"amount": 3.0,
+					"slot": "chest"
+				},
+				{
+					"id": "armored_elytra:knockback_resistance",
+					"attribute": "minecraft:knockback_resistance",
+					"operation": "add_value",
+					"amount": 0.1,
+					"slot": "chest"
+				}
+			]
+		},
+		{
+			"function": "minecraft:set_custom_model_data",
+			"floats": {
+				"values": [13522556],
+				"mode": "replace_all"
+			}
+		}
+	]
+}

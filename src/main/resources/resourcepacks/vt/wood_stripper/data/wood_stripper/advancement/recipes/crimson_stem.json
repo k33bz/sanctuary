@@ -1,0 +1,32 @@
+{
+    "parent": "wood_stripper:recipes/root",
+    "criteria": {
+        "has_the_recipe": {
+            "trigger": "minecraft:recipe_unlocked",
+            "conditions": {
+                "recipe": "wood_stripper:crimson_stem"
+            }
+        },
+        "has_item": {
+            "trigger": "minecraft:inventory_changed",
+            "conditions": {
+                "items": [
+                    {
+                        "items": "minecraft:crimson_stem"
+                    }
+                ]
+            }
+        }
+    },
+    "requirements": [
+        [
+            "has_the_recipe",
+            "has_item"
+        ]
+    ],
+    "rewards": {
+        "recipes": [
+            "wood_stripper:crimson_stem"
+        ]
+    }
+}

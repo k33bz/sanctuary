@@ -1,0 +1,2 @@
+execute as @e[type=minecraft:interaction,tag=graves.grave,sort=nearest,distance=0..] if function graves:opening/did_player_attack_grave run return run function graves:opening/ensure_attacked_grave
+return fail

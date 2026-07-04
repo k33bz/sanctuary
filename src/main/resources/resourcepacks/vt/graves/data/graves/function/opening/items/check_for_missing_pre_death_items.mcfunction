@@ -1,0 +1,3 @@
+execute unless data storage graves:main opening.missing_pre_death_item_count run return fail
+execute if data storage graves:main opening{missing_pre_death_item_count:0} run return fail
+tellraw @s [{color:'red',text:"Due to a rare Minecraft quirk, the Graves data pack detected the grave you opened couldn't pick up at most "},{storage:'graves:main',nbt:'opening.missing_pre_death_item_count'},' of the item slots originally dropped on death.\n\nIf this grave was missing items, there may be an incompatibility, and we can help you in our data pack help channel:\n',{underlined:true,text:'https://vanillatweaks.net/discord',hover_event:{action:'show_text',value:'Click to open URL.'},click_event:{action:'open_url',url:'https://vanillatweaks.net/discord'}}]

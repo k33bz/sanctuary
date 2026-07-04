@@ -1,0 +1,2 @@
+tellraw @s [{color:"red",text:"The Graves data pack was unable to find the cooresponding visual grave item display attached to the interaction entity so we are unable to open your grave.\n\nThis is likely an incompatibility. We can help solve this for you in our data pack help channel: "},{underlined:true,text:'https://vanillatweaks.net/discord',hover_event:{action:'show_text',value:'Click to open URL.'},click_event:{action:'open_url',url:'https://vanillatweaks.net/discord'}}]
+return fail

@@ -1,0 +1,20 @@
+{
+    "criteria": {
+        "hurt": {
+            "trigger": "minecraft:player_hurt_entity",
+            "conditions": {
+                "entity": {
+                    "minecraft:entity_type": "minecraft:interaction",
+                    "minecraft:entity_tags": {
+                        "any_of": [
+                            "graves.grave"
+                        ]
+                    }
+                }
+            }
+        }
+    },
+    "rewards": {
+        "function": "graves:opening/attack_grave"
+    }
+}

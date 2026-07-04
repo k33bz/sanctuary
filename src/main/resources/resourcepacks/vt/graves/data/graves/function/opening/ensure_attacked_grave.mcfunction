@@ -1,0 +1,2 @@
+execute at @s unless function graves:opening/has_vehicle unless function graves:opening/attempt_fix_vehicle run return run function graves:opening/failed_to_find_vehicle
+execute on vehicle at @s run return run function graves:opening/handle_attacked_grave

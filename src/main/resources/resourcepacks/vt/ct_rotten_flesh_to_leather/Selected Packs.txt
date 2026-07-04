@@ -1,0 +1,4 @@
+Vanilla Tweaks Crafting Tweaks
+Version: 26.1
+Packs:
+	rotten flesh to leather

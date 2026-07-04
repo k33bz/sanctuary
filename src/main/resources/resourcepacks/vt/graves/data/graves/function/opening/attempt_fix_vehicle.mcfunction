@@ -1,0 +1,1 @@
+return run ride @s mount @n[type=item_display,tag=graves.grave,distance=..0.005]

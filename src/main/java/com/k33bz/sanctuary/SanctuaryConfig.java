@@ -73,6 +73,14 @@ public class SanctuaryConfig {
     public double respawnEscalationDecayPer10Min = 0.01; // shed per 10 minutes played
     public int respawnOfferTimeoutSeconds = 120;
 
+    // Mob-griefing refinements. Creepers: explosions hurt entities at full strength but only
+    // player-placed doors and their threshold (mobscaling.frameRadius) blocks ever break -- the
+    // landscape and world-gen structures never crater, your doorstep still can. Endermen: they
+    // carry a CLONE of a block instead of removing it (worst case: a stray dirt block planted
+    // somewhere). Both server-side; vanilla clients see it all natively.
+    public boolean creeperTerrainProtection = true;
+    public boolean endermanCloneNotSteal = true;
+
     // System 3 — XP-funded lethal save
     public boolean lethalSaveEnabled = true;
     public float lethalSaveLevelsPerDamage = 0.5f; // levels per point of killing-hit damage

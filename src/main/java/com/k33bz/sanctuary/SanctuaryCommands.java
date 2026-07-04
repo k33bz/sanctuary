@@ -119,6 +119,8 @@ public final class SanctuaryCommands {
                 b -> cfg().suppressHostileSpawnsInSanctuary = b);
         bool("flanIntegration", () -> cfg().flanIntegration, b -> cfg().flanIntegration = b);
         bool("respawnChoice", () -> cfg().respawnChoiceEnabled, b -> cfg().respawnChoiceEnabled = b);
+        bool("creeperTerrainProtection", () -> cfg().creeperTerrainProtection, b -> cfg().creeperTerrainProtection = b);
+        bool("endermanClone", () -> cfg().endermanCloneNotSteal, b -> cfg().endermanCloneNotSteal = b);
     }
 
     public static void register() {

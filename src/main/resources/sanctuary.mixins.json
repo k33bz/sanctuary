@@ -6,7 +6,9 @@
     "BlockItemPlaceMixin",
     "NaturalSpawnerMixin",
     "LivingEntityDamageMixin",
-    "MobFinalizeSpawnMixin"
+    "MobFinalizeSpawnMixin",
+    "CreeperExplosionMixin",
+    "EndermanTakeBlockMixin"
   ],
   "injectors": {
     "defaultRequire": 1

@@ -138,7 +138,7 @@ public final class SanctuaryCommands {
                                     StringArgumentType.getString(ctx, "choice"))))));
             // Ops: wall-mounted holographic leaderboards for any scoreboard objective.
             dispatcher.register(Commands.literal("sanctuaryboard")
-                    .requires(source -> source.hasPermission(2))
+                    .requires(Commands.<CommandSourceStack>hasPermission(Commands.LEVEL_GAMEMASTERS))
                     .then(Commands.literal("add")
                             .then(Commands.argument("objective", StringArgumentType.word())
                                     .executes(safe(ctx -> StatBoards.create(

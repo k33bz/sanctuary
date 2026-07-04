@@ -18,6 +18,8 @@ walkable lane, stones shoulder-to-shoulder (display slabs never connect). A **fu
 room**: oldest looted memorial cleared first; failing that the oldest unlooted grave enters the
 **Gravekeeper's hold** -- off the lawn, loot intact, reclaimable via his menu with fees and the
 48h public timer still applying. Overflow abuse is visual, never a broken mechanic.
+Looted memorials **crumble to ash** after `grave.memorialDecayDays` (14 real days, 0 = keep
+forever) — loot-bearing graves never decay; a timer can only ever cost you scenery.
 **Survival consecration ritual**: no command needed — inside your own sanctuary, fence a pen
 (9x9 up to 81x81, gate allowed), build an iron-golem body and crown it with a skeleton or
 wither skeleton skull. The effigy is consumed and the Gravekeeper rises — wandering his

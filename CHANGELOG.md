@@ -44,18 +44,14 @@ Ledger persists in `config/sanctuary_deaths.json`. Vanilla clients get the full 
 same 26.x server-dialog system as the anchor menu.
 
 ### Added — Bundled Vanilla Tweaks (all opt-in)
-<<<<<<< HEAD
-18 [Vanilla Tweaks](https://vanillatweaks.net/) datapacks + crafting tweaks now ship inside the
-=======
 60 [Vanilla Tweaks](https://vanillatweaks.net/) datapacks + crafting tweaks now ship inside the
->>>>>>> 397cccb (User-curated VT set (37 dp) + bat membranes; native [AFK] tab tag)
 jar as built-in datapacks — **all disabled by default**, enabled individually and per world with
 vanilla `/datapack enable "sanctuary:vt/<name>"` (list them with `/datapack list available`).
 No separate downloads, no extra jars to keep updated.
 
 Datapacks: anti creeper/enderman grief, armor statues, coordinates hud, double shulker shells,
 dragon drops, fast leaf decay, more mob heads, multiplayer sleep, player head drops, silence
-mobs, xp bottling. Crafting tweaks: back to blocks, craftable gravel, double slabs, dropper to
+mobs, xp bottling, track statistics + track raw statistics (all vanilla stats as scoreboards). Crafting tweaks: back to blocks, craftable gravel, double slabs, dropper to
 dispenser, universal dyeing, unpackable ice.
 
 Notable synergies: **dragon drops** makes the dragon egg renewable (each respawned dragon drops

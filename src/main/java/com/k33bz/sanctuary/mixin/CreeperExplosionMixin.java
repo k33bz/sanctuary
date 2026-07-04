@@ -38,7 +38,7 @@ public class CreeperExplosionMixin {
             return;
         }
         Entity source = ((Explosion) this).getDirectSourceEntity();
-        if (!(source instanceof net.minecraft.world.entity.monster.creeper.Creeper)) {
+        if (!(source instanceof net.minecraft.world.entity.monster.Creeper)) {
             return;
         }
         double reach = cfg.mobScaling.frameRadius + 1.5;

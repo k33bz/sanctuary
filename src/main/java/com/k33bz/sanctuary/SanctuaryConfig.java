@@ -84,13 +84,18 @@ public class SanctuaryConfig {
     public boolean afkTagEnabled = true;
     public double afkMinutes = 5.0;
 
-    // The Restless: once per night, an underground player carrying restlessMinInsomniaDays+
-    // of sleep debt is visited by Restless Creakings spawned in the dark nearby (count grows
-    // with insomnia, capped). They only move unwatched, dissolve at dawn, and never bother the
-    // rested. Phantoms own the surface; these own the mines.
-    public boolean restlessEnabled = true;
-    public int restlessMinInsomniaDays = 2;
-    public int restlessMaxCount = 3;
+    // System 10 -- graves & graveyards. Death seals the inventory into a grave (JSON-backed,
+    // despawn-proof). After graveDriftHours (real time) it drifts to the nearest sanctuary
+    // graveyard (/sanctuarygraveyard set); after gravePublicHours anyone may loot it. Claiming
+    // your own grave from a graveyard costs graveClaimFeeFraction of your levels; the
+    // Gravekeeper NPC summons remote loot-bearing graves for graveSummonFeeFraction. Never
+    // enable the bundled VT graves pack alongside this.
+    public boolean gravesEnabled = true;
+    public double graveDriftHours = 24.0;
+    public double gravePublicHours = 48.0;
+    public double graveClaimFeeFraction = 0.02;
+    public double graveSummonFeeFraction = 0.05;
+    public int graveyardDefaultRadius = 8;
 
     public boolean creeperTerrainProtection = true;
     public boolean endermanCloneNotSteal = true;

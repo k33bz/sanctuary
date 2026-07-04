@@ -58,6 +58,31 @@ public class Sanctuary implements ModInitializer {
         VanillaTweaksPacks.register();
         net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STARTED
                 .register(StatBoards::ensureObjectives);
+        // System 10 -- right-clicks on headstones (claim/rob) and the Gravekeeper (summon menu).
+        net.fabricmc.fabric.api.event.player.UseEntityCallback.EVENT.register(
+                (p, world, hand, entity, hit) -> {
+                    SanctuaryConfig cfg = CONFIG;
+                    if (cfg == null || !cfg.gravesEnabled || world.isClientSide()
+                            || !(p instanceof ServerPlayer sp)
+                            || hand != net.minecraft.world.InteractionHand.MAIN_HAND) {
+                        return net.minecraft.world.InteractionResult.PASS;
+                    }
+                    String prefix = com.k33bz.sanctuary.grave.Graves.GRAVE_TAG + "_";
+                    for (String tag : entity.entityTags()) {
+                        if (tag.startsWith(prefix)) {
+                            var grave = com.k33bz.sanctuary.grave.Graves.byId(tag.substring(prefix.length()));
+                            if (grave != null) {
+                                com.k33bz.sanctuary.grave.Graves.tryClaim(sp, grave, cfg);
+                                return net.minecraft.world.InteractionResult.SUCCESS;
+                            }
+                        }
+                    }
+                    if (entity.entityTags().contains(com.k33bz.sanctuary.grave.Gravekeeper.KEEPER_TAG)) {
+                        com.k33bz.sanctuary.grave.Gravekeeper.openDialog(sp, cfg);
+                        return net.minecraft.world.InteractionResult.SUCCESS;
+                    }
+                    return net.minecraft.world.InteractionResult.PASS;
+                });
         var loader = net.fabricmc.loader.api.FabricLoader.getInstance();
         String version = loader.getModContainer(MOD_ID)
                 .map(c -> c.getMetadata().getVersion().getFriendlyString()).orElse("?");
@@ -252,6 +277,7 @@ public class Sanctuary implements ModInitializer {
     private void registerPlayerTick() {
         ServerTickEvents.END_SERVER_TICK.register(server -> {
             StatBoards.tick(server); // renders on its own slower interval
+            com.k33bz.sanctuary.grave.Gravekeeper.tickCouriers(server);
             SanctuaryConfig cfg = CONFIG;
             if (++updateTickCounter < cfg.regenIntervalTicks) {
                 return;
@@ -270,10 +296,10 @@ public class Sanctuary implements ModInitializer {
                 }
                 MobDifficulty.tickBoundary(player, cfg);
                 AfkTracker.tick(player, cfg);
-                com.k33bz.sanctuary.siege.RestlessSpawner.tick(player, cfg);
             }
             AnchorInteraction.pulseAnchors(server); // focus pulse at active anchors
             com.k33bz.sanctuary.anchor.AnchorUpkeep.tick(server, cfg);
+            com.k33bz.sanctuary.grave.Graves.sweep(server, cfg);
             com.k33bz.sanctuary.metrics.KillMetrics.flush(); // no-op unless new kills landed
             com.k33bz.sanctuary.metrics.KillEventLog.flush();
         });
@@ -306,17 +332,27 @@ public class Sanctuary implements ModInitializer {
     private void registerLethalSave() {
         ServerLivingEntityEvents.ALLOW_DEATH.register((entity, source, amount) -> {
             SanctuaryConfig cfg = CONFIG;
-            if (!cfg.lethalSaveEnabled || !(entity instanceof ServerPlayer player)) {
-                return true; // allow the death to proceed
+            if (!(entity instanceof ServerPlayer player)) {
+                return true;
             }
-            int needed = SurvivalLogic.lethalSaveLevelCost(amount, cfg.lethalSaveLevelsPerDamage, cfg.lethalSaveMinLevels);
-            if (player.experienceLevel < needed) {
-                return true; // can't afford the save -> die normally
+            if (cfg.lethalSaveEnabled) {
+                int needed = SurvivalLogic.lethalSaveLevelCost(amount, cfg.lethalSaveLevelsPerDamage, cfg.lethalSaveMinLevels);
+                if (player.experienceLevel >= needed) {
+                    player.giveExperienceLevels(-needed);
+                    player.setHealth(cfg.lethalSaveReviveHealth);
+                    LOGGER.info("[sanctuary] Lethal save: {} spent {} level(s)", player.getName().getString(), needed);
+                    return false; // cancel death
+                }
             }
-            player.giveExperienceLevels(-needed);
-            player.setHealth(cfg.lethalSaveReviveHealth);
-            LOGGER.info("[sanctuary] Lethal save: {} spent {} level(s)", player.getName().getString(), needed);
-            return false; // cancel death
+            // Death proceeds: seal the inventory into a grave (System 10) before vanilla
+            // scatters it. Respects keepInventory by definition — an empty inventory after
+            // vanilla's keep means capture() sees nothing... but capture runs FIRST, so gate
+            // on the gamerule explicitly.
+            if (cfg.gravesEnabled
+                    && !player.level().getGameRules().getBoolean(net.minecraft.world.level.GameRules.RULE_KEEPINVENTORY)) {
+                com.k33bz.sanctuary.grave.Graves.capture(player, cfg);
+            }
+            return true;
         });
     }
 }

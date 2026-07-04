@@ -4,12 +4,16 @@ All notable changes to Sanctuary (formerly XP Vitality).
 
 ## [0.6.0] — 2026-07-03
 
-### Added — The Restless (underground insomnia)
-Phantoms punish the sleepless under open sky; miners were exempt. Now, once per night, a
-player underground with `restless.minInsomniaDays`+ of sleep debt is visited by **Restless
-Creakings** spawned in the dark nearby — they only move when unwatched, they scale through the
-normal wildness pipeline, the count grows with insomnia (cap `restless.maxCount`), and they
-dissolve at dawn. Sleeping resets the debt. Toggle `restless`.
+### Added — Graves & Graveyards (System 10)
+Death seals your inventory into a **grave** at the death site — JSON-backed (despawn/hopper
+proof), headstone of block-display stone with your own shrunk head affixed on top, owner-only.
+After `grave.driftHours` (24h real time) it **drifts** to the nearest sanctuary graveyard;
+after `grave.publicHours` (48h) the label turns red and anyone may rob it. Looted stones crack.
+Ops consecrate yards with `/sanctuarygraveyard set [radius]` — grid plots, plus the
+**Gravekeeper**: a still cleric whose dialog summons your loot-bearing graves from the wild or
+rival cemeteries (for a fee) — delivered by an **allay courier** that flies off, vanishes, and
+returns to settle the stone into the next open plot. Claiming from a yard costs a small toll;
+the free option is the walk.
 
 ### Added — Native [AFK] tag
 Idle players (no movement or camera turn for `afk.minutes`, default 5) get a gray **[AFK]**
@@ -51,7 +55,7 @@ Ledger persists in `config/sanctuary_deaths.json`. Vanilla clients get the full 
 same 26.x server-dialog system as the anchor menu.
 
 ### Added — Bundled Vanilla Tweaks (all opt-in)
-60 [Vanilla Tweaks](https://vanillatweaks.net/) datapacks + crafting tweaks now ship inside the
+59 [Vanilla Tweaks](https://vanillatweaks.net/) datapacks + crafting tweaks now ship inside the
 jar as built-in datapacks — **all disabled by default**, enabled individually and per world with
 vanilla `/datapack enable "sanctuary:vt/<name>"` (list them with `/datapack list available`).
 No separate downloads, no extra jars to keep updated.

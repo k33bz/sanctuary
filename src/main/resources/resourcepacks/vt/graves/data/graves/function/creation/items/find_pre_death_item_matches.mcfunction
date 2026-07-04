@@ -1,1 +1,0 @@
-$data modify storage graves:main creation.item.pre_death_item_matches append from storage graves:main creation.pre_death_items[{value: $(value)}]

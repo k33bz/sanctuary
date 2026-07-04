@@ -149,6 +149,22 @@ public final class SanctuaryCommands {
                             .executes(safe(ctx -> RespawnChoice.applyChoice(
                                     ctx.getSource().getPlayerOrException(),
                                     StringArgumentType.getString(ctx, "choice"))))));
+            // Player-level (permission 0): backs the respawn picker's "wake at chosen sanctuary"
+            // single-option — a free redirect to another of the player's own active anchors.
+            dispatcher.register(Commands.literal("sanctuarywake")
+                    .then(Commands.argument("anchorId", StringArgumentType.word())
+                            .executes(safe(ctx -> RespawnChoice.wakeAt(
+                                    ctx.getSource().getPlayerOrException(),
+                                    StringArgumentType.getString(ctx, "anchorId"))))));
+            // Player-level (permission 0): the anchor-rename dialog. Bare form opens the text-input
+            // dialog for the nearest owned anchor within 6 blocks; "set <name>" applies it. The
+            // owner-or-creative check is enforced server-side here, not just in the dialog.
+            dispatcher.register(Commands.literal("sanctuaryrename")
+                    .executes(safe(ctx -> anchorRename(ctx, null)))
+                    .then(Commands.literal("set")
+                            .then(Commands.argument("name", StringArgumentType.greedyString())
+                                    .executes(safe(ctx -> anchorRename(ctx,
+                                            StringArgumentType.getString(ctx, "name")))))));
             // Ops: wall-mounted holographic leaderboards for any scoreboard objective.
             dispatcher.register(Commands.literal("sanctuaryboard")
                     .requires(Commands.<CommandSourceStack>hasPermission(Commands.LEVEL_GAMEMASTERS))
@@ -175,7 +191,21 @@ public final class SanctuaryCommands {
                             .then(Commands.argument("id", StringArgumentType.word())
                                     .executes(safe(ctx -> com.k33bz.sanctuary.grave.Gravekeeper.summon(
                                             ctx.getSource().getPlayerOrException(),
-                                            StringArgumentType.getString(ctx, "id")))))));
+                                            StringArgumentType.getString(ctx, "id"))))))
+                    // Backs the Gravekeeper ledger search: bare = show all, greedy arg = filter.
+                    .then(Commands.literal("search")
+                            .executes(safe(ctx -> {
+                                com.k33bz.sanctuary.grave.Gravekeeper.openDialog(
+                                        ctx.getSource().getPlayerOrException(), cfg(), null);
+                                return 1;
+                            }))
+                            .then(Commands.argument("query", StringArgumentType.greedyString())
+                                    .executes(safe(ctx -> {
+                                        com.k33bz.sanctuary.grave.Gravekeeper.openDialog(
+                                                ctx.getSource().getPlayerOrException(), cfg(),
+                                                StringArgumentType.getString(ctx, "query"));
+                                        return 1;
+                                    })))));
             // Ops: world-age danger pressure readout / re-zero (persisted epoch; external
             // dashboards watch danger.epochTick in the config to lap leaderboard seasons).
             dispatcher.register(Commands.literal("sanctuarydanger")
@@ -319,6 +349,53 @@ public final class SanctuaryCommands {
             }
         }
         // re-open with fresh numbers (this is the dialog's "refresh")
+        com.k33bz.sanctuary.anchor.AnchorDialog.open(player, pos, best);
+        return 1;
+    }
+
+    /**
+     * Anchor rename backend (permission 0). Resolves the nearest anchor within 6 blocks the player
+     * may rename (owner by UUID, or creative). {@code name == null} opens the text-input dialog;
+     * a non-null name (from {@code set $(name)}) trims to 24 chars, strips section signs, applies,
+     * and re-opens the anchor menu. Blank clears the name.
+     */
+    private static int anchorRename(CommandContext<CommandSourceStack> ctx, String name)
+            throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        net.minecraft.server.level.ServerPlayer player = ctx.getSource().getPlayerOrException();
+        com.k33bz.sanctuary.anchor.AnchorState.PlacedAnchor best = null;
+        double bestSq = 6 * 6;
+        for (com.k33bz.sanctuary.anchor.AnchorState.PlacedAnchor a
+                : com.k33bz.sanctuary.anchor.AnchorState.get().anchors) {
+            double dx = a.x - player.getX(), dz = a.z - player.getZ();
+            if (dx * dx + dz * dz < bestSq
+                    && com.k33bz.sanctuary.anchor.AnchorDialog.canRename(player, a)) {
+                bestSq = dx * dx + dz * dz;
+                best = a;
+            }
+        }
+        if (best == null) {
+            player.sendOverlayMessage(Component.literal("No sanctuary of yours within reach to name.")
+                    .withStyle(net.minecraft.ChatFormatting.YELLOW));
+            return 0;
+        }
+        if (name == null) {
+            com.k33bz.sanctuary.anchor.AnchorDialog.openRename(player, best);
+            return 1;
+        }
+        // Trim length and strip the section sign so names can't inject colour/format codes.
+        String clean = name.replace('§', ' ').trim();
+        if (clean.length() > 24) {
+            clean = clean.substring(0, 24).trim();
+        }
+        best.name = clean.isEmpty() ? null : clean;
+        com.k33bz.sanctuary.anchor.AnchorState.get().save();
+        player.sendOverlayMessage(Component.literal(best.name == null
+                        ? "The sanctuary's name was cleared."
+                        : "This sanctuary is now \"" + best.name + "\".")
+                .withStyle(net.minecraft.ChatFormatting.LIGHT_PURPLE));
+        // Reflect the new label immediately; the periodic sweep also keeps it fresh.
+        com.k33bz.sanctuary.anchor.AnchorUpkeep.refreshLabel(ctx.getSource().getServer(), best);
+        net.minecraft.core.BlockPos pos = net.minecraft.core.BlockPos.containing(best.x, best.y, best.z);
         com.k33bz.sanctuary.anchor.AnchorDialog.open(player, pos, best);
         return 1;
     }
@@ -670,12 +747,13 @@ public final class SanctuaryCommands {
             shown++;
             String owner = a.owner == null ? "server" : a.owner;
             String id = a.id == null ? "????????" : a.id.substring(0, 8);
+            String named = a.name == null || a.name.isBlank() ? "" : " \"" + a.name + "\"";
             String[] t = com.k33bz.sanctuary.anchor.AnchorUpkeep.remaining(a, now);
             String precise = a.isExempt() ? ""
                     : String.format(java.util.Locale.ROOT, " [%.1fh]", a.hoursLeft(now));
             src.sendSuccess(() -> Component.literal(String.format(java.util.Locale.ROOT,
-                    "  [%s] (%.0f, %d, %.0f) r=%.0f — %s — %s%s",
-                    id, a.x, a.y, a.z, a.radius, owner, t[0], precise)), false);
+                    "  [%s]%s (%.0f, %d, %.0f) r=%.0f — %s — %s%s",
+                    id, named, a.x, a.y, a.z, a.radius, owner, t[0], precise)), false);
         }
         if (filter != null && shown == 0) {
             src.sendSuccess(() -> Component.literal("  (no anchors match)"), false);

@@ -186,18 +186,7 @@ public final class AnchorUpkeep {
             BlockPos pos = BlockPos.containing(a.x, a.y, a.z);
             boolean active = a.isActive(now);
             Boolean last = LAST_ACTIVE.put(pos.asLong(), active);
-            // Label: eternal anchors read gold with no timer; fueled ones purple with the fuzzy
-            // timer stacked on a second line (heats yellow->gold->red inside the final 24h).
-            if (a.isExempt()) {
-                setLabel(server, pos, "{text:\"Sanctuary Anchor\",color:\"gold\",bold:1b}");
-            } else {
-                String[] t = remaining(a, now);
-                String timerColor = t[1].equals("GREEN") ? "light_purple" : t[1].toLowerCase(Locale.ROOT);
-                setLabel(server, pos, String.format(Locale.ROOT,
-                        "{text:\"Sanctuary Anchor\",color:\"light_purple\",bold:1b,"
-                                + "extra:[{text:\"\\n%s\",color:\"%s\",bold:0b}]}",
-                        t[0], timerColor));
-            }
+            refreshLabel(server, a, now);
             // Low fuel warning: the crystal smokes through its final 24 hours, harder under 6.
             double h = a.hoursLeft(now);
             if (active && !a.isExempt() && h < 24.0) {
@@ -227,6 +216,38 @@ public final class AnchorUpkeep {
                 }
             }
         }
+    }
+
+    /** Rebuild the floating label for an anchor at the current server time. */
+    public static void refreshLabel(MinecraftServer server, AnchorState.PlacedAnchor a) {
+        refreshLabel(server, a, server.overworld().getGameTime());
+    }
+
+    /**
+     * Compose and push an anchor's floating label. Top line is the sanctuary's given name (or the
+     * default "Sanctuary Anchor"); eternal anchors read gold with no timer, fueled ones purple with
+     * the fuzzy timer stacked below (heating yellow->gold->red inside the final 24h).
+     */
+    public static void refreshLabel(MinecraftServer server, AnchorState.PlacedAnchor a, long now) {
+        BlockPos pos = BlockPos.containing(a.x, a.y, a.z);
+        boolean named = a.name != null && !a.name.isBlank();
+        String title = named ? escapeNbt(a.name) : "Sanctuary Anchor";
+        if (a.isExempt()) {
+            setLabel(server, pos, String.format(Locale.ROOT,
+                    "{text:\"%s\",color:\"gold\",bold:1b}", title));
+        } else {
+            String[] t = remaining(a, now);
+            String timerColor = t[1].equals("GREEN") ? "light_purple" : t[1].toLowerCase(Locale.ROOT);
+            setLabel(server, pos, String.format(Locale.ROOT,
+                    "{text:\"%s\",color:\"light_purple\",bold:1b,"
+                            + "extra:[{text:\"\\n%s\",color:\"%s\",bold:0b}]}",
+                    title, t[0], timerColor));
+        }
+    }
+
+    /** Escape a player-supplied string for embedding in a double-quoted SNBT text field. */
+    private static String escapeNbt(String s) {
+        return s.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 
     /** Rewrite the floating label nearest to this anchor. */

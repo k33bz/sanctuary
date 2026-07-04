@@ -52,11 +52,16 @@ dropdown-cycles, checkboxes, number_range sliders — already proven by the anch
 gravekeeper dialogs) open UI upgrades that container menus could not do:
 
 - Anchor rename: text input on the anchor dialog ("Name this sanctuary"), name shown on the
-  floating label and in /sanctuary anchor list.
+  floating label and in /sanctuary anchor list. **SHIPPED 0.6.1.**
 - Gravekeeper ledger search: text-input filter + re-open when a keeper holds many estates.
-- Feral egg wagers: number_range slider for arena/market bets (pairs with custom villager
-  shop stalls).
+  **SHIPPED 0.6.1.**
 - Respawn dialog: single_option to pick among multiple owned sanctuaries instead of nearest.
+  **SHIPPED 0.6.1.**
+- Feral egg wagers: number_range slider for arena/market bets (pairs with custom villager
+  shop stalls). **DEFERRED** — a wager needs a betting mechanic (an escrow/market/arena system
+  that stakes and pays out items or levels), and none exists yet. The dialog `number_range`
+  control is proven and ready; build the betting economy first, then the slider is a thin UI
+  layer on top. Until then there is nothing for a wager amount to *mean*.
 
 Non-goals (decided 2026-07-04): NO teleport systems in Sanctuary — gmc101 runs sswaystones
 and the VT teleport packs were deliberately excluded from the bundle; travel friction is the

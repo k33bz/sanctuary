@@ -42,7 +42,9 @@ public final class AnchorDialog {
         // One combined text block right under the title — the icon row was pushing everything
         // down, and separate body elements each get their own padded row.
         List<DialogBody> body = new ArrayList<>();
-        var status = Component.literal("Owner: " + who).withStyle(ChatFormatting.GRAY);
+        var status = Component.literal(
+                (anchor.name != null && !anchor.name.isBlank() ? "\"" + anchor.name + "\"\n" : "")
+                        + "Owner: " + who).withStyle(ChatFormatting.GRAY);
         status.append(Component.literal("\n" + t[0]).withStyle(ChatFormatting.valueOf(t[1])));
         if (!anchor.isExempt()) {
             double cap = cfg == null ? 1536.0 : cfg.anchorMaxFuelHours;
@@ -71,6 +73,13 @@ public final class AnchorDialog {
                     "egg", 1));
             buttons.add(feedButton("Refresh", "status", 0));
         }
+        // The owner (or a creative admin) may name the sanctuary — opens a text-input dialog.
+        if (canRename(player, anchor)) {
+            buttons.add(new ActionButton(
+                    new CommonButtonData(Component.literal(
+                            anchor.name == null || anchor.name.isBlank() ? "Name this sanctuary" : "Rename"), 160),
+                    Optional.of(new StaticAction(new ClickEvent.RunCommand("sanctuaryrename")))));
+        }
 
         CommonDialogData common = new CommonDialogData(
                 Component.literal("Sanctuary Anchor"),
@@ -91,6 +100,44 @@ public final class AnchorDialog {
         return new ActionButton(new CommonButtonData(Component.literal(label), 160),
                 Optional.of(new StaticAction(new ClickEvent.RunCommand(
                         "sanctuaryfeed " + type + " " + count))));
+    }
+
+    /** Owner (by UUID) or a creative admin may rename. Server-owned anchors need creative. */
+    public static boolean canRename(ServerPlayer player, AnchorState.PlacedAnchor anchor) {
+        if (player.isCreative()) {
+            return true;
+        }
+        return anchor.ownerId != null && anchor.ownerId.equals(player.getUUID().toString());
+    }
+
+    /**
+     * The rename dialog: a single text input ("Name this sanctuary") whose value is submitted to
+     * the permission-0 {@code sanctuaryrename set $(name)} backend via a command template. Acts on
+     * the nearest owned anchor within reach (resolved server-side by the backend command).
+     */
+    public static void openRename(ServerPlayer player, AnchorState.PlacedAnchor anchor) {
+        List<DialogBody> body = new ArrayList<>();
+        body.add(new PlainMessage(Component.literal(
+                "Give this sanctuary a name (up to 24 characters).").withStyle(ChatFormatting.GRAY), 250));
+        List<net.minecraft.server.dialog.Input> inputs = List.of(
+                com.k33bz.sanctuary.DialogInputs.text("name", "Name",
+                        anchor.name == null ? "" : anchor.name, 24, 200));
+        CommonDialogData common = new CommonDialogData(
+                Component.literal("Name this Sanctuary"),
+                Optional.empty(),
+                true,
+                false,
+                DialogAction.CLOSE,
+                body,
+                inputs);
+        List<ActionButton> buttons = new ArrayList<>();
+        buttons.add(new ActionButton(new CommonButtonData(Component.literal("Confirm"), 160),
+                com.k33bz.sanctuary.DialogInputs.command("sanctuaryrename set $(name)")));
+        Dialog dialog = new MultiActionDialog(common, buttons,
+                Optional.of(new ActionButton(new CommonButtonData(Component.literal("Cancel"), 100),
+                        Optional.empty())),
+                1);
+        player.openDialog(Holder.direct(dialog));
     }
 
     private static String hrs(double h) {

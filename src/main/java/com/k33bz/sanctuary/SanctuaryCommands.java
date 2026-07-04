@@ -186,6 +186,15 @@ public final class SanctuaryCommands {
                             .executes(safe(ctx -> StatBoards.remove(ctx.getSource().getPlayerOrException())))));
             // Player-level: backs the Gravekeeper dialog's summon buttons.
             dispatcher.register(Commands.literal("sanctuarygrave")
+                    // Player-level (permission 0): backs the headstone right-click claim/rob.
+                    // Bare = the nearest grave within 6 blocks; with an id = that grave. Either
+                    // way it runs the SAME Graves.tryClaim path the UseEntityCallback uses, so all
+                    // ownership/public/keeper-held/looted/fee/cooldown rules apply unchanged.
+                    .then(Commands.literal("claim")
+                            .executes(safe(ctx -> graveClaim(ctx, null)))
+                            .then(Commands.argument("id", StringArgumentType.word())
+                                    .executes(safe(ctx -> graveClaim(ctx,
+                                            StringArgumentType.getString(ctx, "id"))))))
                     .then(Commands.literal("claimheld")
                             .then(Commands.argument("id", StringArgumentType.word())
                                     .executes(safe(ctx -> com.k33bz.sanctuary.grave.Graves.claimHeld(
@@ -294,6 +303,60 @@ public final class SanctuaryCommands {
                 "kill @e[type=minecraft:villager,tag=" + com.k33bz.sanctuary.grave.Gravekeeper.KEEPER_TAG
                         + ",distance=..40]");
         ctx.getSource().sendSuccess(() -> Component.literal("Graveyard deconsecrated."), true);
+        return 1;
+    }
+
+    /**
+     * Headstone-claim backend (permission 0): the command twin of the right-click on a grave's
+     * interaction hitbox. With an explicit id, resolves that grave; otherwise picks the NEAREST
+     * grave (in this dimension) within 6 blocks of the player. It then calls the SAME
+     * {@link com.k33bz.sanctuary.grave.Graves#tryClaim} path the {@code UseEntityCallback} uses,
+     * so every rule is enforced identically — owner-only until public, public-robbery credits
+     * {@code sanct_robbed} and logs {@code robbery:true}, looted graves say "only memories",
+     * the in-graveyard claim fee, and the 1s per-grave cooldown. This is purely an alternate
+     * trigger for the already-gated action; it grants no access the rules wouldn't already allow.
+     */
+    private static int graveClaim(CommandContext<CommandSourceStack> ctx, String id)
+            throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        net.minecraft.server.level.ServerPlayer player = ctx.getSource().getPlayerOrException();
+        SanctuaryConfig cfg = cfg();
+        if (!cfg.gravesEnabled) {
+            ctx.getSource().sendFailure(Component.literal("Graves are disabled."));
+            return 0;
+        }
+        com.k33bz.sanctuary.grave.Graves.Grave grave;
+        if (id != null) {
+            grave = com.k33bz.sanctuary.grave.Graves.byId(id);
+            if (grave == null) {
+                ctx.getSource().sendFailure(Component.literal("No grave with id '" + id + "'."));
+                return 0;
+            }
+        } else {
+            // Nearest grave to the player, in the same dimension, within 6 blocks — the same reach
+            // the interaction hitbox affords. Keeper-held graves have no in-world headstone, so
+            // (like the right-click) they are not reachable here; use /sanctuarygrave claimheld.
+            String dim = player.level().dimension().identifier().toString();
+            grave = null;
+            double bestSq = 6 * 6;
+            for (com.k33bz.sanctuary.grave.Graves.Grave g
+                    : com.k33bz.sanctuary.grave.Graves.store().graves) {
+                if (g.heldByKeeper || !dim.equals(g.dim)) {
+                    continue;
+                }
+                double dx = g.x - player.getX(), dy = g.y - player.getY(), dz = g.z - player.getZ();
+                double sq = dx * dx + dy * dy + dz * dz;
+                if (sq < bestSq) {
+                    bestSq = sq;
+                    grave = g;
+                }
+            }
+            if (grave == null) {
+                ctx.getSource().sendFailure(Component.literal("No grave within reach."));
+                return 0;
+            }
+        }
+        // Same gated action as the headstone right-click.
+        com.k33bz.sanctuary.grave.Graves.tryClaim(player, grave, cfg);
         return 1;
     }
 

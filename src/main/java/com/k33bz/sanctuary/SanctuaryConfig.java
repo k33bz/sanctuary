@@ -84,6 +84,14 @@ public class SanctuaryConfig {
     public boolean afkTagEnabled = true;
     public double afkMinutes = 5.0;
 
+    // The Restless: once per night, an underground player carrying restlessMinInsomniaDays+
+    // of sleep debt is visited by Restless Creakings spawned in the dark nearby (count grows
+    // with insomnia, capped). They only move unwatched, dissolve at dawn, and never bother the
+    // rested. Phantoms own the surface; these own the mines.
+    public boolean restlessEnabled = true;
+    public int restlessMinInsomniaDays = 2;
+    public int restlessMaxCount = 3;
+
     public boolean creeperTerrainProtection = true;
     public boolean endermanCloneNotSteal = true;
 

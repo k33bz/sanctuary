@@ -4,6 +4,13 @@ All notable changes to Sanctuary (formerly XP Vitality).
 
 ## [0.6.0] — 2026-07-03
 
+### Added — The Restless (underground insomnia)
+Phantoms punish the sleepless under open sky; miners were exempt. Now, once per night, a
+player underground with `restless.minInsomniaDays`+ of sleep debt is visited by **Restless
+Creakings** spawned in the dark nearby — they only move when unwatched, they scale through the
+normal wildness pipeline, the count grows with insomnia (cap `restless.maxCount`), and they
+dissolve at dawn. Sleeping resets the debt. Toggle `restless`.
+
 ### Added — Native [AFK] tag
 Idle players (no movement or camera turn for `afk.minutes`, default 5) get a gray **[AFK]**
 prefix in the tab list and a quiet chat notice; any input clears it. No scoreboard teams

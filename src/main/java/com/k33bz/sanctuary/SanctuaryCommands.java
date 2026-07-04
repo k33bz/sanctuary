@@ -100,6 +100,8 @@ public final class SanctuaryCommands {
         num("respawn.backCost", () -> cfg().respawnBackCostFraction, v -> cfg().respawnBackCostFraction = v, 0, 1);
         num("respawn.minCostLevels", () -> cfg().respawnMinCostLevels, v -> cfg().respawnMinCostLevels = (int) Math.round(v), 0, 1000);
         num("respawn.escalationPerDeath", () -> cfg().respawnEscalationPerDeath, v -> cfg().respawnEscalationPerDeath = v, 0, 10);
+        num("restless.minInsomniaDays", () -> cfg().restlessMinInsomniaDays, v -> cfg().restlessMinInsomniaDays = (int) Math.round(v), 1, 30);
+        num("restless.maxCount", () -> cfg().restlessMaxCount, v -> cfg().restlessMaxCount = (int) Math.round(v), 1, 10);
         num("afk.minutes", () -> cfg().afkMinutes, v -> cfg().afkMinutes = v, 1, 120);
         num("respawn.escalationDecayPer10Min", () -> cfg().respawnEscalationDecayPer10Min, v -> cfg().respawnEscalationDecayPer10Min = v, 0, 10);
 
@@ -123,6 +125,7 @@ public final class SanctuaryCommands {
         bool("creeperTerrainProtection", () -> cfg().creeperTerrainProtection, b -> cfg().creeperTerrainProtection = b);
         bool("endermanClone", () -> cfg().endermanCloneNotSteal, b -> cfg().endermanCloneNotSteal = b);
         bool("afkTag", () -> cfg().afkTagEnabled, b -> cfg().afkTagEnabled = b);
+        bool("restless", () -> cfg().restlessEnabled, b -> cfg().restlessEnabled = b);
     }
 
     public static void register() {

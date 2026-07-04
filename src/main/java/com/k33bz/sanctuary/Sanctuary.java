@@ -270,6 +270,7 @@ public class Sanctuary implements ModInitializer {
                 }
                 MobDifficulty.tickBoundary(player, cfg);
                 AfkTracker.tick(player, cfg);
+                com.k33bz.sanctuary.siege.RestlessSpawner.tick(player, cfg);
             }
             AnchorInteraction.pulseAnchors(server); // focus pulse at active anchors
             com.k33bz.sanctuary.anchor.AnchorUpkeep.tick(server, cfg);

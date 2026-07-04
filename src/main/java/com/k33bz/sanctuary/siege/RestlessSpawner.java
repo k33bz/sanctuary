@@ -40,7 +40,7 @@ public final class RestlessSpawner {
                 || !cfg.isScalingDimension(level)) {
             return;
         }
-        long time = level.getDayTime();
+        long time = level.getLevelData().getDayTime();
         long day = time / 24000L;
         long hour = time % 24000L;
         if (hour < 13000L || hour > 23000L) {

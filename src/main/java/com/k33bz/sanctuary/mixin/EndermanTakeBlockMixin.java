@@ -14,7 +14,7 @@ import com.k33bz.sanctuary.SanctuaryConfig;
  * the carry still happens — the enderman wanders away with a copy and the world keeps its
  * grass. (It may plant the clone somewhere later; a stray mundane block is the worst case.)
  */
-@Mixin(targets = "net.minecraft.world.entity.monster.enderman.EnderMan$EndermanTakeBlockGoal")
+@Mixin(targets = "net.minecraft.world.entity.monster.EnderMan$EndermanTakeBlockGoal")
 public class EndermanTakeBlockMixin {
 
     @Redirect(method = "tick", at = @At(value = "INVOKE",

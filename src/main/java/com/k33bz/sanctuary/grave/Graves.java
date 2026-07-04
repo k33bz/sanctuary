@@ -406,6 +406,7 @@ public final class Graves {
                 StatBoards.addScore(player, "sanct_toll", fee);
             }
         }
+        ServerLevel level = (ServerLevel) player.level();
         int restored = restoreItems(player, grave);
         grave.looted = true;
         spawnDisplays(level, grave); // headstone cracks

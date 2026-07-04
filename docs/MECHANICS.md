@@ -40,6 +40,40 @@ players**, at `crystalDropChance` (3%) per qualifying kill — so sanctuary expa
 conquering the frontier, and the supply is renewable (unlike the one dragon egg). Ops can spawn
 one with `/sanctuary crystal give`.
 
+**Wild Essence** (`wildEssenceEnabled`). A second textured player head — a glowing ender-eye,
+anvil-proof by profile name like the crystal — but a **ritual reagent, not an anchor** (placing
+it does nothing). It drops from the frontier's monsters on the same kill path as crystals:
+
+| Source | Wild Essence drop |
+|---|---|
+| **Warden** (any tier) | **guaranteed 1** (pairs with the Warden→cap attunement — one fight, both rewards) |
+| Savage (tier 2) | `wildEssenceChanceSavage` = 0.5% |
+| Ferocious (tier 3) | `wildEssenceChanceFerocious` = 2% |
+| Nightmare (tier 4) | `wildEssenceChanceNightmare` = 8% |
+| tier < 2 | never |
+
+Ops give one with `/sanctuary essence give`; chances are live-tunable
+(`essence.chanceSavage/Ferocious/Nightmare`).
+
+**The crafting ritual — a built Sanctuary Crystal.** An alternative to lucky drops, in the mod's
+ritual idiom (structure + trigger + check + consume + effect + result). It yields the *existing*
+Sanctuary Crystal item, so the crafted path feeds the same anchor system.
+
+- **Structure:** a **conduit on a beacon**, a **dragon egg on the conduit**, and **2 sponges**
+  (dry or wet) within 2 blocks of the conduit.
+- **Reagents (inventory):** **1 Wild Essence + 2 phantom membranes** (not placeable, so consumed
+  from the triggering player's inventory).
+- **Trigger:** placing the conduit *or* the capstone dragon egg (whichever completes the
+  structure) fires the check via the block-place mixin — the same hook the graveyard skull uses.
+- **On success:** the beacon, conduit, dragon egg and 2 sponges are set to air, the reagents are
+  consumed, a flash + end-rod burst + beacon/conduit sound plays, and the player receives a
+  Sanctuary Crystal. **On an incomplete recipe** (once a conduit sits on a beacon), an actionbar
+  hint lists what's missing and **nothing is consumed**.
+
+The recipe is fixed, but the drop knobs and `wildEssenceEnabled` make the reagent economy
+adjustable. Servers wanting the ritual to be the **only** route to new sanctuaries set
+`crystalDropChance=0` — the drop path stays code-present but never fires.
+
 **Upkeep & decay** (`anchorUpkeepEnabled`). Player-raised sanctuaries burn fuel measured in
 **real hours of server uptime** (72,000 ticks/hour):
 
@@ -413,7 +447,9 @@ state silently. The glyph is `☠` (U+2620); emoji are not in Minecraft's font.
 | `anchors` | spawn 0,0 r128 | §1 |
 | `scalingDimensions` | overworld | §1 |
 | `anchorShowLabel` / `anchorLabelHeight` | true / 1.6 | cosmetic |
-| `crystalDropMinTier` / `crystalDropChance` | 3 / 0.03 | §1 |
+| `crystalDropMinTier` / `crystalDropChance` | 3 / 0.03 | §1 (set chance 0 to force the ritual) |
+| `wildEssenceEnabled` | true | §1 — Wild Essence drops + the crafting ritual |
+| `wildEssenceChanceSavage/Ferocious/Nightmare` | 0.005 / 0.02 / 0.08 | §1 — tier-scaled essence drops (Warden always 1) |
 | `anchorMinSpacing` | 192 | §1 — min center distance between anchors (creative bypasses) |
 | `anchorCapBase` / `anchorCapMax` | 1 / 3 | §1 — per-player anchor cap, raised by Warden kills |
 | `suppressHostileSpawnsInSanctuary` | true | §1 — no natural hostile spawns in active zones |

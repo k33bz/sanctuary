@@ -75,6 +75,9 @@ public final class SanctuaryCommands {
         num("anchor.crystalDropMinTier", () -> cfg().crystalDropMinTier,
                 v -> cfg().crystalDropMinTier = (int) Math.round(v), 0, 4);
         num("anchor.crystalDropChance", () -> cfg().crystalDropChance, v -> cfg().crystalDropChance = v, 0, 1);
+        num("essence.chanceSavage", () -> cfg().wildEssenceChanceSavage, v -> cfg().wildEssenceChanceSavage = v, 0, 1);
+        num("essence.chanceFerocious", () -> cfg().wildEssenceChanceFerocious, v -> cfg().wildEssenceChanceFerocious = v, 0, 1);
+        num("essence.chanceNightmare", () -> cfg().wildEssenceChanceNightmare, v -> cfg().wildEssenceChanceNightmare = v, 0, 1);
         num("anchor.labelHeight", () -> cfg().anchorLabelHeight, v -> cfg().anchorLabelHeight = v, 0, 4);
         num("anchor.startHours", () -> cfg().anchorStartHours, v -> cfg().anchorStartHours = v, 0, 100000);
         num("anchor.hoursPerEmerald", () -> cfg().anchorHoursPerEmerald, v -> cfg().anchorHoursPerEmerald = v, 0, 10000);
@@ -132,6 +135,7 @@ public final class SanctuaryCommands {
         bool("afkTag", () -> cfg().afkTagEnabled, b -> cfg().afkTagEnabled = b);
         bool("restless", () -> cfg().restlessEnabled, b -> cfg().restlessEnabled = b);
         bool("graves", () -> cfg().gravesEnabled, b -> cfg().gravesEnabled = b);
+        bool("wildEssence", () -> cfg().wildEssenceEnabled, b -> cfg().wildEssenceEnabled = b);
     }
 
     public static void register() {
@@ -432,6 +436,8 @@ public final class SanctuaryCommands {
                         .then(Commands.literal("clear").executes(safe(SanctuaryCommands::metricsClear))))
                 .then(Commands.literal("crystal")
                         .then(Commands.literal("give").executes(safe(SanctuaryCommands::crystalGive))))
+                .then(Commands.literal("essence")
+                        .then(Commands.literal("give").executes(safe(SanctuaryCommands::essenceGive))))
                 .then(Commands.literal("danger")
                         .then(Commands.literal("status").executes(safe(SanctuaryCommands::dangerStatus)))
                         .then(Commands.literal("reset").executes(safe(SanctuaryCommands::dangerReset))))
@@ -614,6 +620,16 @@ public final class SanctuaryCommands {
             player.drop(com.k33bz.sanctuary.anchor.SanctuaryCrystal.create(), false);
         }
         ctx.getSource().sendSuccess(() -> Component.literal("Gave 1 Sanctuary Crystal."), true);
+        return 1;
+    }
+
+    private static int essenceGive(CommandContext<CommandSourceStack> ctx) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        net.minecraft.server.level.ServerPlayer player = ctx.getSource().getPlayerOrException();
+        boolean added = player.getInventory().add(com.k33bz.sanctuary.anchor.WildEssence.create());
+        if (!added) {
+            player.drop(com.k33bz.sanctuary.anchor.WildEssence.create(), false);
+        }
+        ctx.getSource().sendSuccess(() -> Component.literal("Gave 1 Wild Essence."), true);
         return 1;
     }
 

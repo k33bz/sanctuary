@@ -57,3 +57,7 @@ gravekeeper dialogs) open UI upgrades that container menus could not do:
 - Feral egg wagers: number_range slider for arena/market bets (pairs with custom villager
   shop stalls).
 - Respawn dialog: single_option to pick among multiple owned sanctuaries instead of nearest.
+
+Non-goals (decided 2026-07-04): NO teleport systems in Sanctuary — gmc101 runs sswaystones
+and the VT teleport packs were deliberately excluded from the bundle; travel friction is the
+point, and waystones are the server's sanctioned exception.

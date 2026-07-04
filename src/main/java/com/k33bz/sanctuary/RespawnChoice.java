@@ -56,6 +56,8 @@ public final class RespawnChoice {
         boolean hasBed;
         int bedCost, backCost;
         long expiresAtTick;
+        /** The dying player's own active anchors, nearest-death first (for the sanctuary picker). */
+        List<AnchorState.PlacedAnchor> ownedAnchors = List.of();
     }
 
     private static final class Ledger {
@@ -164,6 +166,10 @@ public final class RespawnChoice {
         }
         offer.expiresAtTick = level.getGameTime() + cfg.respawnOfferTimeoutSeconds * 20L;
 
+        // Owned active PLACED anchors, nearest-to-death first — a player who holds two or more
+        // gets to pick which sanctuary to wake at (free); the nearest is the default selection.
+        offer.ownedAnchors = ownedActiveAnchors(level, player, offer.deathX, offer.deathZ);
+
         boolean offerBack = offer.deathDim.equals(dimNow);
         openDialog(player, offer, anchor != null, offerBack);
     }
@@ -195,6 +201,22 @@ public final class RespawnChoice {
         return best;
     }
 
+    /** The player's own ACTIVE placed anchors in the death dimension, nearest-to-death first. */
+    private static List<AnchorState.PlacedAnchor> ownedActiveAnchors(
+            ServerLevel level, ServerPlayer player, double x, double z) {
+        long now = level.getGameTime();
+        String me = player.getUUID().toString();
+        List<AnchorState.PlacedAnchor> mine = new ArrayList<>();
+        for (AnchorState.PlacedAnchor a : AnchorState.get().anchors) {
+            if (a.isActive(now) && me.equals(a.ownerId)) {
+                mine.add(a);
+            }
+        }
+        mine.sort(java.util.Comparator.comparingDouble(
+                a -> (a.x - x) * (a.x - x) + (a.z - z) * (a.z - z)));
+        return mine;
+    }
+
     private static void openDialog(ServerPlayer player, Offer offer, boolean atSanctuary, boolean offerBack) {
         List<DialogBody> body = new ArrayList<>();
         var text = Component.literal(atSanctuary
@@ -208,6 +230,28 @@ public final class RespawnChoice {
         body.add(new PlainMessage(text, 250));
 
         List<ActionButton> buttons = new ArrayList<>();
+        // Two or more owned sanctuaries: a single-option picker to choose which to wake at (free).
+        // The nearest (index 0) is pre-selected, matching the default the free rest already gave.
+        List<net.minecraft.server.dialog.Input> inputs = List.of();
+        if (offer.ownedAnchors.size() >= 2) {
+            List<net.minecraft.server.dialog.input.SingleOptionInput.Entry> entries = new ArrayList<>();
+            for (int i = 0; i < offer.ownedAnchors.size(); i++) {
+                AnchorState.PlacedAnchor a = offer.ownedAnchors.get(i);
+                String label = (a.name != null && !a.name.isBlank())
+                        ? a.name
+                        : String.format(Locale.ROOT, "Sanctuary at %d, %d", (int) a.x, (int) a.z);
+                if (i == 0) {
+                    label = label + " (nearest)";
+                }
+                entries.add(com.k33bz.sanctuary.DialogInputs.entry(a.id, label, i == 0));
+            }
+            inputs = List.of(com.k33bz.sanctuary.DialogInputs.singleOption(
+                    "sanctuary", "Wake at", 220, entries));
+            buttons.add(new ActionButton(
+                    new net.minecraft.server.dialog.CommonButtonData(
+                            Component.literal("Wake at chosen sanctuary (free)"), 220),
+                    com.k33bz.sanctuary.DialogInputs.command("sanctuarywake $(sanctuary)")));
+        }
         if (offer.hasBed) {
             buttons.add(button("Return to bed — " + offer.bedCost + " level" + (offer.bedCost == 1 ? "" : "s"),
                     "sanctuaryrespawn bed"));
@@ -223,7 +267,7 @@ public final class RespawnChoice {
                 false,
                 DialogAction.CLOSE,
                 body,
-                List.of());
+                inputs);
         Dialog dialog = new MultiActionDialog(common, buttons,
                 Optional.of(new ActionButton(
                         new CommonButtonData(Component.literal("Rest here (free)"), 120), Optional.empty())),
@@ -234,6 +278,40 @@ public final class RespawnChoice {
     private static ActionButton button(String label, String command) {
         return new ActionButton(new CommonButtonData(Component.literal(label), 200),
                 Optional.of(new StaticAction(new ClickEvent.RunCommand(command))));
+    }
+
+    /**
+     * Dialog button backend: {@code sanctuarywake <anchorId>}. Free — it only redirects the free
+     * respawn to a DIFFERENT owned, active sanctuary than the nearest default. Validates the anchor
+     * is in this player's pending offer (so it can't wake at anchors they don't own).
+     */
+    public static int wakeAt(ServerPlayer player, String anchorId) {
+        Offer offer = PENDING.get(player.getUUID());
+        ServerLevel level = (ServerLevel) player.level();
+        if (offer == null || level.getGameTime() > offer.expiresAtTick) {
+            PENDING.remove(player.getUUID());
+            player.sendSystemMessage(Component.literal("That door has closed.").withStyle(ChatFormatting.GRAY));
+            return 0;
+        }
+        AnchorState.PlacedAnchor target = null;
+        for (AnchorState.PlacedAnchor a : offer.ownedAnchors) {
+            if (anchorId.equals(a.id)) {
+                target = a;
+                break;
+            }
+        }
+        if (target == null || !target.isActive(level.getGameTime())) {
+            player.sendSystemMessage(Component.literal("That sanctuary no longer answers.")
+                    .withStyle(ChatFormatting.GRAY));
+            return 0;
+        }
+        int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING, (int) target.x, (int) target.z);
+        player.teleportTo(target.x, y + 1.0, target.z);
+        String where = (target.name != null && !target.name.isBlank())
+                ? "\"" + target.name + "\"" : "that sanctuary";
+        player.sendSystemMessage(Component.literal("Your soul settles at " + where + ".")
+                .withStyle(ChatFormatting.LIGHT_PURPLE));
+        return 1;
     }
 
     /** Dialog button backend: {@code sanctuaryrespawn bed|back}. Charges levels, then teleports. */

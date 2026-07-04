@@ -2,6 +2,30 @@
 
 All notable changes to Sanctuary (formerly XP Vitality).
 
+## [0.6.1] — 2026-07-04
+
+### Added — Dialog input controls (26.x native)
+The anchor, respawn, and Gravekeeper dialogs gain **text fields and pickers**, built on the
+26.x server-dialog INPUT system (`net.minecraft.server.dialog.input.*`) — values submit into
+permission-0 backend commands via `$(key)` template substitution. No client mod.
+
+- **Name your sanctuary.** The anchor menu gains a *Name this sanctuary* button (owner or
+  creative only) opening a text input (up to 24 chars). The name shows on the floating anchor
+  label — above the fuzzy upkeep timer — and in `/sanctuary anchor list`. Backed by the new
+  permission-0 `/sanctuaryrename` command, acting on the nearest owned anchor within 6 blocks.
+  Section signs are stripped so names can't inject colour codes.
+- **Choose where you wake.** A player who owns **two or more active sanctuaries** gets a
+  single-option picker on the respawn dialog to choose which one to wake at (free — it just
+  redirects the free respawn); the nearest-to-death is pre-selected as the default. Single-anchor
+  players are unaffected. Backed by permission-0 `/sanctuarywake`.
+- **Search the Gravekeeper's ledger.** When the keeper holds or can summon many estates, a
+  *Search owner* text field + *Filter by owner* button re-opens his dialog filtered to matching
+  owner names (case-insensitive substring), with a *Show all* reset. Backed by
+  `/sanctuarygrave search`.
+
+Feral-egg wager sliders (a `number_range` use) are **deferred** — see `SPEC.md`: they need a
+betting/market mechanic that does not exist yet.
+
 ## [0.6.0] — 2026-07-03
 
 ### Added — Graves & Graveyards (System 10)

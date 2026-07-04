@@ -29,6 +29,19 @@ stops spinning, safety ends, the Flan claim releases, the region is raidable. Cl
 crystal empty-handed for the fuel menu (dialog or furnace-style, config). Admin anchors are
 eternal and gold-labeled.
 
+## Naming a sanctuary
+
+Open the anchor's dialog menu (click the crystal empty-handed) and press **Name this
+sanctuary** — a text input takes up to 24 characters. Only the anchor's **owner** (or a creative
+admin) sees the button and may rename. The name replaces "Sanctuary Anchor" on the floating
+label (the fuzzy upkeep timer stays on the line below) and appears in `/sanctuary anchor list`.
+Naming is free and can be changed or cleared (submit blank) any time. Backed by the
+permission-0 `/sanctuaryrename` command.
+
+When you die owning **two or more active sanctuaries**, the respawn dialog offers a picker to
+choose which one to wake at (free); the nearest to where you fell is the default. See
+[DEATH-AND-GRAVES.md](DEATH-AND-GRAVES.md).
+
 ## Integrations
 
 - **Flan**: active anchors auto-carry an admin grief-protection claim; released on dormancy.

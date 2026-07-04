@@ -30,6 +30,8 @@ public class AnchorState {
         public String ownerId;
         /** This anchor's OWN unique id — full UUID targets exactly one sanctuary. */
         public String id;
+        /** Player-given display name (null = unnamed). Shown on the label and in anchor list. */
+        public String name;
         /**
          * Game time when the fuel runs out. {@code <= 0} = exempt/eternal (admin anchors and
          * grandfathered legacy entries). Dormant anchors keep their entry but grant no safety.

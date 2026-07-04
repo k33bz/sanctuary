@@ -78,20 +78,37 @@ public final class Gravekeeper {
                 yard.x, yard.y + 1, yard.z, KEEPER_TAG, wander ? 0 : 1));
     }
 
-    /** Right-click on the keeper: list summonable graves. */
+    /** Right-click on the keeper: list summonable graves (unfiltered). */
     public static void openDialog(ServerPlayer player, SanctuaryConfig cfg) {
+        openDialog(player, cfg, null);
+    }
+
+    /**
+     * List the keeper's summonable/holdable graves. When {@code filter} is non-blank, only estates
+     * whose owner name contains it (case-insensitive) are shown — a static filter-and-reopen driven
+     * by the "Search" text input. A big keeper hold can list dozens of estates; the filter keeps the
+     * button wall navigable.
+     */
+    public static void openDialog(ServerPlayer player, SanctuaryConfig cfg, String filter) {
         Graves.Yard yard = Graves.yardNear(player, 32);
         if (yard == null) {
             return;
         }
+        String needle = filter == null ? "" : filter.trim().toLowerCase(Locale.ROOT);
+        boolean filtering = !needle.isEmpty();
         List<ActionButton> buttons = new ArrayList<>();
         String me = player.getUUID().toString();
+        int hidden = 0;
         for (Graves.Grave grave : Graves.store().graves) {
             if (!grave.owner.equals(me) || grave.looted || grave.items.isEmpty()) {
                 continue;
             }
             boolean here = grave.inGraveyard && yard.anchorId.equals(grave.graveyardAnchor);
             if (here) {
+                continue;
+            }
+            if (filtering && !matchesOwner(grave, needle)) {
+                hidden++;
                 continue;
             }
             int fee = SurvivalLogic.respawnCostLevels(player.experienceLevel,
@@ -110,6 +127,10 @@ public final class Gravekeeper {
                     || !yard.anchorId.equals(grave.graveyardAnchor)) {
                 continue;
             }
+            if (filtering && !matchesOwner(grave, needle)) {
+                hidden++;
+                continue;
+            }
             boolean mine = grave.owner.equals(me);
             if (mine) {
                 int fee = SurvivalLogic.respawnCostLevels(player.experienceLevel,
@@ -125,18 +146,44 @@ public final class Gravekeeper {
                                 "sanctuarygrave claimheld " + grave.id)))));
             }
         }
+        // A "Show all" reset when filtered, so the player isn't trapped in a narrowed view.
+        if (filtering) {
+            buttons.add(new ActionButton(new CommonButtonData(Component.literal("Show all"), 220),
+                    java.util.Optional.of(new StaticAction(new ClickEvent.RunCommand(
+                            "sanctuarygrave search")))));
+        }
         List<DialogBody> body = new ArrayList<>();
-        body.add(new PlainMessage(Component.literal(buttons.isEmpty()
-                        ? "All your dead rest where they should."
-                        : "The dead can be moved, for a price. My allays are discreet.")
-                .withStyle(ChatFormatting.GRAY), 250));
+        String msg;
+        if (buttons.isEmpty() && !filtering) {
+            msg = "All your dead rest where they should.";
+        } else if (filtering) {
+            msg = String.format(Locale.ROOT, "Estates matching \"%s\" (%d hidden). Search again to refine.",
+                    filter.trim(), hidden);
+        } else {
+            msg = "The dead can be moved, for a price. My allays are discreet.";
+        }
+        body.add(new PlainMessage(Component.literal(msg).withStyle(ChatFormatting.GRAY), 250));
+
+        // A "Search" text input + Filter button re-opens the dialog narrowed to matching owners.
+        List<net.minecraft.server.dialog.Input> inputs = List.of(
+                com.k33bz.sanctuary.DialogInputs.text("query", "Search owner",
+                        filtering ? filter.trim() : "", 24, 200));
+        buttons.add(new ActionButton(new CommonButtonData(Component.literal("Filter by owner"), 220),
+                com.k33bz.sanctuary.DialogInputs.command("sanctuarygrave search $(query)")));
+
         Dialog dialog = new MultiActionDialog(new CommonDialogData(
                 Component.literal("The Gravekeeper"), java.util.Optional.empty(), true, false,
-                DialogAction.CLOSE, body, List.of()), buttons,
+                DialogAction.CLOSE, body, inputs), buttons,
                 java.util.Optional.of(new ActionButton(
                         new CommonButtonData(Component.literal("Leave"), 100), java.util.Optional.empty())),
                 1);
         player.openDialog(Holder.direct(dialog));
+    }
+
+    /** Case-insensitive owner-name substring match for the ledger search. */
+    private static boolean matchesOwner(Graves.Grave grave, String needle) {
+        return grave.ownerName != null
+                && grave.ownerName.toLowerCase(Locale.ROOT).contains(needle);
     }
 
     /** Dialog button backend: charge the fee and dispatch the courier. */

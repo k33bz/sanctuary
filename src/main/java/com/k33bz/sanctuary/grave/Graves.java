@@ -224,6 +224,28 @@ public final class Graves {
         }
         long now = System.currentTimeMillis();
         boolean dirty = false;
+        // Memorial decay: looted stones crumble after graveMemorialDecayDays; loot never decays.
+        if (cfg.graveMemorialDecayDays > 0) {
+            var it = store().graves.iterator();
+            while (it.hasNext()) {
+                Grave g = it.next();
+                if (!g.looted) {
+                    continue;
+                }
+                double days = (now - g.diedAtMs) / 86_400_000.0;
+                if (days < cfg.graveMemorialDecayDays) {
+                    continue;
+                }
+                ServerLevel gl = levelOf(server, g.dim);
+                if (gl != null && gl.isLoaded(BlockPos.containing(g.x, g.y, g.z))) {
+                    killDisplays(gl, g);
+                    run(gl, String.format(java.util.Locale.ROOT,
+                            "particle minecraft:ash %.1f %.1f %.1f 0.3 0.5 0.3 0.01 20", g.x, g.y + 0.5, g.z));
+                    it.remove();
+                    dirty = true;
+                }
+            }
+        }
         for (Grave grave : store().graves) {
             double hours = (now - grave.diedAtMs) / 3_600_000.0;
             if (!grave.inGraveyard && !grave.heldByKeeper && !grave.looted && hours >= cfg.graveDriftHours) {

@@ -107,6 +107,7 @@ public final class SanctuaryCommands {
         num("grave.publicHours", () -> cfg().gravePublicHours, v -> cfg().gravePublicHours = v, 0, 10000);
         num("grave.claimFee", () -> cfg().graveClaimFeeFraction, v -> cfg().graveClaimFeeFraction = v, 0, 1);
         num("grave.summonFee", () -> cfg().graveSummonFeeFraction, v -> cfg().graveSummonFeeFraction = v, 0, 1);
+        num("grave.memorialDecayDays", () -> cfg().graveMemorialDecayDays, v -> cfg().graveMemorialDecayDays = v, 0, 100000);
         num("respawn.escalationDecayPer10Min", () -> cfg().respawnEscalationDecayPer10Min, v -> cfg().respawnEscalationDecayPer10Min = v, 0, 10);
 
         bool("regen", () -> cfg().regenEnabled, b -> cfg().regenEnabled = b);

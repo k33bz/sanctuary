@@ -62,15 +62,20 @@ public final class Gravekeeper {
 
     /** Summon the keeper at a freshly defined graveyard. */
     public static void spawnKeeper(ServerLevel level, Graves.Yard yard) {
+        spawnKeeper(level, yard, false);
+    }
+
+    /** Ritual keepers wander (AI on, fenced in by the sweep); command keepers stand vigil. */
+    public static void spawnKeeper(ServerLevel level, Graves.Yard yard, boolean wander) {
         Graves.run(level, String.format(Locale.ROOT,
                 "kill @e[type=minecraft:villager,tag=%s,x=%d,y=%d,z=%d,distance=..%d]",
                 KEEPER_TAG, yard.x, yard.y, yard.z, yard.radius + 8));
         Graves.run(level, String.format(Locale.ROOT,
-                "summon minecraft:villager %d %d %d {Tags:[\"%s\"],NoAI:1b,Invulnerable:1b,"
+                "summon minecraft:villager %d %d %d {Tags:[\"%s\"],NoAI:%db,Invulnerable:1b,"
                         + "PersistenceRequired:1b,Silent:1b,"
                         + "VillagerData:{profession:\"minecraft:cleric\",level:5,type:\"minecraft:swamp\"},"
                         + "CustomName:{text:\"Gravekeeper\",color:\"gold\"},CustomNameVisible:1b}",
-                yard.x, yard.y + 1, yard.z, KEEPER_TAG));
+                yard.x, yard.y + 1, yard.z, KEEPER_TAG, wander ? 0 : 1));
     }
 
     /** Right-click on the keeper: list summonable graves. */
@@ -98,6 +103,27 @@ public final class Gravekeeper {
                             where, fee, fee == 1 ? "" : "s")), 220),
                     java.util.Optional.of(new StaticAction(new ClickEvent.RunCommand(
                             "sanctuarygrave summon " + grave.id)))));
+        }
+        // The keeper's hold: your evicted estates (fee) and, once expired, anyone's.
+        for (Graves.Grave grave : Graves.store().graves) {
+            if (!grave.heldByKeeper || grave.items.isEmpty()
+                    || !yard.anchorId.equals(grave.graveyardAnchor)) {
+                continue;
+            }
+            boolean mine = grave.owner.equals(me);
+            if (mine) {
+                int fee = SurvivalLogic.respawnCostLevels(player.experienceLevel,
+                        cfg.graveClaimFeeFraction, 0, 0);
+                buttons.add(new ActionButton(new CommonButtonData(Component.literal(
+                        "Reclaim held remains -- " + fee + " level" + (fee == 1 ? "" : "s")), 220),
+                        java.util.Optional.of(new StaticAction(new ClickEvent.RunCommand(
+                                "sanctuarygrave claimheld " + grave.id)))));
+            } else if (Graves.isPublic(grave)) {
+                buttons.add(new ActionButton(new CommonButtonData(Component.literal(
+                        "Claim expired estate of " + grave.ownerName), 220),
+                        java.util.Optional.of(new StaticAction(new ClickEvent.RunCommand(
+                                "sanctuarygrave claimheld " + grave.id)))));
+            }
         }
         List<DialogBody> body = new ArrayList<>();
         body.add(new PlainMessage(Component.literal(buttons.isEmpty()

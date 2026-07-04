@@ -349,7 +349,7 @@ public class Sanctuary implements ModInitializer {
             // vanilla's keep means capture() sees nothing... but capture runs FIRST, so gate
             // on the gamerule explicitly.
             if (cfg.gravesEnabled
-                    && !player.level().getGameRules().getBoolean(net.minecraft.world.level.GameRules.RULE_KEEPINVENTORY)) {
+                    && !Boolean.TRUE.equals(player.level().getServer().getGlobalGameRules().get(net.minecraft.world.level.gamerules.GameRules.KEEP_INVENTORY))) {
                 com.k33bz.sanctuary.grave.Graves.capture(player, cfg);
             }
             return true;

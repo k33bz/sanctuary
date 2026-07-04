@@ -165,6 +165,11 @@ public final class SanctuaryCommands {
                             .executes(safe(ctx -> StatBoards.remove(ctx.getSource().getPlayerOrException())))));
             // Player-level: backs the Gravekeeper dialog's summon buttons.
             dispatcher.register(Commands.literal("sanctuarygrave")
+                    .then(Commands.literal("claimheld")
+                            .then(Commands.argument("id", StringArgumentType.word())
+                                    .executes(safe(ctx -> com.k33bz.sanctuary.grave.Graves.claimHeld(
+                                            ctx.getSource().getPlayerOrException(),
+                                            StringArgumentType.getString(ctx, "id"), cfg())))))
                     .then(Commands.literal("summon")
                             .then(Commands.argument("id", StringArgumentType.word())
                                     .executes(safe(ctx -> com.k33bz.sanctuary.grave.Gravekeeper.summon(

@@ -13,7 +13,15 @@ Ops consecrate yards with `/sanctuarygraveyard set [radius]` — grid plots, plu
 **Gravekeeper**: a still cleric whose dialog summons your loot-bearing graves from the wild or
 rival cemeteries (for a fee) — delivered by an **allay courier** that flies off, vanishes, and
 returns to settle the stone into the next open plot. Claiming from a yard costs a small toll;
-the free option is the walk.
+the free option is the walk. Plots are **1x3** -- headstone plus two open blocks fronting a
+walkable lane, stones shoulder-to-shoulder (display slabs never connect). A **full yard makes
+room**: oldest looted memorial cleared first; failing that the oldest unlooted grave enters the
+**Gravekeeper's hold** -- off the lawn, loot intact, reclaimable via his menu with fees and the
+48h public timer still applying. Overflow abuse is visual, never a broken mechanic.
+**Survival consecration ritual**: no command needed — inside your own sanctuary, fence a pen
+(9x9 up to 81x81, gate allowed), build an iron-golem body and crown it with a skeleton or
+wither skeleton skull. The effigy is consumed and the Gravekeeper rises — wandering his
+grounds freely, never past the fence. One graveyard per sanctuary, owner-bound.
 
 ### Added — Native [AFK] tag
 Idle players (no movement or camera turn for `afk.minutes`, default 5) get a gray **[AFK]**

@@ -96,6 +96,16 @@ public class SanctuaryConfig {
     public double graveClaimFeeFraction = 0.02;
     public double graveSummonFeeFraction = 0.05;
     public int graveyardDefaultRadius = 8;
+    public int graveyardMinSize = 9;   // ritual pen minimum interior span (9x9)
+    public int graveyardMaxSize = 81;  // ritual pen maximum span (81x81)
+
+    // The Restless: once per night, an underground player carrying restlessMinInsomniaDays+
+    // of sleep debt is visited by Restless Creakings spawned in the dark nearby (count grows
+    // with insomnia, capped). They only move unwatched, dissolve at dawn, and never bother the
+    // rested. Phantoms own the surface; these own the mines.
+    public boolean restlessEnabled = true;
+    public int restlessMinInsomniaDays = 2;
+    public int restlessMaxCount = 3;
 
     public boolean creeperTerrainProtection = true;
     public boolean endermanCloneNotSteal = true;

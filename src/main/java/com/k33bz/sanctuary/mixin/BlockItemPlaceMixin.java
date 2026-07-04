@@ -143,5 +143,13 @@ public class BlockItemPlaceMixin {
         if (level.getBlockState(pos).is(BlockTags.WOODEN_DOORS)) {
             DoorRegistry.get().record(level, pos);
         }
+
+        // A skull crowning an iron effigy inside a fenced pen consecrates a graveyard.
+        var placed = level.getBlockState(pos);
+        if (placed.is(net.minecraft.world.level.block.Blocks.SKELETON_SKULL)
+                || placed.is(net.minecraft.world.level.block.Blocks.WITHER_SKELETON_SKULL)) {
+            com.k33bz.sanctuary.grave.GraveyardRitual.tryForm(level, pos,
+                    (ServerPlayer) context.getPlayer(), Sanctuary.CONFIG);
+        }
     }
 }

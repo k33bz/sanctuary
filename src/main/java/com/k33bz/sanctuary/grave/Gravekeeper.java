@@ -99,6 +99,27 @@ public final class Gravekeeper {
                     java.util.Optional.of(new StaticAction(new ClickEvent.RunCommand(
                             "sanctuarygrave summon " + grave.id)))));
         }
+        // The keeper's hold: your evicted estates (fee) and, once expired, anyone's.
+        for (Graves.Grave grave : Graves.store().graves) {
+            if (!grave.heldByKeeper || grave.items.isEmpty()
+                    || !yard.anchorId.equals(grave.graveyardAnchor)) {
+                continue;
+            }
+            boolean mine = grave.owner.equals(me);
+            if (mine) {
+                int fee = SurvivalLogic.respawnCostLevels(player.experienceLevel,
+                        cfg.graveClaimFeeFraction, 0, 0);
+                buttons.add(new ActionButton(new CommonButtonData(Component.literal(
+                        "Reclaim held remains -- " + fee + " level" + (fee == 1 ? "" : "s")), 220),
+                        java.util.Optional.of(new StaticAction(new ClickEvent.RunCommand(
+                                "sanctuarygrave claimheld " + grave.id)))));
+            } else if (Graves.isPublic(grave)) {
+                buttons.add(new ActionButton(new CommonButtonData(Component.literal(
+                        "Claim expired estate of " + grave.ownerName), 220),
+                        java.util.Optional.of(new StaticAction(new ClickEvent.RunCommand(
+                                "sanctuarygrave claimheld " + grave.id)))));
+            }
+        }
         List<DialogBody> body = new ArrayList<>();
         body.add(new PlainMessage(Component.literal(buttons.isEmpty()
                         ? "All your dead rest where they should."

@@ -60,6 +60,8 @@ public final class Graves {
         public boolean inGraveyard;
         public String graveyardAnchor; // anchor id hosting it, if drifted
         public boolean looted;
+        /** Evicted from a full yard: no headstone, claimable only via the Gravekeeper. */
+        public boolean heldByKeeper;
         public List<JsonElement> items = new ArrayList<>();
         /** displays spawned flag — false when the grave moved and old displays may linger. */
         public boolean displaysFresh;
@@ -221,12 +223,12 @@ public final class Graves {
         boolean dirty = false;
         for (Grave grave : store().graves) {
             double hours = (now - grave.diedAtMs) / 3_600_000.0;
-            if (!grave.inGraveyard && !grave.looted && hours >= cfg.graveDriftHours) {
+            if (!grave.inGraveyard && !grave.heldByKeeper && !grave.looted && hours >= cfg.graveDriftHours) {
                 if (moveToYard(server, grave, null)) {
                     dirty = true;
                     notifyOwner(server, grave, "Your remains were carried to the sanctuary graveyard.");
                 }
-            } else if (!grave.looted && !grave.displaysFresh) {
+            } else if (!grave.looted && !grave.heldByKeeper && !grave.displaysFresh) {
                 ServerLevel level = levelOf(server, grave.dim);
                 if (level != null && level.isLoaded(BlockPos.containing(grave.x, grave.y, grave.z))) {
                     spawnDisplays(level, grave);
@@ -252,6 +254,9 @@ public final class Graves {
             return false;
         }
         BlockPos plot = nextPlot(yardLevel, yard);
+        if (plot == null && evictForSpace(server, yard)) {
+            plot = nextPlot(yardLevel, yard);
+        }
         if (plot == null || !yardLevel.isLoaded(plot)) {
             return false;
         }
@@ -266,20 +271,24 @@ public final class Graves {
         return true;
     }
 
-    /** Grid plots: spiral over a 2-block lattice inside the yard radius, skipping taken spots. */
+    /**
+     * Cemetery plots are 1x3: a headstone with two open blocks in front, stones shoulder to
+     * shoulder along each row (the block-display slabs are 0.7 wide, so neighbors never touch),
+     * rows 3 apart so every stone fronts a walkable lane. Fills row by row outward from the
+     * yard center. Returns null when every plot inside the radius is taken.
+     */
     private static BlockPos nextPlot(ServerLevel level, Yard yard) {
-        for (int ring = 0; ring <= yard.radius / 2; ring++) {
-            for (int gx = -ring; gx <= ring; gx++) {
-                for (int gz = -ring; gz <= ring; gz++) {
-                    if (Math.max(Math.abs(gx), Math.abs(gz)) != ring) {
-                        continue;
-                    }
-                    double px = yard.x + gx * 2 + 0.5;
-                    double pz = yard.z + gz * 2 + 0.5;
+        int rows = Math.max(1, yard.radius / 3);
+        for (int r = 0; r <= rows; r++) {
+            for (int side = 0; side < (r == 0 ? 1 : 2); side++) {
+                int gz = r == 0 ? 0 : (side == 0 ? r : -r);
+                for (int gx = -yard.radius; gx <= yard.radius; gx++) {
+                    double px = yard.x + gx + 0.5;
+                    double pz = yard.z + gz * 3 + 0.5;
                     boolean taken = false;
                     for (Grave g : store().graves) {
-                        if (g.inGraveyard && g.dim.equals(yard.dim)
-                                && Math.abs(g.x - px) < 0.9 && Math.abs(g.z - pz) < 0.9) {
+                        if (g.inGraveyard && !g.heldByKeeper && g.dim.equals(yard.dim)
+                                && Math.abs(g.x - px) < 0.6 && Math.abs(g.z - pz) < 0.6) {
                             taken = true;
                             break;
                         }
@@ -293,6 +302,44 @@ public final class Graves {
             }
         }
         return null;
+    }
+
+    /**
+     * A full yard makes room: the oldest LOOTED stone is cleared first (a memorial, nothing
+     * lost); if none, the oldest unlooted grave is taken into the Gravekeeper's hold -- off the
+     * lawn, loot intact, claimable through his menu (fees and the public timer still apply).
+     * Abuse of a full yard is visual, never a broken mechanic.
+     */
+    private static boolean evictForSpace(MinecraftServer server, Yard yard) {
+        Grave victim = null;
+        for (boolean lootedPass : new boolean[]{true, false}) {
+            for (Grave g : store().graves) {
+                if (g.inGraveyard && !g.heldByKeeper && g.dim.equals(yard.dim)
+                        && yard.anchorId.equals(g.graveyardAnchor) && g.looted == lootedPass
+                        && (victim == null || g.diedAtMs < victim.diedAtMs)) {
+                    victim = g;
+                }
+            }
+            if (victim != null) {
+                break;
+            }
+        }
+        if (victim == null) {
+            return false;
+        }
+        ServerLevel level = levelOf(server, victim.dim);
+        if (level != null) {
+            killDisplays(level, victim);
+        }
+        if (victim.looted) {
+            store().graves.remove(victim);
+        } else {
+            victim.heldByKeeper = true;
+            victim.inGraveyard = false;
+            victim.graveyardAnchor = yard.anchorId; // remembers which keeper holds it
+            notifyOwner(server, victim, "The graveyard overflowed; the Gravekeeper holds your remains now.");
+        }
+        return true;
     }
 
     public static Yard nearestYard(Grave grave) {
@@ -359,21 +406,7 @@ public final class Graves {
                 StatBoards.addScore(player, "sanct_toll", fee);
             }
         }
-        ServerLevel level = (ServerLevel) player.level();
-        var ops = RegistryOps.create(JsonOps.INSTANCE, level.registryAccess());
-        int restored = 0;
-        for (JsonElement el : grave.items) {
-            var parsed = ItemStack.CODEC.parse(ops, el).result();
-            if (parsed.isEmpty()) {
-                continue;
-            }
-            ItemStack stack = parsed.get();
-            if (!player.getInventory().add(stack)) {
-                level.addFreshEntity(new ItemEntity(level, grave.x, grave.y + 0.6, grave.z, stack));
-            }
-            restored++;
-        }
-        grave.items.clear();
+        int restored = restoreItems(player, grave);
         grave.looted = true;
         spawnDisplays(level, grave); // headstone cracks
         save();
@@ -384,6 +417,66 @@ public final class Graves {
         if (!owner) {
             notifyOwner(level.getServer(), grave, "Your unclaimed grave was looted by " + player.getName().getString() + ".");
         }
+    }
+
+    /** Pour a grave's items into a player (overflow drops at their feet). Returns stack count. */
+    public static int restoreItems(ServerPlayer player, Grave grave) {
+        ServerLevel level = (ServerLevel) player.level();
+        var ops = RegistryOps.create(JsonOps.INSTANCE, level.registryAccess());
+        int restored = 0;
+        for (JsonElement el : grave.items) {
+            var parsed = ItemStack.CODEC.parse(ops, el).result();
+            if (parsed.isEmpty()) {
+                continue;
+            }
+            ItemStack stack = parsed.get();
+            if (!player.getInventory().add(stack)) {
+                level.addFreshEntity(new ItemEntity(level,
+                        player.getX(), player.getY() + 0.4, player.getZ(), stack));
+            }
+            restored++;
+        }
+        grave.items.clear();
+        return restored;
+    }
+
+    /** Owner (with fee) or, once public, anyone claims a keeper-held grave. */
+    public static int claimHeld(ServerPlayer player, String graveId, SanctuaryConfig cfg) {
+        Grave grave = byId(graveId);
+        Yard yard = yardNear(player, 32);
+        if (grave == null || !grave.heldByKeeper || grave.items.isEmpty() || yard == null
+                || !yard.anchorId.equals(grave.graveyardAnchor)) {
+            return 0;
+        }
+        boolean owner = grave.owner.equals(player.getUUID().toString());
+        if (!owner && !isPublic(grave)) {
+            return 0;
+        }
+        if (owner && cfg.graveClaimFeeFraction > 0) {
+            int fee = SurvivalLogic.respawnCostLevels(player.experienceLevel, cfg.graveClaimFeeFraction, 0, 0);
+            if (player.experienceLevel < fee) {
+                player.sendSystemMessage(Component.literal(
+                        "The gravekeeper asks " + fee + " levels you do not have.").withStyle(ChatFormatting.RED));
+                return 0;
+            }
+            if (fee > 0) {
+                player.giveExperienceLevels(-fee);
+                StatBoards.addScore(player, "sanct_toll", fee);
+            }
+        }
+        int restored = restoreItems(player, grave);
+        store().graves.remove(grave);
+        save();
+        player.sendSystemMessage(Component.literal(owner
+                ? "The keeper returns what was yours (" + restored + " stacks)."
+                : "The keeper shrugs and hands over " + grave.ownerName + "'s effects ("
+                        + restored + " stacks).")
+                .withStyle(owner ? ChatFormatting.LIGHT_PURPLE : ChatFormatting.RED));
+        if (!owner) {
+            notifyOwner(player.level().getServer(), grave,
+                    "Your keeper-held grave expired and was claimed by " + player.getName().getString() + ".");
+        }
+        return 1;
     }
 
     public static Grave byId(String id) {

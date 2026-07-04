@@ -39,10 +39,10 @@ public final class FeralEgg {
     /** Persistent bloodline-generation tag: {@code sanctuary_feral_gen_<n>} (never displayed). */
     private static final String GENERATION_TAG_PREFIX = "sanctuary_feral_gen_";
 
-    private static final String NAME = "Feral Egg";
+    private static final String NAME = FeralEggNames.NAME;
 
     /** Star glyph Minecraft's font renders crisply (same reasoning as the threat skulls). */
-    private static final String STAR = "★";
+    private static final String STAR = String.valueOf(FeralEggNames.STAR);
 
     /** How far a feral hen's influence reaches when an egg appears (blocks). */
     private static final double CONTAMINATION_RANGE = 1.0;
@@ -123,10 +123,9 @@ public final class FeralEgg {
             return 0;
         }
         for (Component line : lore.lines()) {
-            String text = line.getString();
-            if (!text.isEmpty() && text.length() <= 5
-                    && text.chars().allMatch(c -> c == STAR.charAt(0))) {
-                return text.length();
+            int stars = FeralEggNames.starsFromLoreLine(line.getString());
+            if (stars > 0) {
+                return stars;
             }
         }
         return 0;

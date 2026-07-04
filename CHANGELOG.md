@@ -2,6 +2,29 @@
 
 All notable changes to Sanctuary (formerly XP Vitality).
 
+## [Unreleased]
+
+### Testing — expanded pure-logic unit coverage (no behavior change)
+Extracted the game-independent time/string/int math still trapped in Minecraft-coupled classes
+into standalone, testable helpers (same pattern as `SurvivalLogic`), then had the coupled classes
+call the helpers. Pure refactor + tests — the jar behaves identically; each extraction is a
+call-through verified to return exactly what the inline code did.
+
+- **`grave/GraveLifecycle`** — the grave-timing predicates lifted out of `Graves`: `isPublic`,
+  memorial-decay eligibility, and drift eligibility (millis + config-value in, boolean out).
+- **`FeralEggNames`** — Feral Egg name/star-lore parsing lifted out of `FeralEgg`: `parseStars`,
+  the star-glyph line detector, and the lore-line star counter.
+- **`anchor/AnchorCapRules`** — the Warden-tier → anchor-cap progression lifted out of
+  `PlayerProgress`: required-tier-for-next-raise and the bounded one-step raise decision.
+- **`anchor/AnchorFuel`** — the fuel/upkeep math lifted out of `AnchorUpkeep` and
+  `AnchorState.PlacedAnchor`: exempt/active/hours-left, the bank cap, fed-expiry, and accepted-item
+  count.
+- **`RespawnLedger`** — the remaining death-ledger update rule lifted out of `RespawnChoice`:
+  decay (via `SurvivalLogic`) → milestone reset → accumulate the per-death surcharge.
+
+32 new boundary-focused JUnit tests across `GraveLifecycleTest`, `FeralEggNamesTest`,
+`AnchorCapRulesTest`, `AnchorFuelTest`, and `RespawnLedgerTest`.
+
 ## [0.7.0] — 2026-07-04
 
 ### Added — The crafted sanctuary

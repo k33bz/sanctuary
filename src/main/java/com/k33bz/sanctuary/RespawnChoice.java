@@ -110,16 +110,15 @@ public final class RespawnChoice {
         Ledger entry = ledger().computeIfAbsent(id, k -> new Ledger());
         long play = oldPlayer.getStats().getValue(Stats.CUSTOM.get(Stats.PLAY_TIME));
         double minutes = Math.max(0, play - entry.playTicks) / 20.0 / 60.0;
-        double e = SurvivalLogic.decayedEscalation(entry.escalation, minutes, cfg.respawnEscalationDecayPer10Min);
         int milestonesNow = SurvivalLogic.milestonesReached(oldPlayer.experienceLevel, cfg.milestonesArray());
-        if (milestonesNow > entry.milestones) {
-            e = 0.0; // a new milestone cleanses the death toll
-        }
-        entry.escalation = e + cfg.respawnEscalationPerDeath;
+        RespawnLedger.Update u = RespawnLedger.update(entry.escalation, minutes,
+                cfg.respawnEscalationDecayPer10Min, milestonesNow, entry.milestones,
+                cfg.respawnEscalationPerDeath);
+        entry.escalation = u.nextStored;
         entry.playTicks = play;
         entry.milestones = milestonesNow;
         save();
-        return e;
+        return u.priced;
     }
 
     /** Record where the player fell; called alongside {@link #onDeath}. */

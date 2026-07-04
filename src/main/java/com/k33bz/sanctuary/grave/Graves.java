@@ -216,8 +216,8 @@ public final class Graves {
 
     public static boolean isPublic(Grave grave) {
         SanctuaryConfig cfg = Sanctuary.CONFIG;
-        double hours = (System.currentTimeMillis() - grave.diedAtMs) / 3_600_000.0;
-        return !grave.looted && hours >= (cfg == null ? 48 : cfg.gravePublicHours);
+        double publicHours = cfg == null ? 48 : cfg.gravePublicHours;
+        return GraveLifecycle.isPublic(System.currentTimeMillis(), grave.diedAtMs, grave.looted, publicHours);
     }
 
     /** Real-time sweep: drift due graves into their nearest graveyard when chunks allow. */
@@ -232,12 +232,9 @@ public final class Graves {
             var it = store().graves.iterator();
             while (it.hasNext()) {
                 Grave g = it.next();
-                if (!g.looted || g.inGraveyard) {
-                    continue; // cemeteries keep their history; only wild litter decays
-                }
-                double days = (now - g.diedAtMs) / 86_400_000.0;
-                if (days < cfg.graveMemorialDecayDays) {
-                    continue;
+                if (!GraveLifecycle.isMemorialDecayDue(now, g.diedAtMs, g.looted, g.inGraveyard,
+                        cfg.graveMemorialDecayDays)) {
+                    continue; // cemeteries keep their history; only wild litter decays past the threshold
                 }
                 ServerLevel gl = levelOf(server, g.dim);
                 if (gl != null && gl.isLoaded(BlockPos.containing(g.x, g.y, g.z))) {
@@ -252,8 +249,8 @@ public final class Graves {
             }
         }
         for (Grave grave : store().graves) {
-            double hours = (now - grave.diedAtMs) / 3_600_000.0;
-            if (!grave.inGraveyard && !grave.heldByKeeper && !grave.looted && hours >= cfg.graveDriftHours) {
+            if (GraveLifecycle.isDriftDue(now, grave.diedAtMs, grave.looted, grave.inGraveyard,
+                    grave.heldByKeeper, cfg.graveDriftHours)) {
                 if (moveToYard(server, grave, null)) {
                     dirty = true;
                     notifyOwner(server, grave, "Your remains were carried to the sanctuary graveyard.");

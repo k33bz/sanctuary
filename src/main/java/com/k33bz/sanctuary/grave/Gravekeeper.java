@@ -229,6 +229,9 @@ public final class Gravekeeper {
                             }
                             Graves.moveToYard(server, grave, run.yard);
                             Graves.save();
+                            com.k33bz.sanctuary.metrics.GraveEventLog.record("summoned", grave.id,
+                                    grave.ownerName, grave.dim, grave.x, grave.y, grave.z,
+                                    grave.items.size(), null, false);
                         }
                         Graves.run(run.level, String.format(Locale.ROOT,
                                 "playsound minecraft:entity.allay.item_thrown neutral @a %.1f %.1f %.1f 1 0.8",

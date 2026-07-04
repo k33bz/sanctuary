@@ -110,6 +110,7 @@ public class Sanctuary implements ModInitializer {
         net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
             com.k33bz.sanctuary.metrics.KillMetrics.flush();
             com.k33bz.sanctuary.metrics.KillEventLog.close();
+            com.k33bz.sanctuary.metrics.GraveEventLog.close();
         });
     }
 
@@ -302,6 +303,7 @@ public class Sanctuary implements ModInitializer {
             com.k33bz.sanctuary.grave.Graves.sweep(server, cfg);
             com.k33bz.sanctuary.metrics.KillMetrics.flush(); // no-op unless new kills landed
             com.k33bz.sanctuary.metrics.KillEventLog.flush();
+            com.k33bz.sanctuary.metrics.GraveEventLog.flush();
         });
     }
 

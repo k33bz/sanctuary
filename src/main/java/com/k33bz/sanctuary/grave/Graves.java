@@ -151,6 +151,9 @@ public final class Graves {
         store().graves.add(grave);
         save();
         spawnDisplays((ServerLevel) player.level(), grave);
+        StatBoards.addScore(player, "sanct_graves", 1);
+        com.k33bz.sanctuary.metrics.GraveEventLog.record("created", grave.id, grave.ownerName,
+                grave.dim, grave.x, grave.y, grave.z, grave.items.size(), grave.ownerName, false);
         player.sendSystemMessage(Component.literal(String.format(Locale.ROOT,
                         "Your belongings rest in a grave at %d %d %d.", pos.getX(), pos.getY(), pos.getZ()))
                 .withStyle(ChatFormatting.LIGHT_PURPLE));
@@ -243,6 +246,8 @@ public final class Graves {
                             "particle minecraft:ash %.1f %.1f %.1f 0.3 0.5 0.3 0.01 20", g.x, g.y + 0.5, g.z));
                     it.remove();
                     dirty = true;
+                    com.k33bz.sanctuary.metrics.GraveEventLog.record("decayed", g.id, g.ownerName,
+                            g.dim, g.x, g.y, g.z, 0, null, false);
                 }
             }
         }
@@ -252,6 +257,9 @@ public final class Graves {
                 if (moveToYard(server, grave, null)) {
                     dirty = true;
                     notifyOwner(server, grave, "Your remains were carried to the sanctuary graveyard.");
+                    com.k33bz.sanctuary.metrics.GraveEventLog.record("drifted", grave.id,
+                            grave.ownerName, grave.dim, grave.x, grave.y, grave.z,
+                            grave.items.size(), null, false);
                 }
             } else if (!grave.looted && !grave.heldByKeeper && !grave.displaysFresh) {
                 ServerLevel level = levelOf(server, grave.dim);
@@ -381,6 +389,8 @@ public final class Graves {
             victim.heldByKeeper = true;
             victim.inGraveyard = false;
             victim.graveyardAnchor = yard.anchorId; // remembers which keeper holds it
+            com.k33bz.sanctuary.metrics.GraveEventLog.record("held", victim.id, victim.ownerName,
+                    victim.dim, victim.x, victim.y, victim.z, victim.items.size(), null, false);
             notifyOwner(server, victim, "The graveyard overflowed; the Gravekeeper holds your remains now.");
         }
         return true;
@@ -455,6 +465,11 @@ public final class Graves {
         grave.looted = true;
         spawnDisplays(level, grave); // headstone cracks
         save();
+        if (!owner) {
+            StatBoards.addScore(player, "sanct_robbed", 1);
+        }
+        com.k33bz.sanctuary.metrics.GraveEventLog.record("claimed", grave.id, grave.ownerName,
+                grave.dim, grave.x, grave.y, grave.z, restored, player.getName().getString(), !owner);
         player.sendSystemMessage(Component.literal(owner
                         ? "Your belongings return to you (" + restored + " stacks)."
                         : "You rob the grave of " + grave.ownerName + " (" + restored + " stacks).")
@@ -512,6 +527,11 @@ public final class Graves {
         int restored = restoreItems(player, grave);
         store().graves.remove(grave);
         save();
+        if (!owner) {
+            StatBoards.addScore(player, "sanct_robbed", 1);
+        }
+        com.k33bz.sanctuary.metrics.GraveEventLog.record("claimed", grave.id, grave.ownerName,
+                grave.dim, grave.x, grave.y, grave.z, restored, player.getName().getString(), !owner);
         player.sendSystemMessage(Component.literal(owner
                 ? "The keeper returns what was yours (" + restored + " stacks)."
                 : "The keeper shrugs and hands over " + grave.ownerName + "'s effects ("

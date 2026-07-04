@@ -176,6 +176,27 @@ public final class SanctuaryCommands {
                                     .executes(safe(ctx -> com.k33bz.sanctuary.grave.Gravekeeper.summon(
                                             ctx.getSource().getPlayerOrException(),
                                             StringArgumentType.getString(ctx, "id")))))));
+            // Ops: world-age danger pressure readout / re-zero (persisted epoch; external
+            // dashboards watch danger.epochTick in the config to lap leaderboard seasons).
+            dispatcher.register(Commands.literal("sanctuarydanger")
+                    .requires(Commands.<CommandSourceStack>hasPermission(Commands.LEVEL_GAMEMASTERS))
+                    .then(Commands.literal("status").executes(safe(ctx -> {
+                        long epoch = cfg().danger.epochTick;
+                        long now = ctx.getSource().getServer().overworld().getGameTime();
+                        double days = Math.max(0, now - epoch) / 24000.0;
+                        ctx.getSource().sendSuccess(() -> Component.literal(String.format(
+                                java.util.Locale.ROOT,
+                                "World-age pressure: %.1f in-game days since epoch (tick %d).",
+                                days, epoch)), false);
+                        return 1;
+                    })))
+                    .then(Commands.literal("reset").executes(safe(ctx -> {
+                        cfg().danger.epochTick = ctx.getSource().getServer().overworld().getGameTime();
+                        cfg().save();
+                        ctx.getSource().sendSuccess(() -> Component.literal(
+                                "Danger epoch re-zeroed and saved."), true);
+                        return 1;
+                    }))));
             // Ops: define the graveyard for the sanctuary you stand in.
             dispatcher.register(Commands.literal("sanctuarygraveyard")
                     .requires(Commands.<CommandSourceStack>hasPermission(Commands.LEVEL_GAMEMASTERS))

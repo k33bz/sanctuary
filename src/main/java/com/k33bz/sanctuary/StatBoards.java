@@ -45,6 +45,8 @@ public final class StatBoards {
             {"sanct_hatched", "Bloodline Hatches"},
             {"sanct_gen_best", "Best Bloodline Generation"},
             {"sanct_toll", "Respawn Toll (levels)"},
+            {"sanct_graves", "Graves Made"},
+            {"sanct_robbed", "Graves Robbed"},
     };
 
     public static final class Board {

@@ -7,7 +7,6 @@ real_time_clock
 villager_workstation_highlights
 wandering_trader_announcements
 xp_bottling
-graves
 silk_touch_budding_amethyst
 husks_drop_sand
 bat_membranes

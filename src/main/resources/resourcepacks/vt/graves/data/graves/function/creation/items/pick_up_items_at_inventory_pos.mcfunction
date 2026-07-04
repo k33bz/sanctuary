@@ -1,1 +1,0 @@
-$execute positioned $(x) $(y) $(z) run function graves:creation/items/pick_up_items

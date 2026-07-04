@@ -1,2 +1,0 @@
-$data modify storage graves:main creation.item.slot set from storage graves:main creation.pre_death_items[{index: $(pre_death_index)}].slot
-$data remove storage graves:main creation.pre_death_items[{index: $(pre_death_index)}]

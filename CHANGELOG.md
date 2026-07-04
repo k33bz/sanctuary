@@ -13,7 +13,7 @@ Ops consecrate yards with `/sanctuarygraveyard set [radius]` — grid plots, plu
 **Gravekeeper**: a still cleric whose dialog summons your loot-bearing graves from the wild or
 rival cemeteries (for a fee) — delivered by an **allay courier** that flies off, vanishes, and
 returns to settle the stone into the next open plot. Claiming from a yard costs a small toll;
-the free option is the walk. Do not enable the VT graves pack alongside (boot warning included).
+the free option is the walk.
 
 ### Added — Native [AFK] tag
 Idle players (no movement or camera turn for `afk.minutes`, default 5) get a gray **[AFK]**
@@ -55,7 +55,7 @@ Ledger persists in `config/sanctuary_deaths.json`. Vanilla clients get the full 
 same 26.x server-dialog system as the anchor menu.
 
 ### Added — Bundled Vanilla Tweaks (all opt-in)
-60 [Vanilla Tweaks](https://vanillatweaks.net/) datapacks + crafting tweaks now ship inside the
+59 [Vanilla Tweaks](https://vanillatweaks.net/) datapacks + crafting tweaks now ship inside the
 jar as built-in datapacks — **all disabled by default**, enabled individually and per world with
 vanilla `/datapack enable "sanctuary:vt/<name>"` (list them with `/datapack list available`).
 No separate downloads, no extra jars to keep updated.

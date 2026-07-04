@@ -58,13 +58,6 @@ public class Sanctuary implements ModInitializer {
         VanillaTweaksPacks.register();
         net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STARTED
                 .register(StatBoards::ensureObjectives);
-        net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STARTED.register(server -> {
-            if (CONFIG != null && CONFIG.gravesEnabled
-                    && server.getPackRepository().getSelectedIds().contains("sanctuary:vt/graves")) {
-                LOGGER.warn("[sanctuary] Native graves AND the VT graves pack are both active -- "
-                        + "disable one or death inventories can duplicate.");
-            }
-        });
         // System 10 -- right-clicks on headstones (claim/rob) and the Gravekeeper (summon menu).
         net.fabricmc.fabric.api.event.player.UseEntityCallback.EVENT.register(
                 (p, world, hand, entity, hit) -> {

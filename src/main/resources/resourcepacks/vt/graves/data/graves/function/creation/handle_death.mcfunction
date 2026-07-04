@@ -1,2 +1,0 @@
-function graves:creation/create_grave_maybe
-return 1

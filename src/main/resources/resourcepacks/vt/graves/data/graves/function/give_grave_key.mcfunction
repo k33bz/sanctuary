@@ -1,1 +1,0 @@
-give @s minecraft:tripwire_hook[minecraft:custom_data={graves:{grave_key:1b}},minecraft:item_name='Grave Key',minecraft:rarity='epic',minecraft:lore=[{italic:false,color:'gold',text:"Use this to forcibly open anyone's grave."}],minecraft:enchantment_glint_override=true]

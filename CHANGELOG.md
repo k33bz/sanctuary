@@ -4,6 +4,17 @@ All notable changes to Sanctuary (formerly XP Vitality).
 
 ## [0.6.0] — 2026-07-03
 
+### Added — Graves & Graveyards (System 10)
+Death seals your inventory into a **grave** at the death site — JSON-backed (despawn/hopper
+proof), headstone of block-display stone with your own shrunk head affixed on top, owner-only.
+After `grave.driftHours` (24h real time) it **drifts** to the nearest sanctuary graveyard;
+after `grave.publicHours` (48h) the label turns red and anyone may rob it. Looted stones crack.
+Ops consecrate yards with `/sanctuarygraveyard set [radius]` — grid plots, plus the
+**Gravekeeper**: a still cleric whose dialog summons your loot-bearing graves from the wild or
+rival cemeteries (for a fee) — delivered by an **allay courier** that flies off, vanishes, and
+returns to settle the stone into the next open plot. Claiming from a yard costs a small toll;
+the free option is the walk. Do not enable the VT graves pack alongside (boot warning included).
+
 ### Added — Native [AFK] tag
 Idle players (no movement or camera turn for `afk.minutes`, default 5) get a gray **[AFK]**
 prefix in the tab list and a quiet chat notice; any input clears it. No scoreboard teams

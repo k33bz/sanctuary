@@ -101,6 +101,12 @@ public final class SanctuaryCommands {
         num("respawn.minCostLevels", () -> cfg().respawnMinCostLevels, v -> cfg().respawnMinCostLevels = (int) Math.round(v), 0, 1000);
         num("respawn.escalationPerDeath", () -> cfg().respawnEscalationPerDeath, v -> cfg().respawnEscalationPerDeath = v, 0, 10);
         num("afk.minutes", () -> cfg().afkMinutes, v -> cfg().afkMinutes = v, 1, 120);
+        num("restless.minInsomniaDays", () -> cfg().restlessMinInsomniaDays, v -> cfg().restlessMinInsomniaDays = (int) Math.round(v), 1, 30);
+        num("restless.maxCount", () -> cfg().restlessMaxCount, v -> cfg().restlessMaxCount = (int) Math.round(v), 1, 10);
+        num("grave.driftHours", () -> cfg().graveDriftHours, v -> cfg().graveDriftHours = v, 0, 10000);
+        num("grave.publicHours", () -> cfg().gravePublicHours, v -> cfg().gravePublicHours = v, 0, 10000);
+        num("grave.claimFee", () -> cfg().graveClaimFeeFraction, v -> cfg().graveClaimFeeFraction = v, 0, 1);
+        num("grave.summonFee", () -> cfg().graveSummonFeeFraction, v -> cfg().graveSummonFeeFraction = v, 0, 1);
         num("respawn.escalationDecayPer10Min", () -> cfg().respawnEscalationDecayPer10Min, v -> cfg().respawnEscalationDecayPer10Min = v, 0, 10);
 
         bool("regen", () -> cfg().regenEnabled, b -> cfg().regenEnabled = b);
@@ -123,6 +129,8 @@ public final class SanctuaryCommands {
         bool("creeperTerrainProtection", () -> cfg().creeperTerrainProtection, b -> cfg().creeperTerrainProtection = b);
         bool("endermanClone", () -> cfg().endermanCloneNotSteal, b -> cfg().endermanCloneNotSteal = b);
         bool("afkTag", () -> cfg().afkTagEnabled, b -> cfg().afkTagEnabled = b);
+        bool("restless", () -> cfg().restlessEnabled, b -> cfg().restlessEnabled = b);
+        bool("graves", () -> cfg().gravesEnabled, b -> cfg().gravesEnabled = b);
     }
 
     public static void register() {
@@ -155,7 +163,77 @@ public final class SanctuaryCommands {
                                                     StringArgumentType.getString(ctx, "title")))))))
                     .then(Commands.literal("remove")
                             .executes(safe(ctx -> StatBoards.remove(ctx.getSource().getPlayerOrException())))));
+            // Player-level: backs the Gravekeeper dialog's summon buttons.
+            dispatcher.register(Commands.literal("sanctuarygrave")
+                    .then(Commands.literal("summon")
+                            .then(Commands.argument("id", StringArgumentType.word())
+                                    .executes(safe(ctx -> com.k33bz.sanctuary.grave.Gravekeeper.summon(
+                                            ctx.getSource().getPlayerOrException(),
+                                            StringArgumentType.getString(ctx, "id")))))));
+            // Ops: define the graveyard for the sanctuary you stand in.
+            dispatcher.register(Commands.literal("sanctuarygraveyard")
+                    .requires(Commands.<CommandSourceStack>hasPermission(Commands.LEVEL_GAMEMASTERS))
+                    .then(Commands.literal("set")
+                            .executes(safe(ctx -> graveyardSet(ctx, 0)))
+                            .then(Commands.argument("radius", com.mojang.brigadier.arguments.IntegerArgumentType.integer(4, 32))
+                                    .executes(safe(ctx -> graveyardSet(ctx,
+                                            com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(ctx, "radius"))))))
+                    .then(Commands.literal("remove")
+                            .executes(safe(SanctuaryCommands::graveyardRemove))));
         });
+    }
+
+    private static int graveyardSet(CommandContext<CommandSourceStack> ctx, int radius)
+            throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        net.minecraft.server.level.ServerPlayer player = ctx.getSource().getPlayerOrException();
+        SanctuaryConfig cfg = cfg();
+        if (Sanctuary.blocksBeyondNearestAnchor(cfg, player.getX(), player.getZ()) > 0) {
+            ctx.getSource().sendFailure(Component.literal("Graveyards belong inside a sanctuary."));
+            return 0;
+        }
+        String anchorId = "config";
+        double bestSq = Double.MAX_VALUE;
+        for (var a : com.k33bz.sanctuary.anchor.AnchorState.get().anchors) {
+            double dx = a.x - player.getX(), dz = a.z - player.getZ();
+            if (dx * dx + dz * dz < bestSq) {
+                bestSq = dx * dx + dz * dz;
+                anchorId = a.id != null ? a.id : "legacy";
+            }
+        }
+        var store = com.k33bz.sanctuary.grave.Graves.store();
+        String fAnchor = anchorId;
+        store.yards.removeIf(y -> y.anchorId.equals(fAnchor));
+        var yard = new com.k33bz.sanctuary.grave.Graves.Yard();
+        yard.anchorId = anchorId;
+        yard.dim = player.level().dimension().identifier().toString();
+        yard.x = player.blockPosition().getX();
+        yard.y = player.blockPosition().getY();
+        yard.z = player.blockPosition().getZ();
+        yard.radius = radius > 0 ? radius : cfg.graveyardDefaultRadius;
+        store.yards.add(yard);
+        com.k33bz.sanctuary.grave.Graves.save();
+        com.k33bz.sanctuary.grave.Gravekeeper.spawnKeeper(
+                (net.minecraft.server.level.ServerLevel) player.level(), yard);
+        ctx.getSource().sendSuccess(() -> Component.literal(
+                "Graveyard consecrated (r" + yard.radius + "). The Gravekeeper has arrived."), true);
+        return 1;
+    }
+
+    private static int graveyardRemove(CommandContext<CommandSourceStack> ctx)
+            throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        net.minecraft.server.level.ServerPlayer player = ctx.getSource().getPlayerOrException();
+        var yard = com.k33bz.sanctuary.grave.Graves.yardNear(player, 32);
+        if (yard == null) {
+            ctx.getSource().sendFailure(Component.literal("No graveyard within 32 blocks."));
+            return 0;
+        }
+        com.k33bz.sanctuary.grave.Graves.store().yards.remove(yard);
+        com.k33bz.sanctuary.grave.Graves.save();
+        com.k33bz.sanctuary.grave.Graves.run((net.minecraft.server.level.ServerLevel) player.level(),
+                "kill @e[type=minecraft:villager,tag=" + com.k33bz.sanctuary.grave.Gravekeeper.KEEPER_TAG
+                        + ",distance=..40]");
+        ctx.getSource().sendSuccess(() -> Component.literal("Graveyard deconsecrated."), true);
+        return 1;
     }
 
     /** Feed the nearest anchor from the executing player's inventory (dialog button backend). */

@@ -84,6 +84,19 @@ public class SanctuaryConfig {
     public boolean afkTagEnabled = true;
     public double afkMinutes = 5.0;
 
+    // System 10 -- graves & graveyards. Death seals the inventory into a grave (JSON-backed,
+    // despawn-proof). After graveDriftHours (real time) it drifts to the nearest sanctuary
+    // graveyard (/sanctuarygraveyard set); after gravePublicHours anyone may loot it. Claiming
+    // your own grave from a graveyard costs graveClaimFeeFraction of your levels; the
+    // Gravekeeper NPC summons remote loot-bearing graves for graveSummonFeeFraction. Never
+    // enable the bundled VT graves pack alongside this.
+    public boolean gravesEnabled = true;
+    public double graveDriftHours = 24.0;
+    public double gravePublicHours = 48.0;
+    public double graveClaimFeeFraction = 0.02;
+    public double graveSummonFeeFraction = 0.05;
+    public int graveyardDefaultRadius = 8;
+
     public boolean creeperTerrainProtection = true;
     public boolean endermanCloneNotSteal = true;
 

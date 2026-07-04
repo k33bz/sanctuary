@@ -406,7 +406,7 @@ public final class Graves {
         return server.getLevel(ResourceKey.create(Registries.DIMENSION, Identifier.parse(dim)));
     }
 
-    static void run(ServerLevel level, String command) {
+    public static void run(ServerLevel level, String command) {
         var server = level.getServer();
         server.getCommands().performPrefixedCommand(
                 server.createCommandSourceStack().withSuppressedOutput(), command);

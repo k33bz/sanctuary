@@ -30,6 +30,8 @@ jobs:
           echo "== Level time"
           javap -cp "$J" net.minecraft.world.level.Level 2>/dev/null | grep -iE "time|night|day"
           javap -cp "$J" net.minecraft.world.level.storage.LevelData 2>/dev/null | grep -iE "time"
+          echo "== GameRules location"
+          unzip -l "$J" 2>/dev/null | grep -iE "GameRules(\$|\.class)" | head -5
           echo "== Scoreboard"
           javap -cp "$J" net.minecraft.world.scores.Scoreboard 2>/dev/null | grep -iE "objective|score"
           echo "== Objective/ScoreAccess"

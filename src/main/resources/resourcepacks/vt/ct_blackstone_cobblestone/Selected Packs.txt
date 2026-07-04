@@ -1,0 +1,4 @@
+Vanilla Tweaks Crafting Tweaks
+Version: 26.2
+Packs:
+	blackstone cobblestone

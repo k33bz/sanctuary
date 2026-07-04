@@ -1,0 +1,1 @@
+return run gamerule minecraft:reduced_debug_info

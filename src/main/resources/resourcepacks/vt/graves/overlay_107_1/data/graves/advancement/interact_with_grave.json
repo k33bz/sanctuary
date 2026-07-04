@@ -1,0 +1,20 @@
+{
+    "criteria": {
+        "hurt": {
+            "trigger": "minecraft:player_interacted_with_entity",
+            "conditions": {
+                "entity": {
+                    "minecraft:entity_type": "minecraft:interaction",
+                    "minecraft:entity_tags": {
+                        "any_of": [
+                            "graves.grave"
+                        ]
+                    }
+                }
+            }
+        }
+    },
+    "rewards": {
+        "function": "graves:opening/interact_with_grave"
+    }
+}

@@ -1,0 +1,11 @@
+{
+	"display": {
+		"icon": {"id": "minecraft:ender_chest"},
+		"title": "Ender Chest Always Drops",
+		"description": {"text":"Gone are the days of accidentally mining your ender chest with the wrong pickaxe. Now it drops without Silk Touch.","color":"gold"},
+		"show_toast": false,
+		"announce_to_chat": false
+	},
+	"parent": "vanillatweaks:root",
+	"criteria": {"tick": {"trigger": "minecraft:tick"}}
+}

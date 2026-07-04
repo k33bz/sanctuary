@@ -28,7 +28,7 @@ Ledger persists in `config/sanctuary_deaths.json`. Vanilla clients get the full 
 same 26.x server-dialog system as the anchor menu.
 
 ### Added — Bundled Vanilla Tweaks (all opt-in)
-20 [Vanilla Tweaks](https://vanillatweaks.net/) datapacks + crafting tweaks now ship inside the
+64 [Vanilla Tweaks](https://vanillatweaks.net/) datapacks + crafting tweaks now ship inside the
 jar as built-in datapacks — **all disabled by default**, enabled individually and per world with
 vanilla `/datapack enable "sanctuary:vt/<name>"` (list them with `/datapack list available`).
 No separate downloads, no extra jars to keep updated.

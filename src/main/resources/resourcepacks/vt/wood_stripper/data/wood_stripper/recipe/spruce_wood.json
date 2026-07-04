@@ -1,0 +1,5 @@
+{
+    "type": "minecraft:stonecutting",
+    "ingredient": "minecraft:spruce_wood",
+    "result": "minecraft:stripped_spruce_wood"
+}

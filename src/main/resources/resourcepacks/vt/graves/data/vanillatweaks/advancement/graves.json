@@ -1,0 +1,11 @@
+{
+    "display": {
+        "icon": {"id": "minecraft:stone_brick_wall"},
+        "title": "Graves                      ",
+        "description": ["",{"text":"Retrieve your items and/or XP dropped on death from your grave by right-clicking or left-clicking it.\n\n","color":"gold"},{"text":"Enter","color":"green"},{"text":" ","color":"gold"},{"text":"/trigger graves","color":"yellow"},{"text":" for your grave list.\n\n","color":"gold"},{"text":"Enter","color":"green"},{"text":" ","color":"gold"},{"text":"/function graves:config","color":"yellow"},{"text":" for config options and admin tools.","color":"gold"}],
+        "show_toast": false,
+        "announce_to_chat": false
+    },
+    "parent": "vanillatweaks:root",
+    "criteria": {"tick": {"trigger": "minecraft:tick"}}
+}

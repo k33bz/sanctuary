@@ -23,10 +23,12 @@ claim. Timeline in **real hours**:
 
 | Age | State |
 |---|---|
-| 0–24h | at the death site, owner-only |
-| 24h | **drifts** to the nearest sanctuary graveyard (small claim fee applies there) |
-| 48h | label turns red — **anyone may rob it**; robbed stones crack |
-| 14 days (looted only) | the cracked memorial crumbles to ash — loot never decays |
+| 0–48h | at the death site, owner-only |
+| 48h | label turns red — **anyone may rob it** where it fell; robbed stones crack |
+| 14 days | robbed **wild** stones crumble to ash (cemetery stones never decay) |
+| 21 days | a still-unlooted grave **drifts** to the nearest sanctuary graveyard (claim fee applies there) |
+
+Loot never decays — timers only ever move it or expose it, never delete it.
 
 ## Graveyards & the Gravekeeper
 

@@ -229,8 +229,8 @@ public final class Graves {
             var it = store().graves.iterator();
             while (it.hasNext()) {
                 Grave g = it.next();
-                if (!g.looted) {
-                    continue;
+                if (!g.looted || g.inGraveyard) {
+                    continue; // cemeteries keep their history; only wild litter decays
                 }
                 double days = (now - g.diedAtMs) / 86_400_000.0;
                 if (days < cfg.graveMemorialDecayDays) {

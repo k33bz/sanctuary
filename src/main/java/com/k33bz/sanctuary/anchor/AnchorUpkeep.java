@@ -109,16 +109,14 @@ public final class AnchorUpkeep {
             return;
         }
         count = Math.max(1, Math.min(count, stack.getCount()));
-        long base = Math.max(anchor.expiry, now);
-        long cap = now + (long) (cfg.anchorMaxFuelHours * 72000.0);
-        long fed = Math.min(cap, base + (long) (worth * count * 72000.0));
+        long base = AnchorFuel.baseTick(anchor.expiry, now);
+        long fed = AnchorFuel.fedExpiry(anchor.expiry, now, worth, count, cfg.anchorMaxFuelHours);
         if (fed <= base) {
             player.sendOverlayMessage(Component.literal("The sanctuary can hold no more power.")
                     .withStyle(ChatFormatting.YELLOW));
             return;
         }
-        int accepted = (int) Math.ceil(count * Math.min(1.0, (fed - base) / Math.max(1.0, worth * count * 72000.0)));
-        accepted = Math.max(1, Math.min(count, accepted));
+        int accepted = AnchorFuel.acceptedItems(fed, base, worth, count);
         anchor.expiry = fed;
         AnchorState.get().save();
         stack.shrink(accepted);

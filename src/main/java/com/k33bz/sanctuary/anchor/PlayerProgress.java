@@ -54,19 +54,18 @@ public final class PlayerProgress {
      * (tier 0+), each following raise the next tier up, clamped at Nightmare (4).
      */
     public static int requiredTierForNextRaise(String uuid, int base) {
-        int raises = capOf(uuid, base) - base;
-        return Math.min(4, raises);
+        return AnchorCapRules.requiredTierForRaise(capOf(uuid, base), base);
     }
 
     /** Attempt a Warden-kill raise. Returns the new cap, or -1 if nothing changed. */
     public static int tryRaise(String uuid, int killTier, int base, int max) {
-        int cap = capOf(uuid, base);
-        if (cap >= max || killTier < requiredTierForNextRaise(uuid, base)) {
+        int newCap = AnchorCapRules.raisedCap(capOf(uuid, base), killTier, base, max);
+        if (newCap == AnchorCapRules.NO_RAISE) {
             return -1;
         }
-        caps().put(uuid, cap + 1);
+        caps().put(uuid, newCap);
         save();
-        return cap + 1;
+        return newCap;
     }
 
     private static Map<String, Integer> load() {

@@ -48,16 +48,16 @@ public class AnchorState {
         }
 
         public boolean isExempt() {
-            return expiry <= 0L;
+            return AnchorFuel.isExempt(expiry);
         }
 
         public boolean isActive(long now) {
-            return isExempt() || expiry > now;
+            return AnchorFuel.isActive(expiry, now);
         }
 
         /** Hours of fuel remaining ({@code Double.MAX_VALUE} if exempt). */
         public double hoursLeft(long now) {
-            return isExempt() ? Double.MAX_VALUE : Math.max(0.0, (expiry - now) / 72000.0);
+            return AnchorFuel.hoursLeft(expiry, now);
         }
     }
 

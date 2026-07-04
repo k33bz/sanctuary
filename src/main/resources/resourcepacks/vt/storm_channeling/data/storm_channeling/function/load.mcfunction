@@ -1,0 +1,1 @@
+scoreboard objectives add storm_channeling.dummy dummy

@@ -78,6 +78,12 @@ public class SanctuaryConfig {
     // landscape and world-gen structures never crater, your doorstep still can. Endermen: they
     // carry a CLONE of a block instead of removing it (worst case: a stray dirt block planted
     // somewhere). Both server-side; vanilla clients see it all natively.
+    // AFK tagging: idle players (no movement or camera turn for afkMinutes) get an [AFK]
+    // prefix in the tab list plus a quiet chat notice. Team-color friendly (no scoreboard
+    // teams touched), unlike the VT afk pack.
+    public boolean afkTagEnabled = true;
+    public double afkMinutes = 5.0;
+
     public boolean creeperTerrainProtection = true;
     public boolean endermanCloneNotSteal = true;
 

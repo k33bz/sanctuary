@@ -1,0 +1,2 @@
+advancement revoke @s only storm_channeling:using_trident
+schedule function storm_channeling:check_tridents 1t

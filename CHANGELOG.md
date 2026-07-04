@@ -4,6 +4,16 @@ All notable changes to Sanctuary (formerly XP Vitality).
 
 ## [0.6.0] — 2026-07-03
 
+### Added — Mob-griefing refinements
+- **Creeper terrain mercy** (`creeperTerrainProtection`, on): creeper blasts hurt entities at
+  full strength, but the only blocks that ever break are **player-placed doors and their
+  threshold** (`frameRadius`) — same registry as frame smashing. The world never craters;
+  your doorstep still breaches. TNT/ghasts/beds/crystals untouched.
+- **Endermen clone, don't steal** (`endermanCloneNotSteal`, on): the world keeps its block;
+  the enderman carries away a copy (worst case it plants a stray mundane block later).
+  Both replace the blunt VT anti-grief packs with siege-aware versions — the VT packs remain
+  bundled for servers that want total protection instead.
+
 ### Added — Stat boards (holographic leaderboards)
 `/sanctuaryboard add <objective> [title]` (ops) mounts a fixed text-display leaderboard facing
 you — top 10 of ANY scoreboard objective, refreshed every 5s, persisted across restarts

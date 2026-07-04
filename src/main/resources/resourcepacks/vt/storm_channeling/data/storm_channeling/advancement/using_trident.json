@@ -1,0 +1,33 @@
+{
+    "criteria": {
+        "using_trident": {
+            "trigger": "minecraft:using_item",
+            "conditions": {
+                "player": [
+                    {
+                        "condition": "minecraft:weather_check",
+                        "thundering": false
+                    }
+                ],
+                "item": {
+                    "items": "minecraft:trident",
+                    "predicates": {
+                        "minecraft:damage": {
+                            "durability": {
+                                "min": 151
+                            }
+                        },
+                        "minecraft:enchantments": [
+                            {
+                                "enchantments": "minecraft:channeling"
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+    },
+    "rewards": {
+        "function": "storm_channeling:using_trident"
+    }
+}

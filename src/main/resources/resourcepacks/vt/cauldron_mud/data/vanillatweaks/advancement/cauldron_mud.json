@@ -1,0 +1,11 @@
+{
+	"display": {
+		"icon": {"id": "minecraft:mud"},
+		"title": "Cauldron Mud",
+		"description": {"text":"Drop dirt into a water cauldron to instantly convert all of it to mud.","color":"gold"},
+		"show_toast": false,
+		"announce_to_chat": false
+	},
+	"parent": "vanillatweaks:root",
+	"criteria": {"tick": {"trigger": "minecraft:tick"}}
+}

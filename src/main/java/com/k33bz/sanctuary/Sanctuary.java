@@ -76,7 +76,10 @@ public class Sanctuary implements ModInitializer {
         com.k33bz.sanctuary.anchor.AnchorUpkeep.register();
         // Forget zone tracking on disconnect so the next login re-announces the player's zone.
         net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents.DISCONNECT.register(
-                (handler, server) -> MobDifficulty.clearPlayer(handler.player.getUUID()));
+                (handler, server) -> {
+                    MobDifficulty.clearPlayer(handler.player.getUUID());
+                    AfkTracker.forget(handler.player.getUUID());
+                });
         SanctuaryCommands.register();
         // Final flush/close of the metrics stores on clean shutdown.
         net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
@@ -266,6 +269,7 @@ public class Sanctuary implements ModInitializer {
                     MobDifficulty.tickParticles(serverLevel, player, cfg);
                 }
                 MobDifficulty.tickBoundary(player, cfg);
+                AfkTracker.tick(player, cfg);
             }
             AnchorInteraction.pulseAnchors(server); // focus pulse at active anchors
             com.k33bz.sanctuary.anchor.AnchorUpkeep.tick(server, cfg);

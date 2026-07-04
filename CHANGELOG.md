@@ -4,6 +4,12 @@ All notable changes to Sanctuary (formerly XP Vitality).
 
 ## [0.6.0] — 2026-07-03
 
+### Added — Native [AFK] tag
+Idle players (no movement or camera turn for `afk.minutes`, default 5) get a gray **[AFK]**
+prefix in the tab list and a quiet chat notice; any input clears it. No scoreboard teams
+touched, so it stacks cleanly with the bundled *name colors* pack — the reason VT's own afk
+display pack couldn't be used. Toggle `afkTag`.
+
 ### Added — Mob-griefing refinements
 - **Creeper terrain mercy** (`creeperTerrainProtection`, on): creeper blasts hurt entities at
   full strength, but the only blocks that ever break are **player-placed doors and their
@@ -38,7 +44,11 @@ Ledger persists in `config/sanctuary_deaths.json`. Vanilla clients get the full 
 same 26.x server-dialog system as the anchor menu.
 
 ### Added — Bundled Vanilla Tweaks (all opt-in)
+<<<<<<< HEAD
 18 [Vanilla Tweaks](https://vanillatweaks.net/) datapacks + crafting tweaks now ship inside the
+=======
+60 [Vanilla Tweaks](https://vanillatweaks.net/) datapacks + crafting tweaks now ship inside the
+>>>>>>> 397cccb (User-curated VT set (37 dp) + bat membranes; native [AFK] tab tag)
 jar as built-in datapacks — **all disabled by default**, enabled individually and per world with
 vanilla `/datapack enable "sanctuary:vt/<name>"` (list them with `/datapack list available`).
 No separate downloads, no extra jars to keep updated.

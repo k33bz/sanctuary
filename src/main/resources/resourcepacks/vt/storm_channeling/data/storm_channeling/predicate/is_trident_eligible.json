@@ -1,0 +1,30 @@
+{
+    "condition": "minecraft:all_of",
+    "terms": [
+        {
+            "condition": "minecraft:inverted",
+            "term": {
+                "condition": "minecraft:location_check",
+                "predicate": {"light": {"min": 0}}
+            }
+        },
+        {"condition": "minecraft:weather_check", "thundering": false},
+        {
+            "condition": "minecraft:entity_properties",
+            "entity": "this",
+            "predicate": {
+                "movement": {"y": {"min": 0.01}},
+                "slots": {
+                    "contents": {
+                        "predicates": {
+                            "minecraft:damage": {"durability": {"min": 151}},
+                            "minecraft:enchantments": [
+                                {"enchantments": "minecraft:channeling"}
+                            ]
+                        }
+                    }
+                }
+            }
+        }
+    ]
+}

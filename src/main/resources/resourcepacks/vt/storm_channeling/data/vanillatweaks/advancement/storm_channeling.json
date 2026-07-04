@@ -1,0 +1,25 @@
+{
+    "display": {
+        "icon": {
+            "id": "minecraft:trident",
+            "components": {
+                "minecraft:enchantments": {
+                    "minecraft:channeling": 1
+                }
+            }
+        },
+        "title": "Storm Channeling      ",
+        "description": {
+            "text": "Start a thunderstorm by throwing a Channeling trident upward from the top of the world, consuming 150 (60%) durability.",
+            "color": "gold"
+        },
+        "show_toast": false,
+        "announce_to_chat": false
+    },
+    "parent": "vanillatweaks:root",
+    "criteria": {
+        "tick": {
+            "trigger": "minecraft:tick"
+        }
+    }
+}

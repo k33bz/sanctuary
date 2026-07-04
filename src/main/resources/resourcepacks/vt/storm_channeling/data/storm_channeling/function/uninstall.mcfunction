@@ -1,0 +1,4 @@
+schedule clear storm_channeling:check_tridents
+schedule clear storm_channeling:clear_cooldown
+scoreboard objectives remove storm_channeling.dummy
+data remove storage storm_channeling:main cooldown

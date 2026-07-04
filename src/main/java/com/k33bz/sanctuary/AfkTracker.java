@@ -76,7 +76,7 @@ public final class AfkTracker {
     private static void announce(ServerPlayer player, boolean nowAfk) {
         var server = player.level().getServer();
         server.getPlayerList().broadcastSystemMessage(Component.literal(
-                        "* " + player.getGameProfile().getName() + (nowAfk ? " is now AFK" : " is back"))
+                        "* " + player.getName().getString() + (nowAfk ? " is now AFK" : " is back"))
                 .withStyle(ChatFormatting.GRAY, ChatFormatting.ITALIC), false);
         // Re-send this player's tab entry so the [AFK] prefix (from the mixin) shows/clears.
         server.getPlayerList().broadcastAll(new ClientboundPlayerInfoUpdatePacket(

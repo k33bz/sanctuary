@@ -2,6 +2,35 @@
 
 All notable changes to Sanctuary (formerly XP Vitality).
 
+## [0.7.0] — 2026-07-04
+
+### Added — The crafted sanctuary
+A **build-it ritual** alternative to lucky Sanctuary Crystal drops, in the mod's established
+ritual idiom (structure + trigger block + validity check + consumed components + dramatic
+effect + spawned result). It feeds the existing anchor system — the result is a normal Sanctuary
+Crystal, so both paths converge.
+
+- **Wild Essence** — a new textured player head (a glowing ender-eye), anvil-proof by profile
+  name exactly like the Sanctuary Crystal. A **ritual reagent**, not an anchor. Give with
+  `/sanctuary essence give`.
+- **Drops.** A **Warden** kill now *guarantees* 1 Wild Essence (pairs with the existing
+  Warden→anchor-cap attunement — one fight, both rewards). Other hostiles drop it by a
+  tier-scaled chance, tier 2+ (Savage+) only: `wildEssenceChanceSavage` / `Ferocious` /
+  `Nightmare` (defaults **0.005 / 0.02 / 0.08**). Toggle `wildEssence`; disable all of it with
+  the same toggle.
+- **The ritual.** Place a **conduit on a beacon**, a **dragon egg on the conduit**, and **2
+  sponges** within 2 blocks — while holding **1 Wild Essence + 2 phantom membranes** in your
+  inventory. Placing the conduit *or* the capstone dragon egg fires the check. On success the
+  beacon, conduit, dragon egg, and 2 sponges vanish, the reagents are consumed, a flash +
+  end-rod + beacon/conduit sound plays, and you receive a **Sanctuary Crystal**. Missing a piece
+  shows an actionbar hint and touches nothing.
+- **Crafting-only servers.** The drop path stays (`crystalDropChance`); set `crystalDropChance=0`
+  to make the ritual the **only** route to new sanctuaries.
+
+New config: `wildEssenceEnabled`, `wildEssenceChanceSavage/Ferocious/Nightmare`
+(live-tunable: `essence.chanceSavage` etc.). Docs: ANCHORS.md gains "Crafting a sanctuary";
+MECHANICS.md gains Wild Essence, the ritual recipe, and the drop tables.
+
 ## [0.6.1] — 2026-07-04
 
 ### Added — Dialog input controls (26.x native)

@@ -136,6 +136,14 @@ public class SanctuaryConfig {
     public double anchorLabelHeight = 1.6;   // height of the label above the crystal
     public int crystalDropMinTier = 3;       // Ferocious+ mobs may drop a crystal
     public double crystalDropChance = 0.03;  // per qualifying player-kill
+    // Wild Essence — a ritual reagent (see the crafted-sanctuary ritual). A Warden kill ALWAYS
+    // yields 1 (pairs with the Warden -> anchor-cap attunement: one fight, both rewards). Other
+    // hostiles drop it by chance, only from tier 2+ (Savage and up), scaling with threat tier.
+    // Set crystalDropChance=0 to make the ritual the ONLY path to new sanctuaries.
+    public boolean wildEssenceEnabled = true;
+    public double wildEssenceChanceSavage = 0.005;     // tier 2
+    public double wildEssenceChanceFerocious = 0.02;   // tier 3
+    public double wildEssenceChanceNightmare = 0.08;   // tier 4
     // Per-player anchor cap: everyone starts able to bind ONE sanctuary. Each raise demands a
     // Warden kill of the next tier up (any Warden -> cap 2, Feral+ -> 3, Savage+ -> 4, ... to
     // Nightmare), bounded by anchorCapMax unless an admin sets a player's cap directly

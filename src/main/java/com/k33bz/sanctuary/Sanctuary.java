@@ -178,9 +178,9 @@ public class Sanctuary implements ModInitializer {
                 return;
             }
             int tier = MobDifficulty.tierOf(mob, cfg.mobScaling);
+            boolean isWarden = mob instanceof net.minecraft.world.entity.monster.warden.Warden;
             // Warden kills attune players to bind more sanctuaries (any Warden, then Feral+, ...).
-            if (mob instanceof net.minecraft.world.entity.monster.warden.Warden
-                    && source.getEntity() instanceof ServerPlayer slayer) {
+            if (isWarden && source.getEntity() instanceof ServerPlayer slayer) {
                 int newCap = com.k33bz.sanctuary.anchor.PlayerProgress.tryRaise(
                         slayer.getUUID().toString(), Math.max(0, tier), cfg.anchorCapBase, cfg.anchorCapMax);
                 if (newCap > 0) {
@@ -190,6 +190,23 @@ public class Sanctuary implements ModInitializer {
                             .withStyle(net.minecraft.ChatFormatting.LIGHT_PURPLE));
                     LOGGER.info("[sanctuary] {} attuned to anchor cap {} (tier-{} warden)",
                             slayer.getGameProfile().name(), newCap, tier);
+                }
+            }
+            // Wild Essence: guaranteed from a Warden (pairs with the cap attunement above); from
+            // other tier-2+ hostiles by a tier-scaled chance. It's a ritual reagent, not an anchor.
+            if (cfg.wildEssenceEnabled) {
+                double essenceChance = isWarden ? 1.0 : switch (tier) {
+                    case 2 -> cfg.wildEssenceChanceSavage;
+                    case 3 -> cfg.wildEssenceChanceFerocious;
+                    case 4 -> cfg.wildEssenceChanceNightmare;
+                    default -> 0.0;
+                };
+                if (essenceChance > 0.0 && mob.getRandom().nextDouble() < essenceChance) {
+                    Block.popResource(level, mob.blockPosition(),
+                            com.k33bz.sanctuary.anchor.WildEssence.create());
+                    if (isWarden) {
+                        LOGGER.info("[sanctuary] A Warden yielded Wild Essence");
+                    }
                 }
             }
             if (tier < cfg.crystalDropMinTier

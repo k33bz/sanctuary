@@ -56,8 +56,16 @@ public class Sanctuary implements ModInitializer {
     public void onInitialize() {
         CONFIG = SanctuaryConfig.load();
         VanillaTweaksPacks.register();
+        // The crafted-sanctuary chain: two component-aware special recipes (Raw Wild Membrane;
+        // Sanctuary Crystal) whose serializers must be registered before datapacks load.
+        com.k33bz.sanctuary.anchor.SanctuaryRecipes.register();
         net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STARTED
                 .register(StatBoards::ensureObjectives);
+        // Cache the fire-resistant component (built from the is_fire damage tag) once registries
+        // exist, so a Raw Wild Membrane's item entity can sit in lava while it tempers.
+        net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STARTED
+                .register(server -> com.k33bz.sanctuary.anchor.WildMembrane
+                        .primeFireResistance(server.registryAccess()));
         // System 10 -- right-clicks on headstones (claim/rob) and the Gravekeeper (summon menu).
         net.fabricmc.fabric.api.event.player.UseEntityCallback.EVENT.register(
                 (p, world, hand, entity, hit) -> {
@@ -192,15 +200,13 @@ public class Sanctuary implements ModInitializer {
                             slayer.getGameProfile().name(), newCap, tier);
                 }
             }
-            // Wild Essence: guaranteed from a Warden (pairs with the cap attunement above); from
-            // other tier-2+ hostiles by a tier-scaled chance. It's a ritual reagent, not an anchor.
+            // Wild Essence: the raw reagent of the crafted-sanctuary chain. A Warden always yields
+            // one (pairs with the cap attunement above); otherwise ONLY the top scaling tier
+            // (Nightmare / tier 4) drops it, by chance. There is NO Sanctuary Crystal mob-drop —
+            // the crystal is craft-only as of 0.8.0.
             if (cfg.wildEssenceEnabled) {
-                double essenceChance = isWarden ? 1.0 : switch (tier) {
-                    case 2 -> cfg.wildEssenceChanceSavage;
-                    case 3 -> cfg.wildEssenceChanceFerocious;
-                    case 4 -> cfg.wildEssenceChanceNightmare;
-                    default -> 0.0;
-                };
+                double essenceChance = isWarden ? cfg.wardenEssenceChance
+                        : (tier >= MobDifficulty.MAX_TIER ? cfg.nightmareEssenceChance : 0.0);
                 if (essenceChance > 0.0 && mob.getRandom().nextDouble() < essenceChance) {
                     Block.popResource(level, mob.blockPosition(),
                             com.k33bz.sanctuary.anchor.WildEssence.create());
@@ -209,14 +215,6 @@ public class Sanctuary implements ModInitializer {
                     }
                 }
             }
-            if (tier < cfg.crystalDropMinTier
-                    || mob.getRandom().nextDouble() >= cfg.crystalDropChance) {
-                return;
-            }
-            Block.popResource(level, mob.blockPosition(),
-                    com.k33bz.sanctuary.anchor.SanctuaryCrystal.create());
-            LOGGER.info("[sanctuary] A tier-{} {} dropped a Sanctuary Crystal", tier,
-                    mob.getType().getDescription().getString());
         });
     }
 
@@ -316,6 +314,7 @@ public class Sanctuary implements ModInitializer {
                 AfkTracker.tick(player, cfg);
             }
             AnchorInteraction.pulseAnchors(server); // focus pulse at active anchors
+            com.k33bz.sanctuary.anchor.LavaCauldronCook.sweep(server, cfg); // temper raw membranes
             com.k33bz.sanctuary.anchor.AnchorUpkeep.tick(server, cfg);
             com.k33bz.sanctuary.grave.Graves.sweep(server, cfg);
             com.k33bz.sanctuary.metrics.KillMetrics.flush(); // no-op unless new kills landed

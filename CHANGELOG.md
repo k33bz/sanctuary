@@ -2,6 +2,42 @@
 
 All notable changes to Sanctuary (formerly XP Vitality).
 
+## [0.8.0] — 2026-07-05
+
+### Changed — the Sanctuary Crystal is now a crafting chain, not a placed altar
+The old placed-altar ritual (`SanctuaryRitual` — beacon + conduit + dragon egg + 2 sponge +
+inventory reagents, fired by a block-place) is **retired**. The crystal is now made at a crafting
+table through two **component-aware special recipes** plus a lava temper. The recipes are
+`CustomRecipe` subclasses with registered `RecipeSerializer`s (the mechanism vanilla uses for
+map-cloning / firework crafting) so `matches()` inspects stack *components* — a vanilla JSON recipe
+would accept any player head, which is wrong. Results are computed server-side, so vanilla clients
+craft everything unmodified.
+
+- **New items** (textured player heads, profile-identified, anvil-proof — the `WildEssence`
+  pattern): **Wild Membrane (Raw)** (`WildMembraneRaw`, fire-resistant via the vanilla
+  `minecraft:damage_resistant` / `is_fire` component so it survives lava) and **Wild Membrane**
+  (`WildMembrane`).
+- **Raw Wild Membrane** (shapeless): 1 Wild Essence + 2 Phantom Membrane + 2 Sponge → Wild
+  Membrane (Raw).
+- **Lava temper** (server-side, no mixin, no furnace): a Raw Wild Membrane item entity resting in a
+  `lava_cauldron` (strictly lava) is tempered after ~4s of bubbling into a Wild Membrane; the lava
+  cauldron empties to a plain cauldron (`beaconLavaConsumed`, default true).
+- **Sanctuary Crystal** (shapeless, full 3×3): 1 Wild Membrane + 1 Conduit + 1 Dragon Egg +
+  3 Bottle o' Enchanting + 1 Ominous Bottle + 1 Rabbit's Foot + 1 Poisonous Potato → the unchanged
+  Sanctuary Crystal. (The crystal item, its profile identity, and all anchor behavior are
+  untouched.)
+
+### Changed — Wild Essence drops simplified; crystal mob-drop removed
+Wild Essence now drops only from **player-attributed** kills of a **Warden** (guaranteed,
+`wardenEssenceChance` = 1.0) or the top scaling tier **Nightmare** (tier 4, `nightmareEssenceChance`
+= 3%); nothing below Nightmare drops it. The old **Sanctuary Crystal mob-drop** (`crystalDropMinTier`
+/ `crystalDropChance`, 3% from Ferocious+ kills) is **removed** — the crystal is craft-only now.
+
+### Added — debug command backends for the bot harness
+`/sanctuary membrane give raw|cooked` and `/sanctuary testcook <x> <y> <z>` (force-temper a raw
+membrane over a lava cauldron), alongside the existing `/sanctuary crystal give` and
+`/sanctuary essence give`.
+
 ## [0.7.1] — 2026-07-04
 
 ### Fixed — CRITICAL: graves no longer destroy your inventory

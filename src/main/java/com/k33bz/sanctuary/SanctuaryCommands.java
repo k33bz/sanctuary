@@ -72,12 +72,9 @@ public final class SanctuaryCommands {
         num("mobscaling.speedMax", () -> cfg().mobScaling.speedMaxMultiplier, v -> cfg().mobScaling.speedMaxMultiplier = v, 1, 10);
         num("mobscaling.xpPerBlock", () -> cfg().mobScaling.xpPerBlock, v -> cfg().mobScaling.xpPerBlock = v, 0, 1);
         num("mobscaling.xpMax", () -> cfg().mobScaling.xpMaxMultiplier, v -> cfg().mobScaling.xpMaxMultiplier = v, 1, 200);
-        num("anchor.crystalDropMinTier", () -> cfg().crystalDropMinTier,
-                v -> cfg().crystalDropMinTier = (int) Math.round(v), 0, 4);
-        num("anchor.crystalDropChance", () -> cfg().crystalDropChance, v -> cfg().crystalDropChance = v, 0, 1);
-        num("essence.chanceSavage", () -> cfg().wildEssenceChanceSavage, v -> cfg().wildEssenceChanceSavage = v, 0, 1);
-        num("essence.chanceFerocious", () -> cfg().wildEssenceChanceFerocious, v -> cfg().wildEssenceChanceFerocious = v, 0, 1);
-        num("essence.chanceNightmare", () -> cfg().wildEssenceChanceNightmare, v -> cfg().wildEssenceChanceNightmare = v, 0, 1);
+        num("essence.wardenChance", () -> cfg().wardenEssenceChance, v -> cfg().wardenEssenceChance = v, 0, 1);
+        num("essence.nightmareChance", () -> cfg().nightmareEssenceChance, v -> cfg().nightmareEssenceChance = v, 0, 1);
+        bool("beaconLavaConsumed", () -> cfg().beaconLavaConsumed, b -> cfg().beaconLavaConsumed = b);
         num("anchor.labelHeight", () -> cfg().anchorLabelHeight, v -> cfg().anchorLabelHeight = v, 0, 4);
         num("anchor.startHours", () -> cfg().anchorStartHours, v -> cfg().anchorStartHours = v, 0, 100000);
         num("anchor.hoursPerEmerald", () -> cfg().anchorHoursPerEmerald, v -> cfg().anchorHoursPerEmerald = v, 0, 10000);
@@ -501,6 +498,15 @@ public final class SanctuaryCommands {
                         .then(Commands.literal("give").executes(safe(SanctuaryCommands::crystalGive))))
                 .then(Commands.literal("essence")
                         .then(Commands.literal("give").executes(safe(SanctuaryCommands::essenceGive))))
+                // Debug backends for the crafted-sanctuary chain (bot harness drives these; the
+                // crafting grid + item-in-cauldron don't bridge cleanly through ViaProxy).
+                .then(Commands.literal("membrane")
+                        .then(Commands.literal("give")
+                                .then(Commands.literal("raw").executes(safe(c -> membraneGive(c, true))))
+                                .then(Commands.literal("cooked").executes(safe(c -> membraneGive(c, false))))))
+                .then(Commands.literal("testcook")
+                        .then(Commands.argument("pos", net.minecraft.commands.arguments.coordinates.BlockPosArgument.blockPos())
+                                .executes(safe(SanctuaryCommands::testCook))))
                 .then(Commands.literal("danger")
                         .then(Commands.literal("status").executes(safe(SanctuaryCommands::dangerStatus)))
                         .then(Commands.literal("reset").executes(safe(SanctuaryCommands::dangerReset))))
@@ -694,6 +700,44 @@ public final class SanctuaryCommands {
         }
         ctx.getSource().sendSuccess(() -> Component.literal("Gave 1 Wild Essence."), true);
         return 1;
+    }
+
+    /** Hand the player a Raw or cooked Wild Membrane (debug backend for the bot harness). */
+    private static int membraneGive(CommandContext<CommandSourceStack> ctx, boolean raw)
+            throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        net.minecraft.server.level.ServerPlayer player = ctx.getSource().getPlayerOrException();
+        java.util.function.Supplier<net.minecraft.world.item.ItemStack> make = raw
+                ? com.k33bz.sanctuary.anchor.WildMembrane::createRaw
+                : com.k33bz.sanctuary.anchor.WildMembrane::create;
+        if (!player.getInventory().add(make.get())) {
+            player.drop(make.get(), false);
+        }
+        String which = raw ? "Raw " : "";
+        ctx.getSource().sendSuccess(() -> Component.literal("Gave 1 " + which + "Wild Membrane."), true);
+        return 1;
+    }
+
+    /**
+     * Force the lava-cauldron temper at a position: if a Raw Wild Membrane item entity sits over a
+     * LAVA cauldron there, run it to completion immediately (for the bot harness — it can't wait out
+     * the natural cook timer reliably through ViaProxy). Reports what it found.
+     */
+    private static int testCook(CommandContext<CommandSourceStack> ctx) {
+        CommandSourceStack src = ctx.getSource();
+        net.minecraft.core.BlockPos pos =
+                net.minecraft.commands.arguments.coordinates.BlockPosArgument.getBlockPos(ctx, "pos");
+        if (!(src.getLevel() instanceof net.minecraft.server.level.ServerLevel level)) {
+            src.sendFailure(Component.literal("Not a server level."));
+            return 0;
+        }
+        boolean cooked = com.k33bz.sanctuary.anchor.LavaCauldronCook.forceCook(level, pos, cfg());
+        if (cooked) {
+            src.sendSuccess(() -> Component.literal("Tempered a Raw Wild Membrane at " + pos + "."), true);
+            return 1;
+        }
+        src.sendFailure(Component.literal(
+                "No Raw Wild Membrane over a lava cauldron at " + pos + "."));
+        return 0;
     }
 
     /** The world-age pressure: days accrued since the epoch and the multiplier it produces. */

@@ -39,6 +39,8 @@ public final class MobDifficulty {
     private static final String DOOR_BREAKER_TAG = "sanctuary_door_breaker";
 
     private static final String[] TITLES = {"", "Feral", "Savage", "Ferocious", "Nightmare"};
+    /** The highest scaling tier ("Nightmare"). Wild Essence's non-Warden drop keys off this. */
+    public static final int MAX_TIER = 4;
     private static final ChatFormatting[] COLORS = {
             ChatFormatting.GRAY, ChatFormatting.YELLOW, ChatFormatting.GOLD, ChatFormatting.RED, ChatFormatting.DARK_RED
     };

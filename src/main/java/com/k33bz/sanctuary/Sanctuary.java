@@ -139,6 +139,19 @@ public class Sanctuary implements ModInitializer {
      */
     private void registerAnchorBreak() {
         PlayerBlockBreakEvents.BEFORE.register((world, player, pos, state, blockEntity) -> {
+            // Grave protection (part c): the plot ground under a grave (podzol/grass) and the grave
+            // block itself are unbreakable by EVERYONE, incl. the owner — Flan only stops
+            // non-owners, which is why the ground could be dug out. Flora on top stays harvestable.
+            if (CONFIG != null && CONFIG.gravesEnabled && world instanceof ServerLevel gl
+                    && com.k33bz.sanctuary.grave.Graves.isProtectedGraveBlock(
+                            gl.dimension().identifier().toString(), pos)) {
+                if (player instanceof ServerPlayer sp) {
+                    sp.sendOverlayMessage(net.minecraft.network.chat.Component
+                            .literal("This rests on consecrated ground.")
+                            .withStyle(net.minecraft.ChatFormatting.GRAY));
+                }
+                return false;
+            }
             if (!AnchorState.get().isAnchor(pos)) {
                 return true;
             }
@@ -372,7 +385,7 @@ public class Sanctuary implements ModInitializer {
             // on the gamerule explicitly.
             if (cfg.gravesEnabled
                     && !Boolean.TRUE.equals(player.level().getServer().getGlobalGameRules().get(net.minecraft.world.level.gamerules.GameRules.KEEP_INVENTORY))) {
-                com.k33bz.sanctuary.grave.Graves.capture(player, cfg);
+                com.k33bz.sanctuary.grave.Graves.capture(player, cfg, source);
             }
             return true;
         });

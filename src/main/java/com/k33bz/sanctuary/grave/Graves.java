@@ -36,8 +36,11 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Native graves + sanctuary graveyards. On death the player's inventory is sealed into a grave
  * at the death site (items live in JSON, not in-world — despawn/hopper/regen proof). Headstone
- * = block-display stone slab + the owner's shrunk head affixed on top + label + an interaction
- * hitbox: pristine stone bricks while loot remains, cracked once looted. Real-time lifecycle:
+ * = block-display stone slab + the owner's shrunk head affixed on top + a two-line label (the
+ * owner's NAME + an age-fuzzy epitaph, see {@link GraveEpitaph}) + an interaction hitbox: pristine
+ * stone bricks while loot remains, cracked once looted. Nature reclaims the plot over time —
+ * podzol → grass → a flower ({@link GraveFlora}). The grave block + its ground are break-protected;
+ * the flower on top is harvestable. Real-time lifecycle:
  * after {@code graveDriftHours} the grave drifts to the nearest sanctuary's graveyard (grid
  * plots around a command-defined center); after {@code gravePublicHours} it turns red and
  * anyone may loot it. Claiming from a graveyard costs a small XP fee; the Gravekeeper NPC
@@ -65,6 +68,16 @@ public final class Graves {
         public List<JsonElement> items = new ArrayList<>();
         /** displays spawned flag — false when the grave moved and old displays may linger. */
         public boolean displaysFresh;
+        /** Death-cause category id ({@link GraveEpitaph.Cause}); null on legacy graves = generic. */
+        public String deathCause;
+        /** Killer mob name for a MOB death (e.g. "skeleton"); null otherwise. */
+        public String killerName;
+        /** In-game day the death happened (dayTime/24000); 0 on legacy graves. */
+        public long deathDay;
+        /** Rendered ground stage (0 podzol, 1 grass, 2 grass+flower); -1/null = not yet rendered. */
+        public Integer floraStage;
+        /** Rendered epitaph age-tier (0 exact,1 vague,2 generic,3 lost); -1/null = not yet rendered. */
+        public Integer epitaphTier;
     }
 
     public static final class Yard {
@@ -122,7 +135,8 @@ public final class Graves {
      * lethal-save decision, BEFORE vanilla scatters drops; the inventory is cleared here so
      * nothing hits the ground. No grave for empty inventories.
      */
-    public static void capture(ServerPlayer player, SanctuaryConfig cfg) {
+    public static void capture(ServerPlayer player, SanctuaryConfig cfg,
+                               net.minecraft.world.damagesource.DamageSource source) {
         var inv = player.getInventory();
         var ops = RegistryOps.create(JsonOps.INSTANCE, player.level().registryAccess());
         List<JsonElement> items = new ArrayList<>();
@@ -148,6 +162,8 @@ public final class Graves {
         grave.y = pos.getY();
         grave.z = pos.getZ() + 0.5;
         grave.diedAtMs = System.currentTimeMillis();
+        grave.deathDay = player.level().getOverworldClockTime() / 24000L;
+        categorizeCause(grave, source);
         grave.items = items;   // FIX: actually store the captured items (was orphaned -> empty graves / item loss)
         store().graves.add(grave);
         save();
@@ -158,6 +174,44 @@ public final class Graves {
         player.sendSystemMessage(Component.literal(String.format(Locale.ROOT,
                         "Your belongings rest in a grave at %d %d %d.", pos.getX(), pos.getY(), pos.getZ()))
                 .withStyle(ChatFormatting.LIGHT_PURPLE));
+    }
+
+    /**
+     * Map the killing {@link net.minecraft.world.damagesource.DamageSource} to an epitaph
+     * {@link GraveEpitaph.Cause} + killer name, stored on the grave. A named-mob killer wins over
+     * environmental tags (a skeleton that shot you from a ledge reads "slain by a skeleton", not
+     * "fell"). Null source (e.g. /kill) → generic.
+     */
+    private static void categorizeCause(Grave grave, net.minecraft.world.damagesource.DamageSource source) {
+        if (source == null) {
+            grave.deathCause = GraveEpitaph.Cause.GENERIC.name();
+            return;
+        }
+        net.minecraft.world.entity.Entity attacker = source.getEntity();
+        if (attacker instanceof net.minecraft.world.entity.LivingEntity living
+                && !(attacker instanceof ServerPlayer)) {
+            grave.deathCause = GraveEpitaph.Cause.MOB.name();
+            // The mob's type name (e.g. "Skeleton") lower-cased for the epitaph ("a skeleton").
+            grave.killerName = living.getType().getDescription().getString().toLowerCase(Locale.ROOT);
+            return;
+        }
+        GraveEpitaph.Cause cause;
+        if (source.is(net.minecraft.world.damagesource.DamageTypes.FELL_OUT_OF_WORLD)) {
+            cause = GraveEpitaph.Cause.VOID;
+        } else if (source.is(net.minecraft.tags.DamageTypeTags.IS_FALL)) {
+            cause = GraveEpitaph.Cause.FALL;
+        } else if (source.is(net.minecraft.tags.DamageTypeTags.IS_FIRE)
+                || source.is(net.minecraft.world.damagesource.DamageTypes.LAVA)) {
+            cause = GraveEpitaph.Cause.BURN;
+        } else if (source.is(net.minecraft.tags.DamageTypeTags.IS_DROWNING)) {
+            cause = GraveEpitaph.Cause.DROWN;
+        } else if (source.is(net.minecraft.world.damagesource.DamageTypes.WITHER)
+                || source.is(net.minecraft.world.damagesource.DamageTypes.WITHER_SKULL)) {
+            cause = GraveEpitaph.Cause.WITHER;
+        } else {
+            cause = GraveEpitaph.Cause.GENERIC;
+        }
+        grave.deathCause = cause.name();
     }
 
     /** Nudge a death position to something standable (void/lava deaths land on the surface). */
@@ -194,14 +248,23 @@ public final class Graves {
                         + "transformation:{left_rotation:[0f,0f,0f,1f],right_rotation:[0f,0f,0f,1f],"
                         + "translation:[0f,1.05f,0f],scale:[0.45f,0.45f,0.45f]}}",
                 grave.x, grave.y, grave.z, GRAVE_TAG, tag, grave.ownerName));
-        // label
+        // label: line 1 = the NAME alone (no "Here lies"); line 2 = the age-fuzzy epitaph, unless
+        // the grave's state (looted / public) overrides it with a status line.
         boolean isPublic = isPublic(grave);
         String color = grave.looted ? "dark_gray" : isPublic ? "red" : "gray";
-        String line2 = grave.looted ? "taken by the living" : isPublic ? "unclaimed — free to any hand" : "rests undisturbed";
+        String line2;
+        if (grave.looted) {
+            line2 = "taken by the living";
+        } else if (isPublic) {
+            line2 = "unclaimed — free to any hand";
+        } else {
+            line2 = epitaphOf(grave);
+        }
         run(level, String.format(Locale.ROOT,
                 "summon minecraft:text_display %.2f %.2f %.2f {Tags:[\"%s\",\"%s\"],billboard:\"vertical\","
-                        + "text:{text:\"Here lies %s\\n\",color:\"white\",extra:[{text:\"%s\",color:\"%s\"}]}}",
-                grave.x, grave.y + 1.55, grave.z, GRAVE_TAG, tag, grave.ownerName, line2, color));
+                        + "text:{text:\"%s\\n\",color:\"white\",extra:[{text:\"%s\",color:\"%s\"}]}}",
+                grave.x, grave.y + 1.55, grave.z, GRAVE_TAG, tag, grave.ownerName,
+                escape(line2), color));
         // interaction hitbox for claiming
         run(level, String.format(Locale.ROOT,
                 "summon minecraft:interaction %.2f %.2f %.2f {Tags:[\"%s\",\"%s\"],width:0.9f,height:1.4f}",
@@ -213,12 +276,99 @@ public final class Graves {
         run(level, "kill @e[tag=" + GRAVE_TAG + "_" + grave.id + "]");
     }
 
+    /**
+     * Nature reclaims the plot (part b): set the ground block under the grave by age (podzol → grass
+     * → grass+flower) and re-render the epitaph (part a) as its age-tier changes. Only touches the
+     * world when a stage actually changes (returns true then, so the caller saves). Skips
+     * keeper-held graves (no world marker) and unloaded chunks.
+     */
+    static boolean renderFloraAndEpitaph(ServerLevel level, Grave grave, SanctuaryConfig cfg) {
+        if (grave.heldByKeeper || grave.looted) {
+            return false;
+        }
+        BlockPos base = BlockPos.containing(grave.x, grave.y, grave.z);
+        if (!level.isLoaded(base)) {
+            return false;
+        }
+        boolean changed = false;
+        double ageDays = GraveLifecycle.elapsedDays(System.currentTimeMillis(), grave.diedAtMs);
+
+        // Ground/flora stage: 0 podzol, 1 grass, 2 grass+flower.
+        int stage = GraveFlora.hasFlower(ageDays, cfg.graveFloraGrassDays, cfg.graveFloraFlowerDays) ? 2
+                : (ageDays >= cfg.graveFloraGrassDays ? 1 : 0);
+        int prev = grave.floraStage == null ? -1 : grave.floraStage;
+        if (prev != stage) {
+            BlockPos ground = base.below();
+            String groundBlock = GraveFlora.groundBlock(ageDays, cfg.graveFloraGrassDays, cfg.graveFloraFlowerDays);
+            run(level, String.format(Locale.ROOT, "setblock %d %d %d %s replace",
+                    ground.getX(), ground.getY(), ground.getZ(), groundBlock));
+            if (stage == 2) {
+                // Bloom a flower on the plot surface (deterministic per grave id so a re-render is stable).
+                java.util.Random rng = new java.util.Random(grave.id.hashCode());
+                String flower = GraveFlora.flowerBlock(rng.nextDouble(), rng.nextDouble(), cfg.graveWitherRoseChance);
+                run(level, String.format(Locale.ROOT, "setblock %d %d %d %s replace",
+                        base.getX(), base.getY(), base.getZ(), flower));
+            } else if (prev == 2) {
+                // Regressed below flower tier (shouldn't happen forward, but keep the surface clean).
+                run(level, String.format(Locale.ROOT, "setblock %d %d %d minecraft:air replace",
+                        base.getX(), base.getY(), base.getZ()));
+            }
+            grave.floraStage = stage;
+            changed = true;
+        }
+
+        // Epitaph re-render as the age-tier changes.
+        int tier = epitaphTierOf(grave);
+        int prevTier = grave.epitaphTier == null ? -1 : grave.epitaphTier;
+        if (prevTier != tier) {
+            spawnDisplays(level, grave); // re-renders the label with the new fuzzy epitaph
+            grave.epitaphTier = tier;
+            changed = true;
+        }
+        return changed;
+    }
+
     // --- lifecycle ---
 
     public static boolean isPublic(Grave grave) {
         SanctuaryConfig cfg = Sanctuary.CONFIG;
         double publicHours = cfg == null ? 48 : cfg.gravePublicHours;
         return GraveLifecycle.isPublic(System.currentTimeMillis(), grave.diedAtMs, grave.looted, publicHours);
+    }
+
+    /** The current age-fuzzy epitaph line for a grave (part a). */
+    static String epitaphOf(Grave grave) {
+        SanctuaryConfig cfg = Sanctuary.CONFIG;
+        double exact = cfg == null ? 7 : cfg.epitaphExactDays;
+        double vague = cfg == null ? 28 : cfg.epitaphVagueDays;
+        double generic = cfg == null ? 90 : cfg.epitaphGenericDays;
+        double ageDays = GraveLifecycle.elapsedDays(System.currentTimeMillis(), grave.diedAtMs);
+        return GraveEpitaph.epitaph(GraveEpitaph.Cause.parse(grave.deathCause), grave.killerName,
+                grave.deathDay, ageDays, exact, vague, generic);
+    }
+
+    /** Which epitaph age-tier a grave is in (0 exact,1 vague,2 generic,3 lost) — for re-render gating. */
+    static int epitaphTierOf(Grave grave) {
+        SanctuaryConfig cfg = Sanctuary.CONFIG;
+        double exact = cfg == null ? 7 : cfg.epitaphExactDays;
+        double vague = cfg == null ? 28 : cfg.epitaphVagueDays;
+        double generic = cfg == null ? 90 : cfg.epitaphGenericDays;
+        double ageDays = GraveLifecycle.elapsedDays(System.currentTimeMillis(), grave.diedAtMs);
+        if (ageDays >= generic) {
+            return 3;
+        }
+        if (ageDays >= vague) {
+            return 2;
+        }
+        if (ageDays >= exact) {
+            return 1;
+        }
+        return 0;
+    }
+
+    /** Escape a string for embedding inside an SNBT JSON-text component string literal. */
+    private static String escape(String s) {
+        return s.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 
     /** Real-time sweep: drift due graves into their nearest graveyard when chunks allow. */
@@ -266,11 +416,19 @@ public final class Graves {
                     dirty = true;
                 }
             }
+            // Nature reclaims the plot + the epitaph blurs with age (parts a & b).
+            if (!grave.looted && !grave.heldByKeeper) {
+                ServerLevel level = levelOf(server, grave.dim);
+                if (level != null && renderFloraAndEpitaph(level, grave, cfg)) {
+                    dirty = true;
+                }
+            }
         }
         if (dirty) {
             save();
         }
-        // Ritual keepers wander, but never past their fence.
+        // Safety net: keepers are stationary (NoAI as of 0.8.1), but if one is ever nudged out of
+        // its fence (piston, mob push), snap it back to center.
         for (Yard yard : store().yards) {
             if (yard.bMaxX <= yard.bMinX) {
                 continue;
@@ -289,6 +447,51 @@ public final class Graves {
                 }
             }
         }
+    }
+
+    /**
+     * Re-lay every grave resting in {@code yard} into fresh plots within the (resized) bounds
+     * (part d). Clears each grave's in-yard flag first so {@link #nextPlot} sees empty ground, then
+     * re-places them in age order. Returns the number relaid.
+     */
+    public static int relayoutYard(MinecraftServer server, Yard yard) {
+        ServerLevel level = levelOf(server, yard.dim);
+        if (level == null) {
+            return 0;
+        }
+        List<Grave> resting = new ArrayList<>();
+        for (Grave g : store().graves) {
+            if (g.inGraveyard && !g.heldByKeeper && g.dim.equals(yard.dim)
+                    && yard.anchorId.equals(g.graveyardAnchor)) {
+                resting.add(g);
+            }
+        }
+        resting.sort(java.util.Comparator.comparingLong(g -> g.diedAtMs));
+        // Free their old plots so nextPlot() lays them out from scratch in the new bounds.
+        for (Grave g : resting) {
+            killDisplays(level, g);
+            g.inGraveyard = false;
+        }
+        int moved = 0;
+        for (Grave g : resting) {
+            BlockPos plot = nextPlot(level, yard);
+            if (plot == null) {
+                // Out of room — restore the flag so the grave isn't lost (shouldn't happen: the
+                // resize is validated to contain them all).
+                g.inGraveyard = true;
+                continue;
+            }
+            g.x = plot.getX() + 0.5;
+            g.y = plot.getY();
+            g.z = plot.getZ() + 0.5;
+            g.inGraveyard = true;
+            g.graveyardAnchor = yard.anchorId;
+            g.floraStage = null;  // re-render ground/flora at the new plot
+            g.epitaphTier = null;
+            spawnDisplays(level, g);
+            moved++;
+        }
+        return moved;
     }
 
     /** Move a grave into a graveyard's next free plot. Chunk-lazy: false if not possible yet. */
@@ -396,6 +599,37 @@ public final class Graves {
         // depending on a later save() a future caller might forget.)
         save();
         return true;
+    }
+
+    /**
+     * Block-break protection (part c): whether {@code pos} is a grave's protected structure — the
+     * plot GROUND block under a grave, or the grave block itself if it's a solid ground block. The
+     * FLORA on top (the flower at the grave's own position) is NOT protected — it's harvestable.
+     * Covers both graveyard plots and wild grave markers. Cheap: scans the grave list (small) and
+     * only for positions near a grave.
+     */
+    public static boolean isProtectedGraveBlock(String dim, BlockPos pos) {
+        for (Grave g : store().graves) {
+            if (g.heldByKeeper || !g.dim.equals(dim)) {
+                continue;
+            }
+            int gx = (int) Math.floor(g.x);
+            int gy = (int) Math.floor(g.y);
+            int gz = (int) Math.floor(g.z);
+            if (pos.getX() != gx || pos.getZ() != gz) {
+                continue;
+            }
+            // The plot ground (one below the grave base) is always protected. The grave base itself
+            // is protected UNLESS it currently holds harvestable flora (a flower on top).
+            if (pos.getY() == gy - 1) {
+                return true;
+            }
+            if (pos.getY() == gy) {
+                int stage = g.floraStage == null ? -1 : g.floraStage;
+                return stage != 2; // stage 2 = a flower sits here → harvestable, not protected
+            }
+        }
+        return false;
     }
 
     public static Yard nearestYard(Grave grave) {
@@ -544,6 +778,71 @@ public final class Graves {
                     "Your keeper-held grave expired and was claimed by " + player.getName().getString() + ".");
         }
         return 1;
+    }
+
+    /** Outcome of an admin clearworld: counts + the keeper hold graves were moved to. */
+    public record ClearResult(int movedToHold, int removed, String holdYard) {
+    }
+
+    /**
+     * Admin force-clear (part e). For every LOOT-bearing grave, remove its world headstone and move
+     * its inventory into the NEAREST gravekeeper's hold (heldByKeeper=true, reclaimable via the
+     * keeper dialog — NOTHING is lost). Empty/looted graves just have their marker + entry removed.
+     * By default only WILD graves (not in a graveyard); {@code includeGraveyard} also clears
+     * in-graveyard graves and their plot ground blocks. Returns null if no graveyard exists (there
+     * would be nowhere to hold the loot).
+     */
+    public static ClearResult clearWorld(MinecraftServer server, boolean includeGraveyard) {
+        if (store().yards.isEmpty()) {
+            return null; // nowhere to hold loot
+        }
+        int movedToHold = 0;
+        int removed = 0;
+        String holdYard = null;
+        var it = store().graves.iterator();
+        List<Grave> toHold = new ArrayList<>();
+        while (it.hasNext()) {
+            Grave g = it.next();
+            if (g.heldByKeeper) {
+                continue; // already in a hold
+            }
+            if (g.inGraveyard && !includeGraveyard) {
+                continue; // graveyard graves left alone unless asked
+            }
+            ServerLevel level = levelOf(server, g.dim);
+            if (level != null) {
+                killDisplays(level, g);
+                if (g.inGraveyard) {
+                    // clear the plot ground blocks we materialized (part b)
+                    BlockPos base = BlockPos.containing(g.x, g.y, g.z);
+                    run(level, String.format(Locale.ROOT, "setblock %d %d %d minecraft:air replace",
+                            base.getX(), base.getY(), base.getZ()));
+                }
+            }
+            if (g.looted || g.items.isEmpty()) {
+                it.remove(); // empty/looted: nothing to preserve
+                removed++;
+                continue;
+            }
+            toHold.add(g); // defer the mutation; capture the destination yard below
+        }
+        for (Grave g : toHold) {
+            Yard yard = nearestYard(g);
+            if (yard == null) {
+                continue;
+            }
+            g.heldByKeeper = true;
+            g.inGraveyard = false;
+            g.graveyardAnchor = yard.anchorId;
+            g.floraStage = null;
+            g.epitaphTier = null;
+            holdYard = yard.anchorId;
+            movedToHold++;
+            com.k33bz.sanctuary.metrics.GraveEventLog.record("held", g.id, g.ownerName,
+                    g.dim, g.x, g.y, g.z, g.items.size(), "clearworld", false);
+        }
+        save();
+        return new ClearResult(movedToHold, removed, holdYard);
     }
 
     public static Grave byId(String id) {

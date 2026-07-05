@@ -103,6 +103,22 @@ public class SanctuaryConfig {
     public int graveyardMinSize = 9;   // ritual pen minimum interior span (9x9)
     public int graveyardMaxSize = 81;  // ritual pen maximum span (81x81)
 
+    // Headstone epitaph fuzzing (0.8.2): line 2 blurs BOTH cause and time as the grave ages, in
+    // REAL days since death. <epitaphExactDays: exact cause + in-game day ("Slain by a skeleton -
+    // Day 16"); <epitaphVagueDays: cause + "some weeks past"; <epitaphGenericDays: cause collapses
+    // to a generic place ("Fell in the wilds, long ago"); beyond: "Lost to time".
+    public double epitaphExactDays = 7.0;
+    public double epitaphVagueDays = 28.0;
+    public double epitaphGenericDays = 90.0;
+
+    // Nature reclaims a grave plot (0.8.2): the ground block under a grave ages in REAL days.
+    // fresh = podzol; >= graveFloraGrassDays = grass block; >= graveFloraFlowerDays = grass + a
+    // flower on top. Flora is weighted (common lily-of-the-valley / oxeye daisy / white tulip),
+    // with a rare wither rose (graveWitherRoseChance) that keeps its real wither hazard.
+    public double graveFloraGrassDays = 3.0;
+    public double graveFloraFlowerDays = 7.0;
+    public double graveWitherRoseChance = 0.05;
+
     // The Restless: once per night, an underground player carrying restlessMinInsomniaDays+
     // of sleep debt is visited by Restless Creakings spawned in the dark nearby (count grows
     // with insomnia, capped). They only move unwatched, dissolve at dawn, and never bother the

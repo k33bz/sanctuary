@@ -2,6 +2,45 @@
 
 All notable changes to Sanctuary (formerly XP Vitality).
 
+## [0.8.2] — 2026-07-05
+
+### Graveyard visual + protection overhaul
+
+**(a) Age-fuzzy headstone epitaph.** Line 1 is now just the player NAME (dropped "Here lies").
+Line 2 is an epitaph that blurs BOTH cause and time as the grave ages. At death, `capture()` records
+the cause category (named-mob killer, fall, fire/lava burn, drown, wither, void, or generic) from
+the `DamageSource` plus the in-game death day. Rendered by REAL age (config-tunable):
+`< epitaphExactDays` (7) exact — "Slain by a skeleton · Day 16"; `< epitaphVagueDays` (28) — "Slain
+by a skeleton, some weeks past"; `< epitaphGenericDays` (90) cause collapses — "Fell in the wilds,
+long ago"; beyond — "Lost to time". The sweep re-renders as the tier changes.
+
+**(b) Nature reclaims the plot.** The ground under each grave ages podzol → grass → grass+flower
+(`graveFloraGrassDays` 3, `graveFloraFlowerDays` 7). Flora is weighted — common lily-of-the-valley /
+oxeye daisy / white tulip, rare wither rose (`graveWitherRoseChance` 0.05, keeps its real wither
+hazard). Driven by the grave sweep, save-on-mutation.
+
+**(c) Grave protection.** `PlayerBlockBreakEvents.BEFORE` now cancels breaking a grave's plot
+ground (podzol/grass) and the grave block for EVERYONE incl. the owner (Flan only stopped
+non-owners — the reason the gravel under a grave could be dug out). Applies to graveyard and wild
+markers. The FLORA on top stays harvestable by anyone. The fence is left editable (needed to
+resize); a clean seam remains for the 0.9.0 night-only dig-up exception.
+
+**(d) Resizable graveyard.** Re-running the effigy ritual as the SAME owner now RESIZES the yard
+if the new flood-filled bounds are strictly larger and still contain every resting grave: the yard
+bounds/center/radius update and its graves are re-laid into fresh plots. A smaller pen, or one that
+would strand a grave, is rejected. Still one yard per sanctuary.
+
+**(e) Admin force-clear.** `/sanctuarygrave clearworld [includegraveyard]` (op level 2): every
+loot-bearing grave's headstone is removed and its inventory moved into the nearest gravekeeper's
+hold (`heldByKeeper`, reclaimable via the keeper dialog — nothing lost); empty/looted graves have
+their marker + entry deleted. Default = wild graves only; `includegraveyard` also clears in-yard
+graves and their plot ground. Refuses if no graveyard exists (nowhere to hold loot). Also added a
+debug `/sanctuarygrave setage <days> [id]` (op level 2) to drive the epitaph/flora aging in tests.
+
+Grave records gain `deathCause` / `killerName` / `deathDay` (optional, legacy defaults) plus
+rendered-stage markers. New config: `epitaphExactDays`, `epitaphVagueDays`, `epitaphGenericDays`,
+`graveFloraGrassDays`, `graveFloraFlowerDays`, `graveWitherRoseChance`. mod_version 0.8.1 → 0.8.2.
+
 ## [0.8.1] — 2026-07-05
 
 ### Fixed — Gravekeeper wandered out of its pen

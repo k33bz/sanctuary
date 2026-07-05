@@ -30,12 +30,23 @@ claim. Timeline in **real hours**:
 
 Loot never decays — timers only ever move it or expose it, never delete it.
 
+**The headstone remembers, then forgets.** Line 1 is your name; line 2 is an epitaph that blurs
+with age — exact cause + in-game day when fresh ("Slain by a skeleton · Day 16"), then "some weeks
+past", then the cause collapses to a place ("Fell in the wilds, long ago"), and finally "Lost to
+time". Nature reclaims the plot too: the ground turns from freshly-turned podzol to grass, and after
+a week a flower blooms (rarely a wither rose — mind the thorns). The grave block and its ground are
+**unbreakable by anyone, owner included** — only the flower on top can be picked.
+
 ## Graveyards & the Gravekeeper
 
 **Consecration ritual** (survival, no commands): inside your *own* sanctuary, fence a pen —
 9×9 up to 81×81, gate allowed — and build an iron golem body crowned with a **skeleton or
-wither skeleton skull**. The effigy is consumed; the **Gravekeeper** rises, wandering his
-grounds, never past the fence. One graveyard per sanctuary. (Admins: `/sanctuarygraveyard set`.)
+wither skeleton skull**. The effigy is consumed; the **Gravekeeper** rises, a still cleric
+standing vigil over his grounds. One graveyard per sanctuary. (Admins: `/sanctuarygraveyard set`.)
+
+**Outgrew it?** Re-run the effigy ritual with a *larger* fence around the same yard — as long as
+the new pen still encloses every resting grave, the graveyard **resizes** and re-lays its graves
+into the wider ground. A smaller pen (or one that would fence a grave out) is refused.
 
 Plots are 1×3 — headstone plus a walkable lane. When the yard fills it makes room: oldest
 looted memorial cleared first, else the oldest unlooted grave enters the **keeper's hold** —
@@ -44,6 +55,11 @@ loot intact, off the lawn.
 **Talk to the keeper** to: reclaim held remains (claim fee), summon your loot-bearing graves
 from the wild or rival cemeteries (5% fee — an **allay courier** flies off and delivers the
 headstone), or claim anyone's held estate once its 48h public timer lapses.
+
+**Admins** can sweep the world clean with `/sanctuarygrave clearworld` — every loot-bearing grave's
+inventory is moved into the nearest keeper's hold (reclaimable, nothing lost), empty stones
+deleted. Add `includegraveyard` to also clear in-yard graves and their ground. It refuses if no
+graveyard exists (nowhere to hold the loot).
 
 Never enable the bundled VT `graves` pack — the native system replaces it.
 Config knobs: `respawn.*`, `grave.*` — see the [server guide](SERVER-GUIDE.md).

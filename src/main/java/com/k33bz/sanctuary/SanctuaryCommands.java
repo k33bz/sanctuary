@@ -215,7 +215,24 @@ public final class SanctuaryCommands {
                                                 ctx.getSource().getPlayerOrException(), cfg(),
                                                 StringArgumentType.getString(ctx, "query"));
                                         return 1;
-                                    })))));
+                                    }))))
+                    // Ops (level 2): force-clear graves into the nearest keeper hold (loot safe).
+                    // Default = wild graves only; "includegraveyard" also does in-yard graves.
+                    .then(Commands.literal("clearworld")
+                            .requires(Commands.<CommandSourceStack>hasPermission(Commands.LEVEL_GAMEMASTERS))
+                            .executes(safe(ctx -> clearWorld(ctx, false)))
+                            .then(Commands.literal("includegraveyard")
+                                    .executes(safe(ctx -> clearWorld(ctx, true)))))
+                    // Ops (level 2): debug — age a grave (shift its diedAtMs back N real days) to
+                    // drive the epitaph-fuzz + flora aging without waiting. Bare = the nearest
+                    // grave; with an id = that grave.
+                    .then(Commands.literal("setage")
+                            .requires(Commands.<CommandSourceStack>hasPermission(Commands.LEVEL_GAMEMASTERS))
+                            .then(Commands.argument("days", DoubleArgumentType.doubleArg(0, 100000))
+                                    .executes(safe(ctx -> graveSetAge(ctx, null)))
+                                    .then(Commands.argument("id", StringArgumentType.word())
+                                            .executes(safe(ctx -> graveSetAge(ctx,
+                                                    StringArgumentType.getString(ctx, "id"))))))));
             // Ops: world-age danger pressure readout / re-zero (persisted epoch; external
             // dashboards watch danger.epochTick in the config to lap leaderboard seasons).
             dispatcher.register(Commands.literal("sanctuarydanger")
@@ -354,6 +371,62 @@ public final class SanctuaryCommands {
         }
         // Same gated action as the headstone right-click.
         com.k33bz.sanctuary.grave.Graves.tryClaim(player, grave, cfg);
+        return 1;
+    }
+
+    /** Admin force-clear: move loot-bearing graves to the nearest keeper hold; delete empties. */
+    private static int clearWorld(CommandContext<CommandSourceStack> ctx, boolean includeGraveyard) {
+        var result = com.k33bz.sanctuary.grave.Graves.clearWorld(
+                ctx.getSource().getServer(), includeGraveyard);
+        if (result == null) {
+            ctx.getSource().sendFailure(Component.literal(
+                    "No graveyard exists — nowhere to hold the loot. Consecrate one first."));
+            return 0;
+        }
+        ctx.getSource().sendSuccess(() -> Component.literal(String.format(java.util.Locale.ROOT,
+                "Cleared graves: %d moved to the keeper's hold (%s), %d empty removed.%s",
+                result.movedToHold(),
+                result.holdYard() == null ? "no hold" : "yard " + result.holdYard(),
+                result.removed(),
+                includeGraveyard ? " (graveyard graves included)" : " (wild graves only)")), true);
+        return 1;
+    }
+
+    /** Debug: age a grave by shifting its diedAtMs back N real days (drives epitaph/flora aging). */
+    private static int graveSetAge(CommandContext<CommandSourceStack> ctx, String id)
+            throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        double days = DoubleArgumentType.getDouble(ctx, "days");
+        com.k33bz.sanctuary.grave.Graves.Grave grave;
+        if (id != null) {
+            grave = com.k33bz.sanctuary.grave.Graves.byId(id);
+        } else {
+            net.minecraft.server.level.ServerPlayer player = ctx.getSource().getPlayerOrException();
+            String dim = player.level().dimension().identifier().toString();
+            grave = null;
+            double bestSq = 8 * 8;
+            for (var g : com.k33bz.sanctuary.grave.Graves.store().graves) {
+                if (g.heldByKeeper || !dim.equals(g.dim)) {
+                    continue;
+                }
+                double dx = g.x - player.getX(), dy = g.y - player.getY(), dz = g.z - player.getZ();
+                double sq = dx * dx + dy * dy + dz * dz;
+                if (sq < bestSq) {
+                    bestSq = sq;
+                    grave = g;
+                }
+            }
+        }
+        if (grave == null) {
+            ctx.getSource().sendFailure(Component.literal("No grave found to age."));
+            return 0;
+        }
+        grave.diedAtMs = System.currentTimeMillis() - (long) (days * 86_400_000.0);
+        grave.floraStage = null;   // force a flora + epitaph re-render on the next sweep
+        grave.epitaphTier = null;
+        com.k33bz.sanctuary.grave.Graves.save();
+        final String gid = grave.id;
+        ctx.getSource().sendSuccess(() -> Component.literal(String.format(java.util.Locale.ROOT,
+                "Aged grave %s to %.1f days old.", gid, days)), true);
         return 1;
     }
 

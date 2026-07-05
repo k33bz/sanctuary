@@ -79,8 +79,14 @@ public final class GraveyardRitual {
             return;
         }
         String fAnchor = anchorId;
-        if (Graves.store().yards.stream().anyMatch(y -> y.anchorId.equals(fAnchor))) {
-            fail(player, "This sanctuary already has a graveyard.");
+        Graves.Yard existing = Graves.store().yards.stream()
+                .filter(y -> y.anchorId.equals(fAnchor)).findFirst().orElse(null);
+        // An existing yard may be RESIZED by the SAME owner if the new pen is larger and still
+        // contains every grave (validated after the flood-fill below). A different owner, or any
+        // shrink/strand, is rejected.
+        if (existing != null && existing.owner != null
+                && !existing.owner.equals(player.getUUID().toString()) && !player.isCreative()) {
+            fail(player, "This sanctuary already has a graveyard, tended by another.");
             return;
         }
 
@@ -125,16 +131,50 @@ public final class GraveyardRitual {
             return;
         }
 
-        // The effigy is spent; the keeper rises.
-        for (BlockPos p : new BlockPos[]{skullPos, body, armA, armB, legs}) {
-            Graves.run(level, String.format(Locale.ROOT, "setblock %d %d %d minecraft:air",
-                    p.getX(), p.getY(), p.getZ()));
+        int newRadius = Math.max(3, (Math.min(spanX, spanZ) - 2) / 2);
+
+        // RESIZE path (part d): re-consecrating an existing yard. Accept only a genuine expansion
+        // that still contains every resting grave; reject a shrink or one that would strand a grave.
+        if (existing != null) {
+            GraveyardBounds.Rect cur = new GraveyardBounds.Rect(
+                    existing.bMinX, existing.bMaxX, existing.bMinZ, existing.bMaxZ);
+            GraveyardBounds.Rect next = new GraveyardBounds.Rect(minX, maxX, minZ, maxZ);
+            java.util.List<double[]> positions = new java.util.ArrayList<>();
+            for (Graves.Grave g : Graves.store().graves) {
+                if (g.inGraveyard && !g.heldByKeeper && existing.anchorId.equals(g.graveyardAnchor)) {
+                    positions.add(new double[]{g.x, g.z});
+                }
+            }
+            GraveyardBounds.Result verdict = GraveyardBounds.validateResize(cur, next, positions);
+            if (verdict == GraveyardBounds.Result.NOT_LARGER) {
+                fail(player, "The graveyard can only be expanded — this pen is no larger.");
+                return;
+            }
+            if (verdict == GraveyardBounds.Result.STRANDS_GRAVE) {
+                fail(player, "A grave would be left outside the new fence — widen it to enclose them all.");
+                return;
+            }
+            // Spend the effigy, then resize the yard in place and re-layout its graves.
+            spendEffigy(level, skullPos, body, armA, armB, legs);
+            existing.x = (minX + maxX) / 2;
+            existing.z = (minZ + maxZ) / 2;
+            existing.radius = newRadius;
+            existing.bMinX = minX;
+            existing.bMaxX = maxX;
+            existing.bMinZ = minZ;
+            existing.bMaxZ = maxZ;
+            int moved = Graves.relayoutYard(level.getServer(), existing);
+            Graves.save();
+            Gravekeeper.spawnKeeper(level, existing);
+            player.sendSystemMessage(Component.literal(String.format(Locale.ROOT,
+                            "The Gravekeeper's ground grows to %dx%d (%d grave%s re-laid).",
+                            spanX, spanZ, moved, moved == 1 ? "" : "s"))
+                    .withStyle(ChatFormatting.GOLD));
+            return;
         }
-        Graves.run(level, String.format(Locale.ROOT,
-                "particle minecraft:poof %d %d %d 0.4 0.8 0.4 0.02 40", body.getX(), body.getY(), body.getZ()));
-        Graves.run(level, String.format(Locale.ROOT,
-                "playsound minecraft:block.respawn_anchor.deplete block @a %d %d %d 1 0.6",
-                body.getX(), body.getY(), body.getZ()));
+
+        // Fresh consecration: the effigy is spent; the keeper rises.
+        spendEffigy(level, skullPos, body, armA, armB, legs);
 
         Graves.Yard yard = new Graves.Yard();
         yard.anchorId = anchorId;
@@ -143,7 +183,7 @@ public final class GraveyardRitual {
         yard.x = (minX + maxX) / 2;
         yard.y = legs.getY();
         yard.z = (minZ + maxZ) / 2;
-        yard.radius = Math.max(3, (Math.min(spanX, spanZ) - 2) / 2);
+        yard.radius = newRadius;
         yard.bMinX = minX;
         yard.bMaxX = maxX;
         yard.bMinZ = minZ;
@@ -155,6 +195,20 @@ public final class GraveyardRitual {
                         "The effigy crumbles. The Gravekeeper rises to tend %dx%d of consecrated ground.",
                         spanX, spanZ))
                 .withStyle(ChatFormatting.GOLD));
+    }
+
+    /** Consume the effigy blocks with a poof + sound. */
+    private static void spendEffigy(ServerLevel level, BlockPos skullPos, BlockPos body,
+                                    BlockPos armA, BlockPos armB, BlockPos legs) {
+        for (BlockPos p : new BlockPos[]{skullPos, body, armA, armB, legs}) {
+            Graves.run(level, String.format(Locale.ROOT, "setblock %d %d %d minecraft:air",
+                    p.getX(), p.getY(), p.getZ()));
+        }
+        Graves.run(level, String.format(Locale.ROOT,
+                "particle minecraft:poof %d %d %d 0.4 0.8 0.4 0.02 40", body.getX(), body.getY(), body.getZ()));
+        Graves.run(level, String.format(Locale.ROOT,
+                "playsound minecraft:block.respawn_anchor.deplete block @a %d %d %d 1 0.6",
+                body.getX(), body.getY(), body.getZ()));
     }
 
     /** Any fence, wall, or fence gate within a few blocks of yard level counts as boundary. */

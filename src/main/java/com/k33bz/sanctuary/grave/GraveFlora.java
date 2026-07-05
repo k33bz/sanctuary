@@ -10,9 +10,20 @@ package com.k33bz.sanctuary.grave;
  *   <li>age &ge; grassDays — {@code grass_block}, the lawn returns</li>
  *   <li>age &ge; flowerDays — {@code grass_block} + a flower blooms on top</li>
  * </ul>
+ *
+ * <p><b>Flora is GRAVEYARD-ONLY</b> — a wild grave keeps its original ground and gets none of this
+ * (see {@link #appliesTo}). The headstone just sits on the untouched surface.
  */
 public final class GraveFlora {
     private GraveFlora() {
+    }
+
+    /**
+     * Whether nature reclaims a plot at all: ONLY consecrated (in-graveyard) plots grow flora. A
+     * wild grave ({@code inGraveyard == false}) keeps whatever block was already underneath.
+     */
+    public static boolean appliesTo(boolean inGraveyard) {
+        return inGraveyard;
     }
 
     /** The ground block id for a plot at {@code ageDays} old. */

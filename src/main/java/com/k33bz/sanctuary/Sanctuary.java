@@ -69,6 +69,10 @@ public class Sanctuary implements ModInitializer {
         // graveyard has been consecrated yet, so there is always a reclaim/hold hub.
         net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STARTED
                 .register(com.k33bz.sanctuary.grave.Graves::ensureDefaultKeeper);
+        // 0.8.2.1: revert the 0.8.2 bug that applied podzol/grass/flora to WILD graves (flora is
+        // graveyard-only). Restores each wild grave's original ground on the first fixed boot.
+        net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STARTED
+                .register(com.k33bz.sanctuary.grave.Graves::migrateWildFlora);
         // Cache the fire-resistant component (built from the is_fire damage tag) once registries
         // exist, so a Raw Wild Membrane's item entity can sit in lava while it tempers.
         net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STARTED

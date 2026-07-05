@@ -15,6 +15,15 @@ class GraveFloraTest {
     // defaults: grass at d3, flower at d7
     private static final double GRASS = 3, FLOWER = 7;
 
+    // --- GRAVEYARD-ONLY gate (0.8.2.1): wild graves get NO flora ---
+
+    @Test
+    void floraOnlyAppliesToGraveyardGraves() {
+        assertTrue(GraveFlora.appliesTo(true), "a graveyard grave grows flora");
+        // Red-prove the fix: a WILD grave (inGraveyard=false) must NOT flora — it keeps its ground.
+        assertFalse(GraveFlora.appliesTo(false), "a WILD grave must NOT get podzol/grass/flower");
+    }
+
     @Test
     void groundIsPodzolWhenFreshThenGrass() {
         assertEquals("minecraft:podzol", GraveFlora.groundBlock(0.0, GRASS, FLOWER));

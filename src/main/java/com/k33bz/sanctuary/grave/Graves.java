@@ -74,10 +74,14 @@ public final class Graves {
         public String killerName;
         /** In-game day the death happened (dayTime/24000); 0 on legacy graves. */
         public long deathDay;
-        /** Rendered ground stage (0 podzol, 1 grass, 2 grass+flower); -1/null = not yet rendered. */
+        /** Rendered ground stage (0 podzol, 1 grass, 2 grass+flower); -1/null = not yet rendered.
+         *  GRAVEYARD graves only — a wild grave keeps its original ground and never gets a stage. */
         public Integer floraStage;
         /** Rendered epitaph age-tier (0 exact,1 vague,2 generic,3 lost); -1/null = not yet rendered. */
         public Integer epitaphTier;
+        /** The ground block that was under the plot BEFORE flora replaced it (graveyard graves only),
+         *  so it can be restored on loot/remove/relocate/clear. Null = never replaced. */
+        public String originalGround;
     }
 
     public static final class Yard {
@@ -281,6 +285,10 @@ public final class Graves {
      * → grass+flower) and re-render the epitaph (part a) as its age-tier changes. Only touches the
      * world when a stage actually changes (returns true then, so the caller saves). Skips
      * keeper-held graves (no world marker) and unloaded chunks.
+     *
+     * <p><b>Flora is GRAVEYARD-ONLY.</b> A wild grave ({@code inGraveyard == false}) keeps whatever
+     * block was already underneath — its headstone just sits on the untouched original ground, no
+     * podzol/grass/flower and no {@code floraStage}. The epitaph still ages for every grave.
      */
     static boolean renderFloraAndEpitaph(ServerLevel level, Grave grave, SanctuaryConfig cfg) {
         if (grave.heldByKeeper || grave.looted) {
@@ -293,28 +301,36 @@ public final class Graves {
         boolean changed = false;
         double ageDays = GraveLifecycle.elapsedDays(System.currentTimeMillis(), grave.diedAtMs);
 
-        // Ground/flora stage: 0 podzol, 1 grass, 2 grass+flower.
-        int stage = GraveFlora.hasFlower(ageDays, cfg.graveFloraGrassDays, cfg.graveFloraFlowerDays) ? 2
-                : (ageDays >= cfg.graveFloraGrassDays ? 1 : 0);
-        int prev = grave.floraStage == null ? -1 : grave.floraStage;
-        if (prev != stage) {
-            BlockPos ground = base.below();
-            String groundBlock = GraveFlora.groundBlock(ageDays, cfg.graveFloraGrassDays, cfg.graveFloraFlowerDays);
-            run(level, String.format(Locale.ROOT, "setblock %d %d %d %s replace",
-                    ground.getX(), ground.getY(), ground.getZ(), groundBlock));
-            if (stage == 2) {
-                // Bloom a flower on the plot surface (deterministic per grave id so a re-render is stable).
-                java.util.Random rng = new java.util.Random(grave.id.hashCode());
-                String flower = GraveFlora.flowerBlock(rng.nextDouble(), rng.nextDouble(), cfg.graveWitherRoseChance);
+        // Nature only reclaims consecrated ground. Wild graves keep their original surface.
+        if (GraveFlora.appliesTo(grave.inGraveyard)) {
+            // Ground/flora stage: 0 podzol, 1 grass, 2 grass+flower.
+            int stage = GraveFlora.hasFlower(ageDays, cfg.graveFloraGrassDays, cfg.graveFloraFlowerDays) ? 2
+                    : (ageDays >= cfg.graveFloraGrassDays ? 1 : 0);
+            int prev = grave.floraStage == null ? -1 : grave.floraStage;
+            if (prev != stage) {
+                BlockPos ground = base.below();
+                // Record the original ground once, before the first replacement, so it can be
+                // restored on loot/remove/relocate/clear.
+                if (grave.originalGround == null) {
+                    grave.originalGround = blockIdAt(level, ground);
+                }
+                String groundBlock = GraveFlora.groundBlock(ageDays, cfg.graveFloraGrassDays, cfg.graveFloraFlowerDays);
                 run(level, String.format(Locale.ROOT, "setblock %d %d %d %s replace",
-                        base.getX(), base.getY(), base.getZ(), flower));
-            } else if (prev == 2) {
-                // Regressed below flower tier (shouldn't happen forward, but keep the surface clean).
-                run(level, String.format(Locale.ROOT, "setblock %d %d %d minecraft:air replace",
-                        base.getX(), base.getY(), base.getZ()));
+                        ground.getX(), ground.getY(), ground.getZ(), groundBlock));
+                if (stage == 2) {
+                    // Bloom a flower on the plot surface (deterministic per grave id so a re-render is stable).
+                    java.util.Random rng = new java.util.Random(grave.id.hashCode());
+                    String flower = GraveFlora.flowerBlock(rng.nextDouble(), rng.nextDouble(), cfg.graveWitherRoseChance);
+                    run(level, String.format(Locale.ROOT, "setblock %d %d %d %s replace",
+                            base.getX(), base.getY(), base.getZ(), flower));
+                } else if (prev == 2) {
+                    // Regressed below flower tier (shouldn't happen forward, but keep the surface clean).
+                    run(level, String.format(Locale.ROOT, "setblock %d %d %d minecraft:air replace",
+                            base.getX(), base.getY(), base.getZ()));
+                }
+                grave.floraStage = stage;
+                changed = true;
             }
-            grave.floraStage = stage;
-            changed = true;
         }
 
         // Re-render the label when the epitaph age-tier OR the public status changes (public shows
@@ -328,6 +344,140 @@ public final class Graves {
             changed = true;
         }
         return changed;
+    }
+
+    /** The block id string ("minecraft:dirt") at a position. */
+    private static String blockIdAt(ServerLevel level, BlockPos pos) {
+        return net.minecraft.core.registries.BuiltInRegistries.BLOCK
+                .getKey(level.getBlockState(pos).getBlock()).toString();
+    }
+
+    /**
+     * Restore a grave plot's ground + clear its flower (graveyard graves only) when the grave leaves
+     * that plot — looted, removed, relocated, or cleared. Puts back {@code originalGround} if it was
+     * recorded and clears any flower on the surface. Clears the flora markers. No-op for a grave
+     * that never had flora (wild, or never aged to a stage).
+     */
+    static void restoreGround(ServerLevel level, Grave grave) {
+        if (grave.floraStage == null) {
+            return;
+        }
+        BlockPos base = BlockPos.containing(grave.x, grave.y, grave.z);
+        if (level != null && level.isLoaded(base)) {
+            // Clear a flower we bloomed on the surface.
+            if (grave.floraStage >= 2) {
+                run(level, String.format(Locale.ROOT, "setblock %d %d %d minecraft:air replace",
+                        base.getX(), base.getY(), base.getZ()));
+            }
+            // Put the original ground back, if we recorded it.
+            if (grave.originalGround != null && !grave.originalGround.isBlank()) {
+                BlockPos ground = base.below();
+                run(level, String.format(Locale.ROOT, "setblock %d %d %d %s replace",
+                        ground.getX(), ground.getY(), ground.getZ(), grave.originalGround));
+            }
+        }
+        grave.floraStage = null;
+        grave.originalGround = null;
+    }
+
+    /**
+     * SERVER_STARTED migration (0.8.2.1): the 0.8.2 flora bug applied podzol/grass/flower to WILD
+     * graves too. Revert it: any grave with {@code inGraveyard == false} that has a {@code floraStage}
+     * gets its stage cleared and its ground restored — {@code originalGround} if recorded, else a
+     * best-effort restore by sampling a solid, non-podzol/grass, non-grave-plot surface block among
+     * the plot's horizontal neighbours. If nothing sensible is found, the flora is left in place and
+     * the coordinate is logged for manual fixing.
+     */
+    public static void migrateWildFlora(MinecraftServer server) {
+        SanctuaryConfig cfg = Sanctuary.CONFIG;
+        if (cfg == null || !cfg.gravesEnabled || store().graves.isEmpty()) {
+            return;
+        }
+        boolean dirty = false;
+        for (Grave g : store().graves) {
+            if (g.inGraveyard || g.floraStage == null) {
+                continue; // graveyard graves keep their flora; nothing to migrate otherwise
+            }
+            ServerLevel level = levelOf(server, g.dim);
+            BlockPos base = BlockPos.containing(g.x, g.y, g.z);
+            // The stale-podzol chunk is likely cold on boot; synchronously load it so the ground
+            // restore actually lands (getChunkAt forces a full load without a lingering ticket).
+            // Without this the podzol would just sit until a player next visits.
+            if (level != null) {
+                level.getChunkAt(base);
+            }
+            if (level == null || !level.isLoaded(base)) {
+                // Still can't touch it; clear the marker so it isn't re-applied, and log for manual
+                // review (the podzol lingers until someone visits).
+                Sanctuary.LOGGER.warn("[sanctuary] wild-flora migration: grave {} at {} {} {} in "
+                                + "unloaded chunk — clearing floraStage; ground may need manual fix",
+                        g.id, (int) g.x, (int) g.y, (int) g.z);
+                g.floraStage = null;
+                g.originalGround = null;
+                dirty = true;
+                continue;
+            }
+            BlockPos ground = base.below();
+            // Clear any flower we bloomed on the surface.
+            if (g.floraStage >= 2) {
+                run(level, String.format(Locale.ROOT, "setblock %d %d %d minecraft:air replace",
+                        base.getX(), base.getY(), base.getZ()));
+            }
+            String restore = g.originalGround;
+            if (restore == null || restore.isBlank()) {
+                restore = sampleNeighbourGround(level, ground); // legacy graves recorded nothing
+            }
+            if (restore != null) {
+                run(level, String.format(Locale.ROOT, "setblock %d %d %d %s replace",
+                        ground.getX(), ground.getY(), ground.getZ(), restore));
+                Sanctuary.LOGGER.info("[sanctuary] wild-flora migration: reverted grave {} ground at "
+                        + "{} {} {} -> {}", g.id, ground.getX(), ground.getY(), ground.getZ(), restore);
+            } else {
+                Sanctuary.LOGGER.warn("[sanctuary] wild-flora migration: grave {} at {} {} {} — no "
+                                + "sensible neighbour ground to restore; podzol/grass LEFT for manual fix",
+                        g.id, ground.getX(), ground.getY(), ground.getZ());
+            }
+            g.floraStage = null;
+            g.originalGround = null;
+            dirty = true;
+        }
+        if (dirty) {
+            save();
+        }
+    }
+
+    /**
+     * Best-effort original-ground guess for a legacy wild grave that never recorded it: the most
+     * common solid, natural surface block among the plot's 8 horizontal neighbours, excluding podzol
+     * / grass (the flora we're reverting), air, and non-solid stuff. Null if none qualifies.
+     */
+    private static String sampleNeighbourGround(ServerLevel level, BlockPos ground) {
+        java.util.Map<String, Integer> tally = new java.util.HashMap<>();
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dz = -1; dz <= 1; dz++) {
+                if (dx == 0 && dz == 0) {
+                    continue;
+                }
+                BlockPos p = ground.offset(dx, 0, dz);
+                if (!level.isLoaded(p)) {
+                    continue;
+                }
+                var state = level.getBlockState(p);
+                if (state.isAir()) {
+                    continue;
+                }
+                String id = net.minecraft.core.registries.BuiltInRegistries.BLOCK
+                        .getKey(state.getBlock()).toString();
+                if (id.equals("minecraft:podzol") || id.equals("minecraft:grass_block")) {
+                    continue; // that's the flora we're reverting — don't restore to it
+                }
+                tally.merge(id, 1, Integer::sum);
+            }
+        }
+        return tally.entrySet().stream()
+                .max(java.util.Map.Entry.comparingByValue())
+                .map(java.util.Map.Entry::getKey)
+                .orElse(null);
     }
 
     // --- lifecycle ---
@@ -469,9 +619,11 @@ public final class Graves {
             }
         }
         resting.sort(java.util.Comparator.comparingLong(g -> g.diedAtMs));
-        // Free their old plots so nextPlot() lays them out from scratch in the new bounds.
+        // Free their old plots so nextPlot() lays them out from scratch in the new bounds —
+        // restore each old plot's ground + clear its flower before it's vacated.
         for (Grave g : resting) {
             killDisplays(level, g);
+            restoreGround(level, g); // clears floraStage + originalGround too
             g.inGraveyard = false;
         }
         int moved = 0;
@@ -596,6 +748,7 @@ public final class Graves {
         ServerLevel level = levelOf(server, victim.dim);
         if (level != null) {
             killDisplays(level, victim);
+            restoreGround(level, victim); // vacate the plot: restore its ground + clear the flower
         }
         if (victim.looted) {
             store().graves.remove(victim);
@@ -756,6 +909,7 @@ public final class Graves {
         }
         ServerLevel level = (ServerLevel) player.level();
         int restored = restoreItems(player, grave);
+        restoreGround(level, grave); // put the plot ground back + clear its flower when looted
         grave.looted = true;
         spawnDisplays(level, grave); // headstone cracks
         save();
@@ -870,12 +1024,8 @@ public final class Graves {
             ServerLevel level = levelOf(server, g.dim);
             if (level != null) {
                 killDisplays(level, g);
-                if (g.inGraveyard) {
-                    // clear the plot ground blocks we materialized (part b)
-                    BlockPos base = BlockPos.containing(g.x, g.y, g.z);
-                    run(level, String.format(Locale.ROOT, "setblock %d %d %d minecraft:air replace",
-                            base.getX(), base.getY(), base.getZ()));
-                }
+                // Restore the plot ground + clear its flower (graveyard graves only; no-op on wild).
+                restoreGround(level, g);
             }
             if (g.looted || g.items.isEmpty()) {
                 it.remove(); // empty/looted: nothing to preserve

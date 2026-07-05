@@ -243,6 +243,17 @@ public final class SanctuaryCommands {
                                 ctx.getSource().sendSuccess(() -> Component.literal(
                                         "Default-keeper check run."), true);
                                 return 1;
+                            })))
+                    // Ops (level 2): debug — run the wild-flora migration on demand (normally fires
+                    // on SERVER_STARTED). Lets tests drive the 0.8.2.1 cleanup without a restart.
+                    .then(Commands.literal("migrateflora")
+                            .requires(Commands.<CommandSourceStack>hasPermission(Commands.LEVEL_GAMEMASTERS))
+                            .executes(safe(ctx -> {
+                                com.k33bz.sanctuary.grave.Graves.migrateWildFlora(
+                                        ctx.getSource().getServer());
+                                ctx.getSource().sendSuccess(() -> Component.literal(
+                                        "Wild-flora migration run."), true);
+                                return 1;
                             }))));
             // Ops: world-age danger pressure readout / re-zero (persisted epoch; external
             // dashboards watch danger.epochTick in the config to lap leaderboard seasons).

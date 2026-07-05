@@ -2,6 +2,26 @@
 
 All notable changes to Sanctuary (formerly XP Vitality).
 
+## [0.8.2.1] — 2026-07-05
+
+### Fixed — the nature-reclaims flora was applied to WILD graves too (should be graveyard-only)
+The 0.8.2 podzol → grass → flower aging ran for every grave, including wild ones at the death site,
+replacing whatever block was already underneath (k33bz saw podzol appear under wild graves on
+gmc101). Flora is now **graveyard-only**: a grave with `inGraveyard == false` gets no
+podzol/grass/flower and no `floraStage` — its headstone renders on the untouched original ground.
+The gate is `GraveFlora.appliesTo(inGraveyard)` (unit-tested, red-proven).
+
+- Graves record the plot's **`originalGround`** block (optional codec) before the first flora
+  replacement, so it can be restored. `Graves.restoreGround` puts it back and clears the flower when
+  a graveyard grave is looted, evicted, relocated (resize re-layout), or force-cleared.
+- **Migration on `SERVER_STARTED`** (`migrateWildFlora`): for any wild grave (`inGraveyard == false`)
+  with a `floraStage`, clear the stage and restore the ground — `originalGround` if recorded, else a
+  best-effort restore by sampling the most common solid non-podzol/grass surface among the plot's 8
+  horizontal neighbours; if nothing sensible, the flora is left and the coord logged for manual fix.
+  This reverts the known gmc101 wild-podzol at (16.5, 2.5) and (8.5, -10.5) on the first fixed boot.
+
+New Grave field `originalGround` (optional, legacy default null). mod_version 0.8.2 → 0.8.2.1.
+
 ## [0.8.2] — 2026-07-05
 
 ### Graveyard visual + protection overhaul

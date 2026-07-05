@@ -151,13 +151,7 @@ public class BlockItemPlaceMixin {
             com.k33bz.sanctuary.grave.GraveyardRitual.tryForm(level, pos,
                     (ServerPlayer) context.getPlayer(), Sanctuary.CONFIG);
         }
-
-        // A conduit on a beacon (or the capstone dragon egg) may complete the crafted-sanctuary
-        // ritual — beacon + conduit + dragon egg + 2 sponges + inventory reagents -> a crystal.
-        if (placed.is(net.minecraft.world.level.block.Blocks.CONDUIT)
-                || placed.is(net.minecraft.world.level.block.Blocks.DRAGON_EGG)) {
-            com.k33bz.sanctuary.anchor.SanctuaryRitual.tryForm(level, pos,
-                    (ServerPlayer) context.getPlayer(), Sanctuary.CONFIG);
-        }
+        // (The old placed-altar Sanctuary ritual — beacon+conduit+dragon egg+sponges — was retired
+        // in 0.8.0; the crystal is now made through the Wild Membrane crafting chain instead.)
     }
 }

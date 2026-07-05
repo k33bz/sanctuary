@@ -130,20 +130,24 @@ public class SanctuaryConfig {
     public List<String> scalingDimensions = new ArrayList<>(List.of("minecraft:overworld"));
 
     // Anchor visuals + the Sanctuary Crystal economy. The crystal (a textured player head) is
-    // the anchor block itself: placing one forms a sanctuary; it drops rarely from high-tier
-    // wildlands mobs killed by players, so expansion is gated on conquering the frontier.
+    // the anchor block itself: placing one forms a sanctuary. As of 0.8.0 there is NO mob-drop
+    // path for the crystal — it is obtained ONLY through the crafted-sanctuary chain (Wild Essence
+    // -> Raw Wild Membrane -> temper in a lava cauldron -> Wild Membrane -> + Conduit + Dragon Egg
+    // + 3 Bottle o' Enchanting + Ominous Bottle + Rabbit's Foot + Poisonous Potato -> Sanctuary
+    // Crystal). Expansion is gated on conquering the frontier for the reagents.
     public boolean anchorShowLabel = true;   // floating "Sanctuary Anchor" text above the anchor
     public double anchorLabelHeight = 1.6;   // height of the label above the crystal
-    public int crystalDropMinTier = 3;       // Ferocious+ mobs may drop a crystal
-    public double crystalDropChance = 0.03;  // per qualifying player-kill
-    // Wild Essence — a ritual reagent (see the crafted-sanctuary ritual). A Warden kill ALWAYS
-    // yields 1 (pairs with the Warden -> anchor-cap attunement: one fight, both rewards). Other
-    // hostiles drop it by chance, only from tier 2+ (Savage and up), scaling with threat tier.
-    // Set crystalDropChance=0 to make the ritual the ONLY path to new sanctuaries.
+    // Wild Essence — the raw reagent of the crafted chain, dropped by player-attributed kills.
+    // A WARDEN always yields 1 (pairs with the Warden -> anchor-cap attunement: one fight, both
+    // rewards). Otherwise only the mod's TOP scaling tier ("Nightmare", tier 4) drops it, by
+    // chance. Lower/unscaled mobs drop nothing. wildEssenceEnabled gates the whole crafted chain
+    // (drops, both special recipes, and the lava-cauldron cook).
     public boolean wildEssenceEnabled = true;
-    public double wildEssenceChanceSavage = 0.005;     // tier 2
-    public double wildEssenceChanceFerocious = 0.02;   // tier 3
-    public double wildEssenceChanceNightmare = 0.08;   // tier 4
+    public double wardenEssenceChance = 1.0;       // Warden kill: guaranteed
+    public double nightmareEssenceChance = 0.03;   // top tier (Nightmare / tier 4): 3%
+    // The lava-cauldron temper (Raw Wild Membrane -> Wild Membrane) empties the lava cauldron back
+    // to a plain cauldron, consuming the lava. Set false to keep the lava (temper is then free).
+    public boolean beaconLavaConsumed = true;
     // Per-player anchor cap: everyone starts able to bind ONE sanctuary. Each raise demands a
     // Warden kill of the next tier up (any Warden -> cap 2, Feral+ -> 3, Savage+ -> 4, ... to
     // Nightmare), bounded by anchorCapMax unless an admin sets a player's cap directly

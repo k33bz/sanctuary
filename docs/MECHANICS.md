@@ -35,44 +35,42 @@ merely vanilla-strength (and de-buffed by the revert pass if they were wild).
 crystal skin (pure vanilla block; renders on every client). Placing one forms the anchor
 (activation flash + floating label + recurring particle pulse and sonic-boom accent); breaking it
 drops the crystal back (identity rides on the head's profile, which survives the place/break
-round-trip). Crystals drop from **tier ≥ `crystalDropMinTier` (3, Ferocious+) mobs killed by
-players**, at `crystalDropChance` (3%) per qualifying kill — so sanctuary expansion is gated on
-conquering the frontier, and the supply is renewable (unlike the one dragon egg). Ops can spawn
-one with `/sanctuary crystal give`.
+round-trip). As of **0.8.0 the crystal is craft-only** — there is **no mob-drop path**; it is made
+through the Wild Membrane crafting chain below. Ops can still spawn one with `/sanctuary crystal give`.
 
-**Wild Essence** (`wildEssenceEnabled`). A second textured player head — a glowing ender-eye,
-anvil-proof by profile name like the crystal — but a **ritual reagent, not an anchor** (placing
-it does nothing). It drops from the frontier's monsters on the same kill path as crystals:
+**Wild Essence** (`wildEssenceEnabled`). A textured player head — a glowing ender-eye, anvil-proof
+by profile name like the crystal — but a **crafting reagent, not an anchor** (placing it does
+nothing). It is the raw material of the chain, dropped only by **player-attributed** kills:
 
 | Source | Wild Essence drop |
 |---|---|
-| **Warden** (any tier) | **guaranteed 1** (pairs with the Warden→cap attunement — one fight, both rewards) |
-| Savage (tier 2) | `wildEssenceChanceSavage` = 0.5% |
-| Ferocious (tier 3) | `wildEssenceChanceFerocious` = 2% |
-| Nightmare (tier 4) | `wildEssenceChanceNightmare` = 8% |
-| tier < 2 | never |
+| **Warden** (any tier) | **guaranteed** (`wardenEssenceChance` = 1.0; pairs with the Warden→cap attunement — one fight, both rewards) |
+| **Nightmare** (tier 4, the top scaling tier) | `nightmareEssenceChance` = 3% |
+| anything below Nightmare | never |
 
-Ops give one with `/sanctuary essence give`; chances are live-tunable
-(`essence.chanceSavage/Ferocious/Nightmare`).
+Ops give one with `/sanctuary essence give`; both rates are live in config.
 
-**The crafting ritual — a built Sanctuary Crystal.** An alternative to lucky drops, in the mod's
-ritual idiom (structure + trigger + check + consume + effect + result). It yields the *existing*
-Sanctuary Crystal item, so the crafted path feeds the same anchor system.
+**The crafting chain — a built Sanctuary Crystal.** The crystal is now made at a crafting table
+through two component-aware **special recipes** plus a lava temper. Because the reagents are
+textured player heads, the recipes are `CustomRecipe` subclasses (the mechanism vanilla uses for
+map-cloning / firework crafting) that inspect stack *components*, not just item ids — a plain or mob
+player head is rejected. Every result is computed server-side, so **vanilla clients craft it
+unmodified**.
 
-- **Structure:** a **conduit on a beacon**, a **dragon egg on the conduit**, and **2 sponges**
-  (dry or wet) within 2 blocks of the conduit.
-- **Reagents (inventory):** **1 Wild Essence + 2 phantom membranes** (not placeable, so consumed
-  from the triggering player's inventory).
-- **Trigger:** placing the conduit *or* the capstone dragon egg (whichever completes the
-  structure) fires the check via the block-place mixin — the same hook the graveyard skull uses.
-- **On success:** the beacon, conduit, dragon egg and 2 sponges are set to air, the reagents are
-  consumed, a flash + end-rod burst + beacon/conduit sound plays, and the player receives a
-  Sanctuary Crystal. **On an incomplete recipe** (once a conduit sits on a beacon), an actionbar
-  hint lists what's missing and **nothing is consumed**.
+1. **Raw Wild Membrane** (shapeless): **1 Wild Essence + 2 Phantom Membrane + 2 Sponge** (dry or
+   wet), nothing else in the grid → **Wild Membrane (Raw)**. The raw membrane is **fire-resistant**
+   (the vanilla `minecraft:damage_resistant` component, `is_fire` tag, like netherite gear) so its
+   item entity survives lava.
+2. **The lava temper** (server-side, no mixin, no furnace): drop a **Raw Wild Membrane into a
+   `lava_cauldron`** (strictly lava — not water, not powder snow). After a few seconds of bubbling
+   (lava/smoke particles + bubble/extinguish sounds) the raw item is consumed, the **lava cauldron
+   empties to a plain cauldron** (lava spent; `beaconLavaConsumed` = true by default), and a
+   finished **Wild Membrane** pops up out of the cauldron.
+3. **Sanctuary Crystal** (shapeless, full 3×3): **1 Wild Membrane + 1 Conduit + 1 Dragon Egg +
+   3 Bottle o' Enchanting + 1 Ominous Bottle + 1 Rabbit's Foot + 1 Poisonous Potato** (9 items,
+   no free slots) → the **Sanctuary Crystal**.
 
-The recipe is fixed, but the drop knobs and `wildEssenceEnabled` make the reagent economy
-adjustable. Servers wanting the ritual to be the **only** route to new sanctuaries set
-`crystalDropChance=0` — the drop path stays code-present but never fires.
+`wildEssenceEnabled` gates the whole chain (drops, both recipes, and the lava temper).
 
 **Upkeep & decay** (`anchorUpkeepEnabled`). Player-raised sanctuaries burn fuel measured in
 **real hours of server uptime** (72,000 ticks/hour):
@@ -447,9 +445,9 @@ state silently. The glyph is `☠` (U+2620); emoji are not in Minecraft's font.
 | `anchors` | spawn 0,0 r128 | §1 |
 | `scalingDimensions` | overworld | §1 |
 | `anchorShowLabel` / `anchorLabelHeight` | true / 1.6 | cosmetic |
-| `crystalDropMinTier` / `crystalDropChance` | 3 / 0.03 | §1 (set chance 0 to force the ritual) |
-| `wildEssenceEnabled` | true | §1 — Wild Essence drops + the crafting ritual |
-| `wildEssenceChanceSavage/Ferocious/Nightmare` | 0.005 / 0.02 / 0.08 | §1 — tier-scaled essence drops (Warden always 1) |
+| `wildEssenceEnabled` | true | §1 — gates Wild Essence drops + the whole crafting chain |
+| `wardenEssenceChance` / `nightmareEssenceChance` | 1.0 / 0.03 | §1 — Warden=guaranteed, Nightmare(tier 4)=3%, else none |
+| `beaconLavaConsumed` | true | §1 — lava temper empties the lava cauldron to a plain cauldron |
 | `anchorMinSpacing` | 192 | §1 — min center distance between anchors (creative bypasses) |
 | `anchorCapBase` / `anchorCapMax` | 1 / 3 | §1 — per-player anchor cap, raised by Warden kills |
 | `suppressHostileSpawnsInSanctuary` | true | §1 — no natural hostile spawns in active zones |

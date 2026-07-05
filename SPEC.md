@@ -13,9 +13,10 @@ This file is the design intent; the exact formulas, tables, and worked examples 
    and smarter (hunters, door-breakers, rabid wildlife) the farther you go.
 2. Leveling makes you visibly tougher (armor icons, bonus hearts, an absorption shield, breath,
    a lethal save) — and death only costs a level-scaled *fraction* of it (soul retention).
-3. The frontier's strongest monsters (Ferocious+) rarely drop **Sanctuary Crystals**. Placing one
-   raises a new safe zone — with a floating status label, a spinning shell while alive, an
-   auto-created Flan admin claim, and suppressed hostile spawns.
+3. The frontier's strongest monsters yield **Wild Essence** (Warden guaranteed; Nightmare tier 3%),
+   which is **crafted** through a Wild Membrane chain (craft → temper in a lava cauldron → craft)
+   into a **Sanctuary Crystal**. Placing one raises a new safe zone — with a floating status label,
+   a spinning shell while alive, an auto-created Flan admin claim, and suppressed hostile spawns.
 4. Sanctuaries **burn fuel** (real hours). Emeralds maintain them (blocks are the efficient
    rate); a dry one goes dormant — no safety, no claim, raidable — and only a **dragon egg**
    rekindles it. The Vanilla Tweaks *dragon drops* pack makes eggs renewable: reviving a

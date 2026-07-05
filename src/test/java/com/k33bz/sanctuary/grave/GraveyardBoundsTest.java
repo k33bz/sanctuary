@@ -54,4 +54,31 @@ class GraveyardBoundsTest {
         assertEquals(GraveyardBounds.Result.OK,
                 GraveyardBounds.validateResize(BASE, bigger, List.of(new double[]{8.5, 8.5})));
     }
+
+    // --- consecrationAction (default-keeper upgrade vs manual resize/reject) ---
+
+    @Test
+    void noExistingYardIsFresh() {
+        assertEquals(GraveyardBounds.Consecration.FRESH,
+                GraveyardBounds.consecrationAction(false, false, false));
+        assertEquals(GraveyardBounds.Consecration.FRESH,
+                GraveyardBounds.consecrationAction(false, true, true));
+    }
+
+    @Test
+    void autoDefaultYardIsAlwaysUpgraded() {
+        // the auto/default hold-only yard never blocks consecration — it upgrades in place
+        assertEquals(GraveyardBounds.Consecration.UPGRADE,
+                GraveyardBounds.consecrationAction(true, true, true));
+        assertEquals(GraveyardBounds.Consecration.UPGRADE,
+                GraveyardBounds.consecrationAction(true, true, false));
+    }
+
+    @Test
+    void manualYardResizesForOwnerRejectsForOthers() {
+        assertEquals(GraveyardBounds.Consecration.RESIZE,
+                GraveyardBounds.consecrationAction(true, false, true));
+        assertEquals(GraveyardBounds.Consecration.REJECT_OWNER,
+                GraveyardBounds.consecrationAction(true, false, false));
+    }
 }

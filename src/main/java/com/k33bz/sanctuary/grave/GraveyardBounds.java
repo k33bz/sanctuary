@@ -31,6 +31,33 @@ public final class GraveyardBounds {
         OK, NOT_LARGER, STRANDS_GRAVE
     }
 
+    /** What a re-consecration should do given the existing yard's state. */
+    public enum Consecration {
+        FRESH,      // no existing yard for this anchor — create one
+        UPGRADE,    // the only yard is the auto/default hold-only one — upgrade it in place
+        RESIZE,     // a manual yard exists — try to resize (validate bounds separately)
+        REJECT_OWNER // a manual yard owned by someone else — reject
+    }
+
+    /**
+     * Decide the consecration action for an anchor. {@code hasExisting} = a yard already exists for
+     * this anchor; {@code existingIsAuto} = that yard is the auto/default hold-only one;
+     * {@code sameOwner} = the consecrating player owns the existing yard (or is creative/admin).
+     */
+    public static Consecration consecrationAction(boolean hasExisting, boolean existingIsAuto,
+                                                  boolean sameOwner) {
+        if (!hasExisting) {
+            return Consecration.FRESH;
+        }
+        if (existingIsAuto) {
+            return Consecration.UPGRADE; // the default yard is always upgradeable by the anchor owner
+        }
+        if (!sameOwner) {
+            return Consecration.REJECT_OWNER;
+        }
+        return Consecration.RESIZE;
+    }
+
     /**
      * Decide whether re-consecrating with {@code next} bounds is a valid resize of {@code current},
      * given the block positions of every grave already in the yard.

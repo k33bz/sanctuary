@@ -2,7 +2,14 @@
 
 All notable changes to Sanctuary (formerly XP Vitality).
 
-## [Unreleased]
+## [0.7.1] — 2026-07-04
+
+### Fixed — CRITICAL: graves no longer destroy your inventory
+`Graves.capture()` cleared the dying player.s inventory and created the grave but never
+assigned the captured items to `grave.items` — the items were orphaned and lost, and the grave
+came up empty (you were told "Your belongings rest in a grave" but claiming it gave nothing).
+Present since graves shipped. One-line fix: the captured items are now stored on the grave.
+Deaths preserve your inventory as intended. (Caught by the multi-bot faction test harness.)
 
 ### Testing — expanded pure-logic unit coverage (no behavior change)
 Extracted the game-independent time/string/int math still trapped in Minecraft-coupled classes

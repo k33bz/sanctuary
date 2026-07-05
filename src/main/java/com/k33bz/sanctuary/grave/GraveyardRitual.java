@@ -22,9 +22,9 @@ import java.util.Set;
  * sanctuary, fence (or wall) off a plot with a gate, then build an iron golem body in it and
  * crown it with a skull instead of a pumpkin: skull on two stacked iron blocks, iron arms on the
  * middle block. The ritual consumes the iron and the skull, and the Gravekeeper rises in its
- * place — free to wander among the graves, never past the fence. One graveyard per sanctuary,
- * bound to the anchor's owner. The pen must enclose at least {@code graveyardMinSize}² walkable
- * blocks per side and at most {@code graveyardMaxSize}² overall.
+ * place — a still cleric standing vigil over the graves. One graveyard per sanctuary, bound to the
+ * anchor's owner. The pen must enclose at least {@code graveyardMinSize}² walkable blocks per side
+ * and at most {@code graveyardMaxSize}² overall.
  */
 public final class GraveyardRitual {
     private GraveyardRitual() {
@@ -150,7 +150,7 @@ public final class GraveyardRitual {
         yard.bMaxZ = maxZ;
         Graves.store().yards.add(yard);
         Graves.save();
-        Gravekeeper.spawnKeeper(level, yard, true);
+        Gravekeeper.spawnKeeper(level, yard);
         player.sendSystemMessage(Component.literal(String.format(Locale.ROOT,
                         "The effigy crumbles. The Gravekeeper rises to tend %dx%d of consecrated ground.",
                         spanX, spanZ))

@@ -61,6 +61,10 @@ public class Sanctuary implements ModInitializer {
         com.k33bz.sanctuary.anchor.SanctuaryRecipes.register();
         net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STARTED
                 .register(StatBoards::ensureObjectives);
+        // Clear courier allays orphaned in graveyards by the pre-0.8.1 buggy spawn (they never
+        // flew or got discarded); a clean boot on the fixed build reaps them.
+        net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STARTED
+                .register(com.k33bz.sanctuary.grave.Gravekeeper::sweepOrphanCouriers);
         // Cache the fire-resistant component (built from the is_fire damage tag) once registries
         // exist, so a Raw Wild Membrane's item entity can sit in lava while it tempers.
         net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STARTED

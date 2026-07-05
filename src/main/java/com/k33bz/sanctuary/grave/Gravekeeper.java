@@ -1,7 +1,6 @@
 package com.k33bz.sanctuary.grave;
 
 import net.minecraft.ChatFormatting;
-import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
@@ -17,8 +16,10 @@ import net.minecraft.server.dialog.body.DialogBody;
 import net.minecraft.server.dialog.body.PlainMessage;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
-import net.minecraft.world.phys.AABB;
+import net.minecraft.world.entity.animal.allay.Allay;
 import net.minecraft.world.phys.Vec3;
 import com.k33bz.sanctuary.Sanctuary;
 import com.k33bz.sanctuary.SanctuaryConfig;
@@ -31,11 +32,16 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * The Gravekeeper — a still cleric who tends each graveyard, and his allay couriers. Right-click
- * opens a dialog listing the player's loot-bearing graves that are NOT in this cemetery (wild or
- * resting in rival graveyards); paying the summon fee dispatches an allay that lifts off, fades
- * over the horizon, returns with the headstone, and settles it into the next open plot. Empty
+ * The Gravekeeper — a still cleric (NoAI) who tends each graveyard, and his allay couriers.
+ * Right-click opens a dialog listing the player's loot-bearing graves that are NOT in this cemetery
+ * (wild or resting in rival graveyards); paying the summon fee dispatches an allay that lifts off,
+ * fades over the horizon, returns with the headstone, and settles it into the next open plot. Empty
  * graves are beneath his notice.
+ *
+ * <p>Couriers are spawned via the entity API so the animation holds a direct reference (the old
+ * command-summon-then-search raced and returned null — the allay never flew and was orphaned).
+ * {@link #sweepOrphanCouriers} clears any lingering tagged couriers at run start, at completion,
+ * and on server start.
  */
 public final class Gravekeeper {
     private Gravekeeper() {
@@ -60,22 +66,22 @@ public final class Gravekeeper {
         Vec3 inTo;
     }
 
-    /** Summon the keeper at a freshly defined graveyard. */
+    /**
+     * Summon the still cleric at a graveyard. ALL keepers are stationary (NoAI:1b): a wandering
+     * villager constantly pathfinds toward the fence and looks broken, contradicting the "still
+     * cleric" intent. A NoAI villager still fires the right-click use handler, so the summon dialog
+     * opens as before. The keeper is Invulnerable, PersistenceRequired, and Silent.
+     */
     public static void spawnKeeper(ServerLevel level, Graves.Yard yard) {
-        spawnKeeper(level, yard, false);
-    }
-
-    /** Ritual keepers wander (AI on, fenced in by the sweep); command keepers stand vigil. */
-    public static void spawnKeeper(ServerLevel level, Graves.Yard yard, boolean wander) {
         Graves.run(level, String.format(Locale.ROOT,
                 "kill @e[type=minecraft:villager,tag=%s,x=%d,y=%d,z=%d,distance=..%d]",
                 KEEPER_TAG, yard.x, yard.y, yard.z, yard.radius + 8));
         Graves.run(level, String.format(Locale.ROOT,
-                "summon minecraft:villager %d %d %d {Tags:[\"%s\"],NoAI:%db,Invulnerable:1b,"
+                "summon minecraft:villager %d %d %d {Tags:[\"%s\"],NoAI:1b,Invulnerable:1b,"
                         + "PersistenceRequired:1b,Silent:1b,"
                         + "VillagerData:{profession:\"minecraft:cleric\",level:5,type:\"minecraft:swamp\"},"
                         + "CustomName:{text:\"Gravekeeper\",color:\"gold\"},CustomNameVisible:1b}",
-                yard.x, yard.y + 1, yard.z, KEEPER_TAG, wander ? 0 : 1));
+                yard.x, yard.y + 1, yard.z, KEEPER_TAG));
     }
 
     /** Right-click on the keeper: list summonable graves (unfiltered). */
@@ -205,6 +211,9 @@ public final class Gravekeeper {
         StatBoards.addScore(player, "sanct_toll", fee);
         ServerLevel level = (ServerLevel) player.level();
 
+        // Clear any orphaned couriers from a prior (buggy) run before starting a fresh one.
+        sweepOrphanCouriers(level.getServer());
+
         Run run = new Run();
         run.level = level;
         run.graveId = graveId;
@@ -219,14 +228,60 @@ public final class Gravekeeper {
         return 1;
     }
 
+    /**
+     * Spawn the courier allay via the entity API and return a DIRECT reference — no command-summon-
+     * then-search (the old approach: {@code summon} then re-find by tag, which raced and returned
+     * null, so the allay never animated and was never discarded — it just stood orphaned in the
+     * yard while only the grave "returned"). NoGravity keeps it from sinking between the animation's
+     * teleports; it's also NoAI/Invulnerable/PersistenceRequired/Silent and carries {@link #COURIER_TAG}
+     * so the orphan sweep can find any stragglers.
+     */
+    /** The allay entity type, resolved from the registry (the static EntityType.ALLAY field isn't
+     *  on the mod's named compile classpath; the registry lookup is version-robust). */
+    @SuppressWarnings("unchecked")
+    private static final EntityType<Allay> ALLAY_TYPE = (EntityType<Allay>)
+            net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE
+                    .getValue(net.minecraft.resources.Identifier.withDefaultNamespace("allay"));
+
     private static Mob spawnCourier(ServerLevel level, Vec3 at) {
-        Graves.run(level, String.format(Locale.ROOT,
-                "summon minecraft:allay %.2f %.2f %.2f {Tags:[\"%s\"],NoAI:1b,Invulnerable:1b,PersistenceRequired:1b}",
-                at.x, at.y, at.z, COURIER_TAG));
-        List<Mob> found = level.getEntitiesOfClass(Mob.class,
-                new AABB(BlockPos.containing(at.x, at.y, at.z)).inflate(2),
-                m -> m.entityTags().contains(COURIER_TAG));
-        return found.isEmpty() ? null : found.get(0);
+        Allay allay = ALLAY_TYPE.create(level, EntitySpawnReason.COMMAND);
+        if (allay == null) {
+            return null;
+        }
+        allay.snapTo(at.x, at.y, at.z, 0.0f, 0.0f);
+        allay.setNoAi(true);
+        allay.setInvulnerable(true);
+        allay.setPersistenceRequired();
+        allay.setSilent(true);
+        allay.setNoGravity(true);
+        allay.addTag(COURIER_TAG);
+        if (!level.addFreshEntity(allay)) {
+            return null;
+        }
+        return allay;
+    }
+
+    /**
+     * Kill any lingering courier allays (identified by {@link #COURIER_TAG}). Run at run start, at
+     * completion, and on server start — the last clears orphans already standing in gmc101 yards
+     * from the buggy pre-0.8.1 build the first time 0.8.1 boots.
+     */
+    public static void sweepOrphanCouriers(MinecraftServer server) {
+        if (server == null) {
+            return;
+        }
+        for (ServerLevel level : server.getAllLevels()) {
+            List<? extends Allay> couriers = level.getEntities(
+                    net.minecraft.world.level.entity.EntityTypeTest.forClass(Allay.class),
+                    a -> !a.isRemoved() && a.entityTags().contains(COURIER_TAG));
+            for (Allay allay : couriers) {
+                // Don't reap an allay that's part of an active run (its animation still owns it).
+                boolean inActiveRun = RUNS.stream().anyMatch(r -> r.allay == allay);
+                if (!inActiveRun) {
+                    allay.discard();
+                }
+            }
+        }
     }
 
     /** Per-tick courier animation. Cheap: only active runs are touched. */
@@ -288,6 +343,8 @@ public final class Gravekeeper {
                         }
                         run.phase = 3;
                         it.remove();
+                        // Defensive: reap any courier that slipped its discard (never orphan one).
+                        sweepOrphanCouriers(server);
                     }
                 }
                 default -> it.remove();

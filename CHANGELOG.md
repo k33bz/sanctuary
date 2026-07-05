@@ -2,6 +2,34 @@
 
 All notable changes to Sanctuary (formerly XP Vitality).
 
+## [0.8.1] — 2026-07-05
+
+### Fixed — Gravekeeper wandered out of its pen
+Ritual-consecrated keepers were spawned with full villager AI (`NoAI:0b`), so they constantly
+pathfound toward the fence and looked broken — contradicting the "still cleric" intent. ALL keepers
+now spawn stationary (`NoAI:1b`); the `wander` code path is removed. A NoAI villager still fires the
+right-click use handler, so the summon dialog opens unchanged. (`GraveyardRitual` now calls the
+plain `spawnKeeper`.)
+
+### Fixed — allay courier never flew; grave "returned" with no visible courier
+`spawnCourier` command-summoned the allay, then re-found it with
+`getEntitiesOfClass(..., m -> m.entityTags().contains(COURIER_TAG))`. That lookup raced (the freshly
+command-summoned entity wasn't reliably in the entity index in the same call), so it returned null:
+`run.allay` was null → the outbound/inbound lerp was skipped (no fly-away) and `discard()` was
+skipped (the allay stood orphaned in the yard) while only the grave-move completed.
+
+NOTE on the root cause: `entityTags()` is NOT the entity-type registry tags — in 26.x it reads the
+same `tags` field `addTag()` writes (the command/scoreboard `Tags:[...]` set), so the tag match
+itself was correct. The failure was the command-summon-then-search race, not the accessor. Fixed by
+spawning the courier through the entity API (`EntityType<Allay>` from the registry →
+`create(level, COMMAND)` → `addFreshEntity`) so the animation holds a DIRECT reference — no lookup.
+The courier is now also `NoGravity` (won't sink between teleports) plus NoAI/Invulnerable/
+PersistenceRequired/Silent/`COURIER_TAG`.
+
+Added `Gravekeeper.sweepOrphanCouriers`, run at courier-run start, at completion, and on
+`SERVER_STARTED` — the last reaps couriers already orphaned in gmc101 yards by the buggy build the
+first time 0.8.1 boots.
+
 ## [0.8.0] — 2026-07-05
 
 ### Changed — the Sanctuary Crystal is now a crafting chain, not a placed altar

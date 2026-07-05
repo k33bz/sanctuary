@@ -148,6 +148,7 @@ public final class Graves {
         grave.y = pos.getY();
         grave.z = pos.getZ() + 0.5;
         grave.diedAtMs = System.currentTimeMillis();
+        grave.items = items;   // FIX: actually store the captured items (was orphaned -> empty graves / item loss)
         store().graves.add(grave);
         save();
         spawnDisplays((ServerLevel) player.level(), grave);

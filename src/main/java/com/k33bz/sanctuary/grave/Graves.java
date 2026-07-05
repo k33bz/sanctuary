@@ -391,6 +391,10 @@ public final class Graves {
                     victim.dim, victim.x, victim.y, victim.z, victim.items.size(), null, false);
             notifyOwner(server, victim, "The graveyard overflowed; the Gravekeeper holds your remains now.");
         }
+        // Persist the eviction here rather than trusting the caller — this store mutation must
+        // survive a restart on its own. (Hardening from CoE #2: never leave a store change
+        // depending on a later save() a future caller might forget.)
+        save();
         return true;
     }
 

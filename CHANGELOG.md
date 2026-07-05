@@ -37,9 +37,24 @@ their marker + entry deleted. Default = wild graves only; `includegraveyard` als
 graves and their plot ground. Refuses if no graveyard exists (nowhere to hold loot). Also added a
 debug `/sanctuarygrave setage <days> [id]` (op level 2) to drive the epitaph/flora aging in tests.
 
+**(f) Default gravekeeper.** On `SERVER_STARTED`, if no graveyard has been consecrated yet but at
+least one sanctuary anchor exists, a stationary keeper (NoAI, per 0.8.1) is raised beside the OLDEST
+anchor as a HOLD-ONLY yard (`radius 0`, no physical plots — a pure reclaim/hold hub). So drift,
+`clearworld`, and "nearest keeper hold" always have a target even before anyone builds a graveyard;
+`clearworld` no longer hits its "no graveyard" path in practice (the guard stays for
+`graveDefaultKeeper=false`). Consecrating a real graveyard UPGRADES the default in place — the
+keeper moves to the consecrated ground, held graves carry over, and the "already has a graveyard"
+check excludes the auto/default yard. Gated by `graveDefaultKeeper` (default true). Yards gain an
+`auto` flag (legacy default false). Also added debug `/sanctuarygrave defaultkeeper` (op level 2)
+to drive the check without a restart.
+
+The public-grave status no longer HIDES the epitaph — a public grave keeps its fuzzy epitaph and
+shows its status via the red label color instead.
+
 Grave records gain `deathCause` / `killerName` / `deathDay` (optional, legacy defaults) plus
 rendered-stage markers. New config: `epitaphExactDays`, `epitaphVagueDays`, `epitaphGenericDays`,
-`graveFloraGrassDays`, `graveFloraFlowerDays`, `graveWitherRoseChance`. mod_version 0.8.1 → 0.8.2.
+`graveFloraGrassDays`, `graveFloraFlowerDays`, `graveWitherRoseChance`, `graveDefaultKeeper`.
+mod_version 0.8.1 → 0.8.2.
 
 ## [0.8.1] — 2026-07-05
 

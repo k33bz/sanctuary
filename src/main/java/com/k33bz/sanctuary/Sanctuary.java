@@ -65,6 +65,10 @@ public class Sanctuary implements ModInitializer {
         // flew or got discarded); a clean boot on the fixed build reaps them.
         net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STARTED
                 .register(com.k33bz.sanctuary.grave.Gravekeeper::sweepOrphanCouriers);
+        // Default gravekeeper (0.8.2): raise a hold-only keeper at the oldest sanctuary when no
+        // graveyard has been consecrated yet, so there is always a reclaim/hold hub.
+        net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STARTED
+                .register(com.k33bz.sanctuary.grave.Graves::ensureDefaultKeeper);
         // Cache the fire-resistant component (built from the is_fire damage tag) once registries
         // exist, so a Raw Wild Membrane's item entity can sit in lava while it tempers.
         net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STARTED

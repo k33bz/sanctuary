@@ -119,6 +119,13 @@ public class SanctuaryConfig {
     public double graveFloraFlowerDays = 7.0;
     public double graveWitherRoseChance = 0.05;
 
+    // Default gravekeeper (0.8.2): on server start, if no graveyard has been consecrated yet but at
+    // least one sanctuary anchor exists, raise a stationary keeper at the OLDEST anchor as a
+    // HOLD-ONLY yard (no physical grave plots) so there is always a reclaim/hold hub — drift,
+    // clearworld, and "nearest keeper hold" always have a target. Consecrating a real graveyard
+    // upgrades/relocates this default in place.
+    public boolean graveDefaultKeeper = true;
+
     // The Restless: once per night, an underground player carrying restlessMinInsomniaDays+
     // of sleep debt is visited by Restless Creakings spawned in the dark nearby (count grows
     // with insomnia, capped). They only move unwatched, dissolve at dawn, and never bother the

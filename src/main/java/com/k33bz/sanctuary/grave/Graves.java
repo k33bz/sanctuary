@@ -89,6 +89,12 @@ public final class Graves {
         public String owner;      // consecrating player (ritual yards)
         /** Fence bounds from the consecration flood-fill; 0/0/0/0 for command yards. */
         public int bMinX, bMaxX, bMinZ, bMaxZ;
+        /**
+         * Auto/default HOLD-ONLY yard (0.8.2): raised at server start when no real graveyard exists.
+         * No physical grave plots are laid in the world — it is purely a reclaim/hold hub. A manual
+         * consecration upgrades it in place. Legacy yards default false.
+         */
+        public boolean auto;
     }
 
     public static final class Store {
@@ -248,18 +254,12 @@ public final class Graves {
                         + "transformation:{left_rotation:[0f,0f,0f,1f],right_rotation:[0f,0f,0f,1f],"
                         + "translation:[0f,1.05f,0f],scale:[0.45f,0.45f,0.45f]}}",
                 grave.x, grave.y, grave.z, GRAVE_TAG, tag, grave.ownerName));
-        // label: line 1 = the NAME alone (no "Here lies"); line 2 = the age-fuzzy epitaph, unless
-        // the grave's state (looted / public) overrides it with a status line.
+        // label: line 1 = the NAME alone (no "Here lies"); line 2 = the age-fuzzy epitaph for any
+        // unlooted grave (a public grave keeps its epitaph — its status shows in the RED color, not
+        // by hiding the epitaph). A looted stone shows only its memorial line.
         boolean isPublic = isPublic(grave);
         String color = grave.looted ? "dark_gray" : isPublic ? "red" : "gray";
-        String line2;
-        if (grave.looted) {
-            line2 = "taken by the living";
-        } else if (isPublic) {
-            line2 = "unclaimed — free to any hand";
-        } else {
-            line2 = epitaphOf(grave);
-        }
+        String line2 = grave.looted ? "taken by the living" : epitaphOf(grave);
         run(level, String.format(Locale.ROOT,
                 "summon minecraft:text_display %.2f %.2f %.2f {Tags:[\"%s\",\"%s\"],billboard:\"vertical\","
                         + "text:{text:\"%s\\n\",color:\"white\",extra:[{text:\"%s\",color:\"%s\"}]}}",
@@ -317,11 +317,13 @@ public final class Graves {
             changed = true;
         }
 
-        // Epitaph re-render as the age-tier changes.
-        int tier = epitaphTierOf(grave);
+        // Re-render the label when the epitaph age-tier OR the public status changes (public shows
+        // as a red color, so it needs a re-render too). Pack both into the stored marker: +10 when
+        // public, so a fresh grave turning public flips the marker and re-renders.
+        int tier = epitaphTierOf(grave) + (isPublic(grave) ? 10 : 0);
         int prevTier = grave.epitaphTier == null ? -1 : grave.epitaphTier;
         if (prevTier != tier) {
-            spawnDisplays(level, grave); // re-renders the label with the new fuzzy epitaph
+            spawnDisplays(level, grave); // re-renders the label with the new fuzzy epitaph + color
             grave.epitaphTier = tier;
             changed = true;
         }
@@ -506,6 +508,17 @@ public final class Graves {
                 || !oldLevel.isLoaded(BlockPos.containing(grave.x, grave.y, grave.z))) {
             return false;
         }
+        // A HOLD-ONLY (auto/default) yard lays no physical plots: drift takes the grave straight
+        // into the keeper's hold instead, reclaimable via the keeper dialog.
+        if (yard.auto) {
+            killDisplays(oldLevel, grave);
+            grave.heldByKeeper = true;
+            grave.inGraveyard = false;
+            grave.graveyardAnchor = yard.anchorId;
+            grave.floraStage = null;
+            grave.epitaphTier = null;
+            return true;
+        }
         BlockPos plot = nextPlot(yardLevel, yard);
         if (plot == null && evictForSpace(server, yard)) {
             plot = nextPlot(yardLevel, yard);
@@ -630,6 +643,51 @@ public final class Graves {
             }
         }
         return false;
+    }
+
+    /**
+     * Default gravekeeper (0.8.2): on server start, if NO graveyard exists yet but at least one
+     * sanctuary anchor does, raise a stationary keeper at the OLDEST anchor as a HOLD-ONLY yard so
+     * there is always a reclaim/hold hub. Idempotent — does nothing if a yard already exists or the
+     * feature is off.
+     */
+    public static void ensureDefaultKeeper(MinecraftServer server) {
+        SanctuaryConfig cfg = Sanctuary.CONFIG;
+        if (cfg == null || !cfg.gravesEnabled || !cfg.graveDefaultKeeper) {
+            return;
+        }
+        if (!store().yards.isEmpty()) {
+            return; // a yard (default or manual) already exists
+        }
+        var anchors = com.k33bz.sanctuary.anchor.AnchorState.get().anchors;
+        if (anchors == null || anchors.isEmpty()) {
+            return; // no placed sanctuary to host the default keeper
+        }
+        // The OLDEST placed anchor = first in the list (ensureRegistered appends in placement order).
+        com.k33bz.sanctuary.anchor.AnchorState.PlacedAnchor oldest = anchors.get(0);
+        ServerLevel level = server.overworld();
+        Yard yard = new Yard();
+        yard.anchorId = oldest.id != null ? oldest.id : "legacy";
+        yard.owner = oldest.ownerId;
+        yard.dim = level.dimension().identifier().toString();
+        // Stand the keeper one block BESIDE the anchor so it doesn't sit inside the crystal head.
+        yard.x = (int) Math.floor(oldest.x) + 1;
+        yard.z = (int) Math.floor(oldest.z);
+        yard.y = safeKeeperY(level, yard.x, yard.z, oldest.y);
+        yard.radius = 0;      // hold-only: no physical plots
+        yard.auto = true;
+        store().yards.add(yard);
+        save();
+        Gravekeeper.spawnKeeper(level, yard);
+        Sanctuary.LOGGER.info("[sanctuary] Default gravekeeper raised at the oldest sanctuary ({}, {})",
+                yard.x, yard.z);
+    }
+
+    /** Find a standable Y near the anchor for the default keeper (one above solid ground). */
+    private static int safeKeeperY(ServerLevel level, int x, int z, int anchorY) {
+        int start = anchorY > level.getMinY() ? anchorY : level.getHeight(Heightmap.Types.MOTION_BLOCKING, x, z);
+        // Prefer a spot beside the anchor block so the keeper doesn't sit inside the crystal head.
+        return start;
     }
 
     public static Yard nearestYard(Grave grave) {

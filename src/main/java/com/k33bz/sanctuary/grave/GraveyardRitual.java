@@ -81,11 +81,14 @@ public final class GraveyardRitual {
         String fAnchor = anchorId;
         Graves.Yard existing = Graves.store().yards.stream()
                 .filter(y -> y.anchorId.equals(fAnchor)).findFirst().orElse(null);
-        // An existing yard may be RESIZED by the SAME owner if the new pen is larger and still
-        // contains every grave (validated after the flood-fill below). A different owner, or any
-        // shrink/strand, is rejected.
-        if (existing != null && existing.owner != null
-                && !existing.owner.equals(player.getUUID().toString()) && !player.isCreative()) {
+        // Decide the action: FRESH (no yard), UPGRADE (only the auto/default yard — settle it into
+        // real ground), RESIZE (a manual yard — expand it, validated below), or REJECT_OWNER (a
+        // manual yard tended by someone else). The auto/default yard never blocks consecration.
+        boolean sameOwner = existing == null || existing.owner == null
+                || existing.owner.equals(player.getUUID().toString()) || player.isCreative();
+        GraveyardBounds.Consecration action = GraveyardBounds.consecrationAction(
+                existing != null, existing != null && existing.auto, sameOwner);
+        if (action == GraveyardBounds.Consecration.REJECT_OWNER) {
             fail(player, "This sanctuary already has a graveyard, tended by another.");
             return;
         }
@@ -132,6 +135,33 @@ public final class GraveyardRitual {
         }
 
         int newRadius = Math.max(3, (Math.min(spanX, spanZ) - 2) / 2);
+
+        // UPGRADE path (0.8.2 default keeper): the existing yard is the auto/default HOLD-ONLY one.
+        // Consecrating a real graveyard relocates/upgrades it in place — the keeper moves to the new
+        // consecrated ground and any keeper-held graves carry over (same anchorId, still claimable).
+        if (existing != null && existing.auto) {
+            spendEffigy(level, skullPos, body, armA, armB, legs);
+            // Remove the old default keeper standing beside the anchor.
+            Graves.run(level, "kill @e[type=minecraft:villager,tag=" + Gravekeeper.KEEPER_TAG
+                    + ",x=" + existing.x + ",y=" + existing.y + ",z=" + existing.z + ",distance=..6]");
+            existing.auto = false;
+            existing.owner = player.getUUID().toString();
+            existing.x = (minX + maxX) / 2;
+            existing.z = (minZ + maxZ) / 2;
+            existing.y = legs.getY();
+            existing.radius = newRadius;
+            existing.bMinX = minX;
+            existing.bMaxX = maxX;
+            existing.bMinZ = minZ;
+            existing.bMaxZ = maxZ;
+            Graves.save();
+            Gravekeeper.spawnKeeper(level, existing);
+            player.sendSystemMessage(Component.literal(String.format(Locale.ROOT,
+                            "The wandering keeper settles into %dx%d of newly consecrated ground.",
+                            spanX, spanZ))
+                    .withStyle(ChatFormatting.GOLD));
+            return;
+        }
 
         // RESIZE path (part d): re-consecrating an existing yard. Accept only a genuine expansion
         // that still contains every resting grave; reject a shrink or one that would strand a grave.

@@ -126,6 +126,17 @@ public class SanctuaryConfig {
     // upgrades/relocates this default in place.
     public boolean graveDefaultKeeper = true;
 
+    // Gravekeeper smite (0.8.3): every graveyardSmiteIntervalTicks, each keeper calls down
+    // VISUAL-ONLY lightning on hostile mobs inside its yard bounds (auto/radius-0 default yards use
+    // a small radius around the keeper) expanded by graveyardSmiteMargin horizontally (± a Y band),
+    // then kills them with direct lightning damage. Visual-only so the wooden fence never catches
+    // fire and mobs are never transformed (creeper->charged, pig->piglin, villager->witch, etc.).
+    // Players, passive/neutral mobs, couriers, and the keepers themselves are never zapped. Capped
+    // per sweep so a horde doesn't become a blinding storm — survivors die next sweep.
+    public boolean graveyardSmiteEnabled = true;
+    public int graveyardSmiteMargin = 10;
+    public int graveyardSmiteIntervalTicks = 20;
+
     // The Restless: once per night, an underground player carrying restlessMinInsomniaDays+
     // of sleep debt is visited by Restless Creakings spawned in the dark nearby (count grows
     // with insomnia, capped). They only move unwatched, dissolve at dawn, and never bother the

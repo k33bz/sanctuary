@@ -319,6 +319,7 @@ public class Sanctuary implements ModInitializer {
         ServerTickEvents.END_SERVER_TICK.register(server -> {
             StatBoards.tick(server); // renders on its own slower interval
             com.k33bz.sanctuary.grave.Gravekeeper.tickCouriers(server);
+            com.k33bz.sanctuary.grave.Gravekeeper.smiteSweep(server); // keeper zaps hostiles in-zone
             SanctuaryConfig cfg = CONFIG;
             if (++updateTickCounter < cfg.regenIntervalTicks) {
                 return;

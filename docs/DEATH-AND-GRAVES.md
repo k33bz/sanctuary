@@ -44,6 +44,16 @@ a week a flower blooms (rarely a wither rose — mind the thorns). The grave blo
 wither skeleton skull**. The effigy is consumed; the **Gravekeeper** rises, a still cleric
 standing vigil over his grounds. One graveyard per sanctuary. (Admins: `/sanctuarygraveyard set`.)
 
+**The keeper guards the ground.** Once a second (`graveyardSmiteIntervalTicks`), the Gravekeeper
+strikes any hostile mob inside the graveyard — the fence plus a `graveyardSmiteMargin` (default
+10-block) skirt — and it **vanishes in a black cloud**. Under open sky it's a *visual-only* lightning
+bolt with thunder; under a roof it's a dark soul/sculk burst instead (no lightning through a
+ceiling). Either way it **drops nothing and gives no XP** — the keeper is a guardian, not a mob farm
+(no Wither/Warden harvesting) — and never sets the fence alight or transforms a mob (no charged
+creeper, no piglin). Players, animals, and the keeper's own allays are safe. Up to 4 mobs per pass;
+the rest wait a beat. The keeper turns to face what it smites (still stationary — no wandering).
+Toggle with `/sanctuary set graveyard.smite`.
+
 **Outgrew it?** Re-run the effigy ritual with a *larger* fence around the same yard — as long as
 the new pen still encloses every resting grave, the graveyard **resizes** and re-lays its graves
 into the wider ground. A smaller pen (or one that would fence a grave out) is refused.

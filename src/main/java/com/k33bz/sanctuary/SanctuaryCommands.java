@@ -108,6 +108,11 @@ public final class SanctuaryCommands {
         num("grave.claimFee", () -> cfg().graveClaimFeeFraction, v -> cfg().graveClaimFeeFraction = v, 0, 1);
         num("grave.summonFee", () -> cfg().graveSummonFeeFraction, v -> cfg().graveSummonFeeFraction = v, 0, 1);
         num("grave.memorialDecayDays", () -> cfg().graveMemorialDecayDays, v -> cfg().graveMemorialDecayDays = v, 0, 100000);
+        bool("graveyard.smite", () -> cfg().graveyardSmiteEnabled, b -> cfg().graveyardSmiteEnabled = b);
+        num("graveyard.smiteMargin", () -> (double) cfg().graveyardSmiteMargin,
+                v -> cfg().graveyardSmiteMargin = (int) Math.round(v), 0, 128);
+        num("graveyard.smiteInterval", () -> (double) cfg().graveyardSmiteIntervalTicks,
+                v -> cfg().graveyardSmiteIntervalTicks = (int) Math.round(v), 1, 12000);
         num("respawn.escalationDecayPer10Min", () -> cfg().respawnEscalationDecayPer10Min, v -> cfg().respawnEscalationDecayPer10Min = v, 0, 10);
 
         bool("regen", () -> cfg().regenEnabled, b -> cfg().regenEnabled = b);

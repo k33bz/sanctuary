@@ -18,8 +18,11 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.LightningBolt;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.animal.allay.Allay;
+import net.minecraft.world.entity.monster.Enemy;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import com.k33bz.sanctuary.Sanctuary;
 import com.k33bz.sanctuary.SanctuaryConfig;
@@ -37,6 +40,13 @@ import java.util.Locale;
  * (wild or resting in rival graveyards); paying the summon fee dispatches an allay that lifts off,
  * fades over the horizon, returns with the headstone, and settles it into the next open plot. Empty
  * graves are beneath his notice.
+ *
+ * <p>He also SMITES (0.8.3): {@link #smiteSweep} strikes hostile mobs inside the yard (bounds +
+ * margin, within a Y band) and REMOVES them with {@code discard()} — no death, so no loot, no XP,
+ * no transforms (an anti-farm guard). Under open sky the strike is a visual-only lightning bolt +
+ * thunder; under a roof it's a dark soul/sculk burst (no lightning through a ceiling); both end in a
+ * black smoke cloud. He turns to face what he strikes ({@link #facePoint}) but stays stationary,
+ * grounded, and NoAI.
  *
  * <p>Couriers are spawned via the entity API so the animation holds a direct reference (the old
  * command-summon-then-search raced and returned null — the allay never flew and was orphaned).
@@ -243,6 +253,18 @@ public final class Gravekeeper {
             net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE
                     .getValue(net.minecraft.resources.Identifier.withDefaultNamespace("allay"));
 
+    /** Lightning-bolt entity type, from the registry (same reason as {@link #ALLAY_TYPE}). */
+    @SuppressWarnings("unchecked")
+    private static final EntityType<LightningBolt> LIGHTNING_TYPE = (EntityType<LightningBolt>)
+            net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE
+                    .getValue(net.minecraft.resources.Identifier.withDefaultNamespace("lightning_bolt"));
+
+    /** Max hostiles zapped per keeper per sweep, so a horde isn't a blinding storm. */
+    private static final int MAX_ZAPS_PER_SWEEP = 4;
+
+    /** Smite counter, throttles the sweep to graveyardSmiteIntervalTicks. */
+    private static int smiteTickCounter = 0;
+
     private static Mob spawnCourier(ServerLevel level, Vec3 at) {
         Allay allay = ALLAY_TYPE.create(level, EntitySpawnReason.COMMAND);
         if (allay == null) {
@@ -350,5 +372,155 @@ public final class Gravekeeper {
                 default -> it.remove();
             }
         }
+    }
+
+    /**
+     * The Gravekeeper's smite (0.8.3): every {@code graveyardSmiteIntervalTicks}, each keeper calls
+     * down VISUAL-ONLY lightning on hostile mobs inside its yard (bounds + margin, within a Y band)
+     * and kills them with direct lightning damage. Visual-only so the wooden fence never catches
+     * fire and no mob is transformed (creeper->charged, pig->piglin, villager->witch, etc.). Never
+     * touches players, passive/neutral mobs, couriers, or the keepers themselves. Capped per sweep.
+     * The keeper rotates (server-side yaw only, no AI) to face the mob it zaps.
+     */
+    public static void smiteSweep(MinecraftServer server) {
+        SanctuaryConfig cfg = Sanctuary.CONFIG;
+        if (cfg == null || !cfg.gravesEnabled || !cfg.graveyardSmiteEnabled) {
+            return;
+        }
+        int interval = Math.max(1, cfg.graveyardSmiteIntervalTicks);
+        if (++smiteTickCounter < interval) {
+            return;
+        }
+        smiteTickCounter = 0;
+        if (Graves.store().yards.isEmpty()) {
+            return;
+        }
+        int margin = Math.max(0, cfg.graveyardSmiteMargin);
+        for (Graves.Yard yard : Graves.store().yards) {
+            ServerLevel level = Graves.levelOf(server, yard.dim);
+            if (level == null || !level.isLoaded(new net.minecraft.core.BlockPos(yard.x, yard.y, yard.z))) {
+                continue;
+            }
+            smiteYard(level, yard, margin);
+        }
+    }
+
+    private static void smiteYard(ServerLevel level, Graves.Yard yard, int margin) {
+        // A keeper must be present for the smite (the grounds are only guarded while tended).
+        boolean hasBounds = GraveyardSmite.hasBounds(yard.bMinX, yard.bMaxX);
+        AABB search;
+        if (hasBounds) {
+            search = new AABB(yard.bMinX - margin, yard.y - GraveyardSmite.Y_BAND, yard.bMinZ - margin,
+                    yard.bMaxX + 1 + margin, yard.y + GraveyardSmite.Y_BAND, yard.bMaxZ + 1 + margin);
+        } else {
+            search = new AABB(yard.x - margin, yard.y - GraveyardSmite.Y_BAND, yard.z - margin,
+                    yard.x + 1 + margin, yard.y + GraveyardSmite.Y_BAND, yard.z + 1 + margin);
+        }
+        // A keeper must actually stand here (identified by tag) — the grounds guard themselves only
+        // while tended. Cheap: reuse the same AABB.
+        List<Mob> keepers = level.getEntitiesOfClass(Mob.class, search,
+                m -> m.entityTags().contains(KEEPER_TAG));
+        if (keepers.isEmpty()) {
+            return;
+        }
+        // Hostile targets in the zone: monsters/Enemy only; never players (not Mob), passives,
+        // couriers, or the keepers. The AABB pre-filters; inZone() is the exact predicate.
+        List<Mob> targets = level.getEntitiesOfClass(Mob.class, search, m ->
+                m instanceof Enemy
+                        && !m.entityTags().contains(KEEPER_TAG)
+                        && !m.entityTags().contains(COURIER_TAG)
+                        && !m.isRemoved()
+                        && GraveyardSmite.inZone(m.getX(), m.getY(), m.getZ(), hasBounds,
+                                yard.bMinX, yard.bMaxX, yard.bMinZ, yard.bMaxZ,
+                                yard.x, yard.z, yard.y, margin, GraveyardSmite.Y_BAND));
+        if (targets.isEmpty()) {
+            return;
+        }
+        Mob keeper = keepers.get(0);
+        int zapped = 0;
+        for (Mob target : targets) {
+            if (zapped >= MAX_ZAPS_PER_SWEEP) {
+                break; // survivors die next sweep — no blinding storm
+            }
+            facePoint(keeper, target.getX(), target.getZ());
+            smite(level, target);
+            zapped++;
+        }
+    }
+
+    /**
+     * Strike a hostile mob: a sky-dependent effect, then remove it with {@code discard()}.
+     *
+     * <p><b>discard(), not damage/kill</b> — no death event, so NO loot roll, NO XP orbs, NO
+     * transforms. This is the anti-farm guard: the keeper can't be used to harvest Withers/Wardens.
+     * The strike + black cloud sell the kill visually.
+     *
+     * <p><b>Sky-dependent</b> — under OPEN SKY, a visual-only lightning bolt (no fire, no transform)
+     * plus explicit thunder/impact sounds (visual-only bolts don't reliably emit sound). Under a
+     * ROOF/underground, no lightning (it would clip through the ceiling) — instead a dark soul/sculk
+     * burst. Both paths finish with a black smoke cloud as the mob vanishes.
+     */
+    private static void smite(ServerLevel level, Mob target) {
+        double x = target.getX();
+        double y = target.getY();
+        double z = target.getZ();
+        boolean openSky = seesSky(level, target);
+
+        if (openSky) {
+            if (LIGHTNING_TYPE != null) {
+                LightningBolt bolt = LIGHTNING_TYPE.create(level, EntitySpawnReason.TRIGGERED);
+                if (bolt != null) {
+                    bolt.snapTo(new Vec3(x, y, z));
+                    bolt.setVisualOnly(true); // flash only: no fire, no mob transforms
+                    level.addFreshEntity(bolt);
+                }
+            }
+            // Visual-only bolts don't reliably emit sound — play thunder + impact ourselves.
+            run(level, fx("playsound minecraft:entity.lightning_bolt.thunder weather @a", x, y, z, "1 1"));
+            run(level, fx("playsound minecraft:entity.lightning_bolt.impact weather @a", x, y, z, "1 1"));
+        } else {
+            // Roofed/underground: a dark soul/sculk burst instead of lightning.
+            run(level, fx("particle minecraft:soul_fire_flame", x, y + 0.5, z, "0.3 0.6 0.3 0.02 30 force"));
+            run(level, fx("particle minecraft:soul", x, y + 0.5, z, "0.3 0.6 0.3 0.02 20 force"));
+            run(level, fx("particle minecraft:sculk_soul", x, y + 0.8, z, "0.3 0.6 0.3 0.02 20 force"));
+            run(level, fx("playsound minecraft:block.sculk_shrieker.shriek block @a", x, y, z, "1 1"));
+            run(level, fx("playsound minecraft:entity.warden.nearby_closer hostile @a", x, y, z, "0.7 1.2"));
+        }
+
+        // The "vanishes in a black cloud" beat (both paths), at the moment of removal.
+        run(level, fx("particle minecraft:large_smoke", x, y + 0.5, z, "0.3 0.5 0.3 0.01 25 force"));
+        run(level, fx("particle minecraft:campfire_cosy_smoke", x, y + 0.8, z, "0.2 0.4 0.2 0.005 6 force"));
+        run(level, fx("particle minecraft:smoke", x, y + 0.4, z, "0.3 0.4 0.3 0.02 15 force"));
+
+        // Remove silently — no loot, no XP, no transform.
+        target.discard();
+    }
+
+    /** Whether the mob has open sky above it (nothing blocking up to the heightmap). */
+    private static boolean seesSky(ServerLevel level, Mob target) {
+        net.minecraft.core.BlockPos pos = target.blockPosition();
+        int surface = level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING,
+                pos.getX(), pos.getZ());
+        return pos.getY() >= surface;
+    }
+
+    /** Build a suppressed command string with the mob's position + trailing args. */
+    private static String fx(String prefix, double x, double y, double z, String tail) {
+        return String.format(Locale.ROOT, "%s %.2f %.2f %.2f %s", prefix, x, y, z, tail);
+    }
+
+    private static void run(ServerLevel level, String command) {
+        level.getServer().getCommands().performPrefixedCommand(
+                level.getServer().createCommandSourceStack().withSuppressedOutput(), command);
+    }
+
+    /** Rotate a NoAI keeper to face a horizontal point (server-side yaw only; no pathfinding/AI). */
+    private static void facePoint(Mob keeper, double tx, double tz) {
+        double dx = tx - keeper.getX();
+        double dz = tz - keeper.getZ();
+        float yaw = (float) (Math.toDegrees(Math.atan2(dz, dx)) - 90.0);
+        keeper.setYRot(yaw);
+        keeper.setYHeadRot(yaw);
+        keeper.setYBodyRot(yaw);
     }
 }

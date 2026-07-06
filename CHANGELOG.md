@@ -2,6 +2,33 @@
 
 All notable changes to Sanctuary (formerly XP Vitality).
 
+## [0.8.3] — 2026-07-05
+
+### Added — the Gravekeeper smites hostile mobs
+Every `graveyardSmiteIntervalTicks` (default 20 = ~1s), each keeper strikes hostile mobs inside its
+yard — the fence bounds (auto/default radius-0 yards use a small square around the keeper) expanded
+by `graveyardSmiteMargin` (default 10) horizontally, within a ±8-block Y band.
+
+- **No loot, no XP, no transforms (anti-farm).** The kill is `entity.discard()` — a silent removal,
+  not a death — so there is NO loot-table roll, NO XP orbs, and no charged-creeper/piglin/witch
+  transform. The keeper can't be turned into a Wither/Warden farm. The strike + effects sell it.
+- **Sky-dependent strike.** Under **open sky** (per-target sky check): a **visual-only lightning
+  bolt** (`setVisualOnly(true)` — no fire, no transform) plus explicit `entity.lightning_bolt.thunder`
+  + `.impact` sounds (visual-only bolts don't reliably emit sound). Under a **roof/underground**: no
+  lightning (it would clip a ceiling) — instead a dark **soul/sculk burst** (`soul_fire_flame` /
+  `soul` / `sculk_soul` particles + `sculk_shrieker.shriek` / `warden.nearby_closer`). Both paths
+  finish with a **black smoke cloud** as the mob vanishes.
+- **Only hostiles** (`Enemy`/monster category). Players (not mobs), passive/neutral mobs, the
+  courier allays (`sanctuary_courier`), and the keepers themselves (`sanctuary_gravekeeper`) are
+  never touched.
+- **Capped at 4 per keeper per sweep** so a horde isn't a flashing storm — survivors die next sweep.
+- **The keeper faces its target**: server-side yaw/head/body rotation only. It stays NoAI /
+  stationary / grounded (0.8.1) — no villager AI re-enabled, no pathfinding, no floating.
+
+New config: `graveyardSmiteEnabled` (true), `graveyardSmiteMargin` (10), `graveyardSmiteIntervalTicks`
+(20); gated on `gravesEnabled`. Live-tunable via `/sanctuary set graveyard.smite|smiteMargin|smiteInterval`.
+The zone predicate is a pure helper (`GraveyardSmite.inZone`, unit-tested). mod_version 0.8.2.1 → 0.8.3.
+
 ## [0.8.2.1] — 2026-07-05
 
 ### Fixed — the nature-reclaims flora was applied to WILD graves too (should be graveyard-only)

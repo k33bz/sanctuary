@@ -843,6 +843,68 @@ public final class Graves {
         return start;
     }
 
+    /**
+     * Self-heal (0.8.3.1): for EVERY yard, ensure its keeper still exists — if none stands within a
+     * generous radius of the yard center, re-raise one via {@link Gravekeeper#spawnKeeper}. A keeper
+     * can never be permanently lost (a lightning-witch conversion, despawn edge, or chunk-unload
+     * loss self-heals on the next server start / periodic sweep). ADOPTS an existing keeper in the
+     * yard zone rather than double-spawning (spawnKeeper also kills near-center keepers before
+     * re-summoning, so even a re-raise leaves exactly one). Runs on SERVER_STARTED and periodically.
+     */
+    /** Throttle for the periodic self-heal (~30s at 20 tps). */
+    private static int keeperHealCounter = 0;
+    private static final int KEEPER_HEAL_INTERVAL_TICKS = 600;
+
+    /** Periodic wrapper: run {@link #ensureKeepers} every ~30s from the server tick. */
+    public static void ensureKeepersPeriodic(MinecraftServer server) {
+        if (++keeperHealCounter < KEEPER_HEAL_INTERVAL_TICKS) {
+            return;
+        }
+        keeperHealCounter = 0;
+        ensureKeepers(server, false); // periodic: only loaded yards (don't pin cold chunks)
+    }
+
+    /** Debug/SERVER_STARTED entry point: force-load cold yard chunks so lost keepers are re-raised. */
+    public static void ensureKeepers(MinecraftServer server) {
+        ensureKeepers(server, true);
+    }
+
+    /**
+     * @param loadCold when true, a cold yard chunk is synchronously loaded (via {@code getChunkAt})
+     *                 so a lost keeper is re-raised even on a boot where the chunk isn't loaded yet;
+     *                 when false (periodic in-game pass), unloaded yards are skipped so we never pin
+     *                 chunks loaded.
+     */
+    public static void ensureKeepers(MinecraftServer server, boolean loadCold) {
+        SanctuaryConfig cfg = Sanctuary.CONFIG;
+        if (cfg == null || !cfg.gravesEnabled || store().yards.isEmpty()) {
+            return;
+        }
+        // Search radius: the guarded zone (bounds are small; use the smite margin + a buffer, so a
+        // slightly-strayed or hand-placed keeper inside the grounds is adopted, not duplicated).
+        int reach = Math.max(16, cfg.graveyardSmiteMargin + 8);
+        for (Yard yard : store().yards) {
+            ServerLevel level = levelOf(server, yard.dim);
+            BlockPos center = new BlockPos(yard.x, yard.y, yard.z);
+            if (level != null && loadCold && !level.isLoaded(center)) {
+                level.getChunkAt(center); // pull the cold chunk in so we can verify + re-raise
+            }
+            if (level == null || !level.isLoaded(center)) {
+                continue; // can't verify an unloaded yard; try again next pass
+            }
+            net.minecraft.world.phys.AABB box = new net.minecraft.world.phys.AABB(
+                    yard.x - reach, yard.y - 24, yard.z - reach,
+                    yard.x + 1 + reach, yard.y + 24, yard.z + 1 + reach);
+            boolean present = !level.getEntitiesOfClass(net.minecraft.world.entity.Mob.class, box,
+                    m -> m.entityTags().contains(Gravekeeper.KEEPER_TAG)).isEmpty();
+            if (!present) {
+                Gravekeeper.spawnKeeper(level, yard);
+                Sanctuary.LOGGER.info("[sanctuary] Self-heal: re-raised the missing Gravekeeper at "
+                        + "yard ({}, {}, {})", yard.x, yard.y, yard.z);
+            }
+        }
+    }
+
     public static Yard nearestYard(Grave grave) {
         Yard best = null;
         double bestSq = Double.MAX_VALUE;

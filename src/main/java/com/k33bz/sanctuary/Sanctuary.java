@@ -69,6 +69,10 @@ public class Sanctuary implements ModInitializer {
         // graveyard has been consecrated yet, so there is always a reclaim/hold hub.
         net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STARTED
                 .register(com.k33bz.sanctuary.grave.Graves::ensureDefaultKeeper);
+        // 0.8.3.1 self-heal: for EVERY yard, re-raise its keeper if it went missing (lightning-witch
+        // conversion, despawn, chunk-unload loss) so a keeper can never be permanently lost.
+        net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STARTED
+                .register(com.k33bz.sanctuary.grave.Graves::ensureKeepers);
         // 0.8.2.1: revert the 0.8.2 bug that applied podzol/grass/flora to WILD graves (flora is
         // graveyard-only). Restores each wild grave's original ground on the first fixed boot.
         net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STARTED
@@ -320,6 +324,7 @@ public class Sanctuary implements ModInitializer {
             StatBoards.tick(server); // renders on its own slower interval
             com.k33bz.sanctuary.grave.Gravekeeper.tickCouriers(server);
             com.k33bz.sanctuary.grave.Gravekeeper.smiteSweep(server); // keeper zaps hostiles in-zone
+            com.k33bz.sanctuary.grave.Graves.ensureKeepersPeriodic(server); // self-heal lost keepers
             SanctuaryConfig cfg = CONFIG;
             if (++updateTickCounter < cfg.regenIntervalTicks) {
                 return;

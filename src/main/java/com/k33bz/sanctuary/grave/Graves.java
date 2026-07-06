@@ -880,9 +880,7 @@ public final class Graves {
         if (cfg == null || !cfg.gravesEnabled || store().yards.isEmpty()) {
             return;
         }
-        // Search radius: the guarded zone (bounds are small; use the smite margin + a buffer, so a
-        // slightly-strayed or hand-placed keeper inside the grounds is adopted, not duplicated).
-        int reach = Math.max(16, cfg.graveyardSmiteMargin + 8);
+        int reach = Gravekeeper.KEEPER_REACH;
         for (Yard yard : store().yards) {
             ServerLevel level = levelOf(server, yard.dim);
             BlockPos center = new BlockPos(yard.x, yard.y, yard.z);
@@ -892,15 +890,36 @@ public final class Graves {
             if (level == null || !level.isLoaded(center)) {
                 continue; // can't verify an unloaded yard; try again next pass
             }
-            net.minecraft.world.phys.AABB box = new net.minecraft.world.phys.AABB(
-                    yard.x - reach, yard.y - 24, yard.z - reach,
-                    yard.x + 1 + reach, yard.y + 24, yard.z + 1 + reach);
-            boolean present = !level.getEntitiesOfClass(net.minecraft.world.entity.Mob.class, box,
-                    m -> m.entityTags().contains(Gravekeeper.KEEPER_TAG)).isEmpty();
-            if (!present) {
+            // EXACTLY-ONE invariant. spawnKeeper is idempotent (kills ALL keepers in reach, then
+            // summons one). On a FORCED pass (boot / the debug command) we always reset — the
+            // cold-chunk entity index is unreliable right after getChunkAt (it can read empty even
+            // when a keeper exists, which is what caused the boot dup), so a deterministic reset
+            // guarantees exactly one with no transient duplicate. On the PERIODIC pass we only reset
+            // when the (now reliable, warm-chunk) count isn't exactly one, so a lone keeper isn't
+            // respawned/flickered every 30s.
+            boolean reset;
+            int found = -1;
+            if (loadCold) {
+                reset = true;
+            } else {
+                net.minecraft.world.phys.AABB box = new net.minecraft.world.phys.AABB(
+                        yard.x - reach, level.getMinY(), yard.z - reach,
+                        yard.x + 1 + reach, level.getMaxY(), yard.z + 1 + reach);
+                // All tagged entities vs tagged VILLAGERS. A lightning-converted WITCH keeps the tag
+                // but is not a keeper; reset if the valid keeper count isn't exactly one OR any tagged
+                // non-villager (witch/other) lingers, so spawnKeeper's tag-scoped kill purges it.
+                var tagged = level.getEntitiesOfClass(net.minecraft.world.entity.Mob.class, box,
+                        m -> m.entityTags().contains(Gravekeeper.KEEPER_TAG));
+                found = (int) tagged.stream()
+                        .filter(m -> m instanceof net.minecraft.world.entity.npc.villager.Villager)
+                        .count();
+                reset = found != 1 || tagged.size() != found;
+            }
+            if (reset) {
                 Gravekeeper.spawnKeeper(level, yard);
-                Sanctuary.LOGGER.info("[sanctuary] Self-heal: re-raised the missing Gravekeeper at "
-                        + "yard ({}, {}, {})", yard.x, yard.y, yard.z);
+                Sanctuary.LOGGER.info("[sanctuary] Self-heal: reset the Gravekeeper to exactly one at "
+                        + "yard ({}, {}, {}){}", yard.x, yard.y, yard.z,
+                        found >= 0 ? " (was " + found + ")" : " (forced)");
             }
         }
     }

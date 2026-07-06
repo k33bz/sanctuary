@@ -60,6 +60,14 @@ public final class Gravekeeper {
     public static final String KEEPER_TAG = "sanctuary_gravekeeper";
     private static final String COURIER_TAG = "sanctuary_courier";
 
+    /**
+     * Horizontal radius around a yard center within which a keeper is considered to be tending it —
+     * used BOTH for the self-heal's exactly-one dedup and for the smite's keeper-presence check, so
+     * a keeper anywhere near the yard (not just at an exact spot) counts. Generous on purpose: a
+     * keeper is a keeper. Kept larger than the max sane smite margin.
+     */
+    public static final int KEEPER_REACH = 24;
+
     /** Active courier theater runs, animated every server tick. */
     private static final List<Run> RUNS = new ArrayList<>();
 
@@ -83,9 +91,18 @@ public final class Gravekeeper {
      * opens as before. The keeper is Invulnerable, PersistenceRequired, and Silent.
      */
     public static void spawnKeeper(ServerLevel level, Graves.Yard yard) {
+        // Idempotent: kill EVERY tagged keeper-entity within KEEPER_REACH of the yard center (full Y
+        // column) FIRST, then summon exactly one. This makes spawnKeeper the single source of the
+        // "exactly one keeper per yard" invariant — it dedups strays/manual replacements and never
+        // leaves more than one. NOTE: NOT type-scoped to villager — a keeper struck by NATURAL
+        // lightning BEFORE the 0.8.3.1 immunity was deployed became a WITCH that KEPT the tag; those
+        // lingering tagged witches must be purged too (a type=villager kill would leave them). A
+        // dx/dy/dz volume selector is Y-explicit (independent of the command source's Y).
         Graves.run(level, String.format(Locale.ROOT,
-                "kill @e[type=minecraft:villager,tag=%s,x=%d,y=%d,z=%d,distance=..%d]",
-                KEEPER_TAG, yard.x, yard.y, yard.z, yard.radius + 8));
+                "kill @e[tag=%s,x=%d,y=%d,z=%d,dx=%d,dy=%d,dz=%d]",
+                KEEPER_TAG,
+                yard.x - KEEPER_REACH, level.getMinY(), yard.z - KEEPER_REACH,
+                2 * KEEPER_REACH, level.getMaxY() - level.getMinY(), 2 * KEEPER_REACH));
         Graves.run(level, String.format(Locale.ROOT,
                 "summon minecraft:villager %d %d %d {Tags:[\"%s\"],NoAI:1b,Invulnerable:1b,"
                         + "PersistenceRequired:1b,Silent:1b,"
@@ -406,8 +423,24 @@ public final class Gravekeeper {
     }
 
     private static void smiteYard(ServerLevel level, Graves.Yard yard, int margin) {
-        // A keeper must be present for the smite (the grounds are only guarded while tended).
         boolean hasBounds = GraveyardSmite.hasBounds(yard.bMinX, yard.bMaxX);
+
+        // Keeper-presence check: a keeper must be tending the grounds, but "tending" is generous — a
+        // keeper ANYWHERE within KEEPER_REACH of the yard center (full Y column) counts, whether the
+        // mod spawned it or it was hand-placed. (Bug B: the old check reused the exact smite zone, so
+        // a keeper a few blocks past the margin — or a hand-spawned one at a slightly-off spot — was
+        // not recognised and the grounds went unguarded.)
+        AABB keeperBox = new AABB(
+                yard.x - KEEPER_REACH, level.getMinY(), yard.z - KEEPER_REACH,
+                yard.x + 1 + KEEPER_REACH, level.getMaxY(), yard.z + 1 + KEEPER_REACH);
+        List<Mob> keepers = level.getEntitiesOfClass(Mob.class, keeperBox,
+                m -> m.entityTags().contains(KEEPER_TAG));
+        if (keepers.isEmpty()) {
+            return;
+        }
+
+        // Target-smite zone: the tight fence bounds (auto/radius-0 yards: a square around center)
+        // expanded by the margin, within the Y band. Only mobs HERE are struck.
         AABB search;
         if (hasBounds) {
             search = new AABB(yard.bMinX - margin, yard.y - GraveyardSmite.Y_BAND, yard.bMinZ - margin,
@@ -415,13 +448,6 @@ public final class Gravekeeper {
         } else {
             search = new AABB(yard.x - margin, yard.y - GraveyardSmite.Y_BAND, yard.z - margin,
                     yard.x + 1 + margin, yard.y + GraveyardSmite.Y_BAND, yard.z + 1 + margin);
-        }
-        // A keeper must actually stand here (identified by tag) — the grounds guard themselves only
-        // while tended. Cheap: reuse the same AABB.
-        List<Mob> keepers = level.getEntitiesOfClass(Mob.class, search,
-                m -> m.entityTags().contains(KEEPER_TAG));
-        if (keepers.isEmpty()) {
-            return;
         }
         // Hostile targets in the zone: monsters/Enemy only; never players (not Mob), passives,
         // couriers, or the keepers. The AABB pre-filters; inZone() is the exact predicate.

@@ -2,6 +2,31 @@
 
 All notable changes to Sanctuary (formerly XP Vitality).
 
+## [0.8.3.2] — 2026-07-05
+
+### Fixed — keeper self-heal was unreliable (dup/no-op) and smite missed off-center keepers
+Two bugs in the 0.8.3.1 self-heal found in live gmc101 RCON testing.
+
+**Bug A — no exactly-one invariant.** `ensureKeepers` only spawned when it read ZERO keepers and
+never removed extras, and its `getEntitiesOfClass` read raced with async chunk-entity loading — so
+it both **over-spawned** (a stale-empty read right after a cold-chunk load spawned a keeper on top of
+existing ones → 2–3 keepers) and **no-op'd** (a stale-present read right after a kill spawned
+nothing → 0 keepers). Fixed to a hard **exactly-one-per-yard** invariant: count keepers within
+`Gravekeeper.KEEPER_REACH` (24) of the yard center over the full Y column; if it isn't exactly one,
+run `spawnKeeper` — which now **kills EVERY keeper in reach first, then summons one** (idempotent),
+so 0→1 and N→1 deterministically, and a lone keeper is left alone (no flicker). Racy reads
+self-correct (stale-0 spawns one, stale-N resets to one) and the next pass settles.
+
+**Bug B — smite didn't recognise an off-center keeper.** `smiteYard`'s keeper-presence check reused
+the exact smite zone (fence bounds/center + margin, tight Y band), so a keeper a few blocks past the
+margin — or a hand-spawned one at a slightly-off spot — wasn't found and the grounds went unguarded
+(gmc101: a hand-placed keeper near the yard didn't smite). Fixed by decoupling: keeper presence now
+matches any keeper within `KEEPER_REACH` of the yard center (full Y column); the tight zone still
+governs which MOBS are struck. A keeper is a keeper wherever it stands near the yard.
+
+`spawnKeeper` and the checks use a Y-explicit `dx/dy/dz` volume / full-column AABB so they don't
+depend on the command source's Y. mod_version 0.8.3.1 → 0.8.3.2.
+
 ## [0.8.3.1] — 2026-07-05
 
 ### Fixed — the Gravekeeper could be lost, and smite depended on the keeper being at the yard

@@ -9,6 +9,7 @@
     "MobFinalizeSpawnMixin",
     "CreeperExplosionMixin",
     "EndermanTakeBlockMixin",
+    "GravekeeperThunderMixin",
     "PlayerTabNameMixin"
   ],
   "injectors": {

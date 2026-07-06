@@ -2,6 +2,35 @@
 
 All notable changes to Sanctuary (formerly XP Vitality).
 
+## [0.8.3.1] — 2026-07-05
+
+### Fixed — the Gravekeeper could be lost, and smite depended on the keeper being at the yard
+Two issues found on gmc101 during smite verification.
+
+**Keeper loss + self-heal.** A keeper struck by NATURAL weather lightning was converted to a WITCH
+(`Villager.thunderHit` → `convertTo(WITCH)`, which does NOT check invulnerability), silently losing
+the `sanctuary_gravekeeper` tag — the keeper vanished and nothing re-raised it (`ensureDefaultKeeper`
+only acts when there are ZERO yards).
+- **`GravekeeperThunderMixin`** cancels `Villager.thunderHit` for keeper-tagged villagers: a keeper
+  never converts, burns, or takes lightning damage. (Its own smite bolts are visual-only and never
+  call `thunderHit`, so this only guards NATURAL lightning.)
+- **`Graves.ensureKeepers` self-heal**: for EVERY yard, if no keeper stands within reach of the yard
+  center, re-raise one via `spawnKeeper`. Runs on `SERVER_STARTED` and periodically (~30s). ADOPTS
+  an existing keeper in the yard zone rather than double-spawning (and `spawnKeeper` kills any
+  near-center keeper before re-summoning, so there is always exactly one). A keeper can no longer be
+  permanently lost.
+
+**Smite is NOT player-gated (was a keeper-position issue).** Investigation: the smite sweep runs on
+`END_SERVER_TICK` every tick regardless of players, and fires correctly with zero players online as
+long as the yard chunk is loaded (force-loaded or player-loaded) — confirmed by a no-player probe
+(3 zombies smited with `@a` empty). The gmc101 no-fire was because the (manually replaced) keeper
+stood far from the yard center, outside the smite's keeper-search AABB, so `keepers.isEmpty()`
+short-circuited. The self-heal re-raising the keeper AT the yard center resolves it. Documented: the
+smite requires a keeper standing in the guarded zone (grounds are guarded only while tended); it is
+loaded-chunk-scoped, not player-scoped.
+
+mod_version 0.8.3 → 0.8.3.1.
+
 ## [0.8.3] — 2026-07-05
 
 ### Added — the Gravekeeper smites hostile mobs

@@ -259,6 +259,17 @@ public final class SanctuaryCommands {
                                 ctx.getSource().sendSuccess(() -> Component.literal(
                                         "Wild-flora migration run."), true);
                                 return 1;
+                            })))
+                    // Ops (level 2): debug — run the keeper self-heal on demand (normally on
+                    // SERVER_STARTED + periodically). Lets tests drive it without a restart.
+                    .then(Commands.literal("healkeepers")
+                            .requires(Commands.<CommandSourceStack>hasPermission(Commands.LEVEL_GAMEMASTERS))
+                            .executes(safe(ctx -> {
+                                com.k33bz.sanctuary.grave.Graves.ensureKeepers(
+                                        ctx.getSource().getServer());
+                                ctx.getSource().sendSuccess(() -> Component.literal(
+                                        "Keeper self-heal run."), true);
+                                return 1;
                             }))));
             // Ops: world-age danger pressure readout / re-zero (persisted epoch; external
             // dashboards watch danger.epochTick in the config to lap leaderboard seasons).

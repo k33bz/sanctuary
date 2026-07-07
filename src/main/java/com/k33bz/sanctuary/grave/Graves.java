@@ -579,8 +579,9 @@ public final class Graves {
         if (dirty) {
             save();
         }
-        // Safety net: keepers are stationary (NoAI as of 0.8.1), but if one is ever nudged out of
-        // its fence (piston, mob push), snap it back to center.
+        // Coarse safety net: the keeper's slow patrol (0.8.4) already clamps it inside the fence every
+        // tick, but this catches a keeper flung well OUTSIDE the bounds (piston, mob push) while its
+        // yard chunk is loaded only here — snap it back to center; the per-tick drift+bob resume there.
         for (Yard yard : store().yards) {
             if (yard.bMaxX <= yard.bMinX) {
                 continue;

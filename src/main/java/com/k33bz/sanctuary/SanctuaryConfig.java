@@ -137,6 +137,21 @@ public class SanctuaryConfig {
     public int graveyardSmiteMargin = 10;
     public int graveyardSmiteIntervalTicks = 20;
 
+    // Gravekeeper slow patrol (0.8.4): when keeperPatrol is on, the keeper drifts VERY slowly around
+    // its yard (NoAI + NoGravity retained — this is our own server-side drift, not vanilla villager
+    // goals) instead of standing frozen. It eases toward a wander target — preferring grave positions,
+    // drifting between graves — at keeperPatrolSpeed blocks/tick (a small fraction of walk speed, so
+    // it reads as a ghostly float, never brisk), keeping keeperWanderMargin blocks inside the fence so
+    // it never paths outside the yard. On arriving (or after a max travel time) it hovers in place for
+    // a random keeperLingerTicksMin..keeperLingerTicksMax before choosing the next target. The gentle
+    // hover-bob is layered on top of the drift. Set keeperPatrol=false for the 0.8.3.3 stationary
+    // hover. Movement FEEL (speed/linger) is best judged in-world — these are the tuning levers.
+    public boolean keeperPatrol = true;
+    public double keeperPatrolSpeed = 0.025; // blocks/tick — slow, deliberate; cap on the per-tick step
+    public int keeperLingerTicksMin = 60;    // ~3s pause on reaching a target
+    public int keeperLingerTicksMax = 160;   // ~8s max pause
+    public double keeperWanderMargin = 2.0;  // blocks kept inside the fence (never path to the edge)
+
     // Graveyard yard grief-protection (0.8.3.3): a consecrated yard's ENTIRE footprint is protected,
     // not just registered grave plots. ANY block inside the fence bounds, from graveyardProtectDepth
     // blocks below the floor up through graveyardProtectHeight above it, is unbreakable by everyone

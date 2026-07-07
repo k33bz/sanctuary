@@ -396,11 +396,22 @@ public final class Gravekeeper {
         }
     }
 
+    /** Per-keeper patrol state, keyed by entity id (0.8.4). Pruned as keepers vanish (see below). */
+    private static final java.util.Map<Integer, KeeperPatrol.State> PATROL_STATES =
+            new java.util.HashMap<>();
+
     /**
-     * Per-tick keeper hover-bob (0.8.3.3): each stationary keeper hovers just above the ground and
-     * bobs gently up/down (a slow, small sine — see {@link KeeperHover}). NoGravity holds it aloft;
-     * this sets only its Y so it hovers-and-bounces without any horizontal drift or pathing (full
-     * patrol AI is deferred to 0.8.4). Cheap: only loaded yards with a keeper present are touched.
+     * Per-tick keeper drift + hover-bob. As of 0.8.4 the keeper SLOWLY patrols its yard (issue #5):
+     * {@link KeeperPatrol} eases it toward a wander target — preferring grave positions — at
+     * {@code keeperPatrolSpeed} blocks/tick (a small fraction of walk speed, capped so it never reads
+     * as brisk), lingering in place a few seconds on arrival before picking the next target, and never
+     * leaving the fence ({@code keeperWanderMargin} inside the bounds). The keeper stays NoAI +
+     * NoGravity — this is our OWN server-side drift, NOT vanilla villager goals (which would
+     * bed-seek/work/panic). The gentle {@link KeeperHover} bob is layered on top of the horizontal
+     * drift, and the keeper faces its travel direction (or the point it lingers at). {@code setPos}
+     * per tick produces small position deltas the entity tracker broadcasts, so vanilla clients
+     * interpolate the glide smoothly. When {@code keeperPatrol} is off, the keeper holds the 0.8.3.3
+     * stationary hover. Cheap: only loaded yards with a keeper present are touched.
      */
     public static void tickKeeperHover(MinecraftServer server) {
         SanctuaryConfig cfg = Sanctuary.CONFIG;
@@ -410,6 +421,7 @@ public final class Gravekeeper {
         if (Graves.store().yards.isEmpty()) {
             return;
         }
+        java.util.Set<Integer> seen = new java.util.HashSet<>();
         for (Graves.Yard yard : Graves.store().yards) {
             ServerLevel level = Graves.levelOf(server, yard.dim);
             net.minecraft.core.BlockPos center = new net.minecraft.core.BlockPos(yard.x, yard.y, yard.z);
@@ -423,14 +435,80 @@ public final class Gravekeeper {
                     m -> m.entityTags().contains(KEEPER_TAG)
                             && m instanceof net.minecraft.world.entity.npc.villager.Villager);
             long t = level.getGameTime();
+
+            // Patrol bounds: the fence for a consecrated yard, else a small square around center for
+            // an auto/hold-only yard (no fence) so the drift still stays put and small.
+            boolean hasBounds = GraveyardSmite.hasBounds(yard.bMinX, yard.bMaxX);
+            double minX, maxX, minZ, maxZ;
+            if (hasBounds) {
+                minX = yard.bMinX; maxX = yard.bMaxX + 1;
+                minZ = yard.bMinZ; maxZ = yard.bMaxZ + 1;
+            } else {
+                int r = Math.max(2, cfg.graveyardDefaultRadius);
+                minX = yard.x - r; maxX = yard.x + 1 + r;
+                minZ = yard.z - r; maxZ = yard.z + 1 + r;
+            }
+            List<KeeperPatrol.Target> graveTargets = yardGraveTargets(yard);
+
             for (Mob keeper : keepers) {
-                // Desync multiple keepers by a stable per-entity phase from their id.
+                seen.add(keeper.getId());
                 double phase = (keeper.getId() % 16) * (Math.PI / 8.0);
-                double y = KeeperHover.hoverY(yard.y, t, phase);
-                keeper.setPos(keeper.getX(), y, keeper.getZ());
-                keeper.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO); // no drift
+                double bobY = KeeperHover.hoverY(yard.y, t, phase);
+
+                if (cfg.keeperPatrol) {
+                    KeeperPatrol.State st = PATROL_STATES.computeIfAbsent(
+                            keeper.getId(), id -> new KeeperPatrol.State());
+                    KeeperPatrol.Rng rng = rngFor(level, keeper.getId());
+                    KeeperPatrol.Move mv = KeeperPatrol.advance(st, keeper.getX(), keeper.getZ(),
+                            graveTargets, minX, maxX, minZ, maxZ,
+                            cfg.keeperWanderMargin, cfg.keeperPatrolSpeed,
+                            cfg.keeperLingerTicksMin, cfg.keeperLingerTicksMax, rng);
+                    keeper.setPos(mv.x, bobY, mv.z);
+                    keeper.setYRot(mv.yaw);
+                    keeper.setYHeadRot(mv.yaw);
+                    keeper.setYBodyRot(mv.yaw);
+                } else {
+                    // Stationary 0.8.3.3 hover: bob in place, no horizontal drift.
+                    keeper.setPos(keeper.getX(), bobY, keeper.getZ());
+                }
+                keeper.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO); // we drive position directly
             }
         }
+        // Prune patrol state for keepers no longer present (despawn / chunk unload / self-heal reset),
+        // so the map can't grow unbounded across a long uptime.
+        if (!PATROL_STATES.isEmpty()) {
+            PATROL_STATES.keySet().retainAll(seen);
+        }
+    }
+
+    /**
+     * Grave positions resting in {@code yard}, as patrol targets — the keeper prefers to drift between
+     * these. Keeper-held (off-lawn) graves are excluded; only graves physically in this yard count.
+     */
+    private static List<KeeperPatrol.Target> yardGraveTargets(Graves.Yard yard) {
+        List<KeeperPatrol.Target> out = new ArrayList<>();
+        for (Graves.Grave g : Graves.store().graves) {
+            if (g.inGraveyard && !g.heldByKeeper && yard.anchorId.equals(g.graveyardAnchor)) {
+                out.add(new KeeperPatrol.Target(g.x, g.z));
+            }
+        }
+        return out;
+    }
+
+    /** Adapt the level's shared RandomSource to the pure patrol's injected RNG (id kept for salt). */
+    private static KeeperPatrol.Rng rngFor(ServerLevel level, int id) {
+        final net.minecraft.util.RandomSource src = level.getRandom();
+        return new KeeperPatrol.Rng() {
+            @Override
+            public double nextDouble() {
+                return src.nextDouble();
+            }
+
+            @Override
+            public int nextInt(int bound) {
+                return bound <= 0 ? 0 : src.nextInt(bound);
+            }
+        };
     }
 
     /**

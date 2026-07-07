@@ -34,8 +34,22 @@ public class BlockItemPlaceMixin {
     )
     private void sanctuary$gateCrystalPlacement(BlockPlaceContext context, CallbackInfoReturnable<InteractionResult> cir) {
         if (!(context.getLevel() instanceof ServerLevel level)
-                || !(context.getPlayer() instanceof ServerPlayer player)
-                || !SanctuaryCrystal.isCrystal(context.getItemInHand())) {
+                || !(context.getPlayer() instanceof ServerPlayer player)) {
+            return;
+        }
+        // Yard-region place-deny (0.8.3.3): placing lava/TNT/cobble inside a consecrated yard is the
+        // same grief vector as breaking its floor, so deny ALL block placement inside the protected
+        // region. Region-based (no permission bypass), gated by graveyardYardProtect (same key as
+        // the break-side protection). Runs BEFORE the crystal gate so it also blocks anchor crystals
+        // being planted inside someone's cemetery.
+        if (Sanctuary.CONFIG != null && Sanctuary.CONFIG.gravesEnabled
+                && com.k33bz.sanctuary.grave.Graves.isProtectedYardRegion(
+                        level.dimension().identifier().toString(), context.getClickedPos())) {
+            deny(player, context, "You cannot build in a consecrated graveyard.");
+            cir.setReturnValue(InteractionResult.FAIL);
+            return;
+        }
+        if (!SanctuaryCrystal.isCrystal(context.getItemInHand())) {
             return;
         }
         if (Sanctuary.CONFIG == null || !Sanctuary.CONFIG.isScalingDimension(level)) {

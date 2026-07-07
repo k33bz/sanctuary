@@ -154,9 +154,16 @@ public class Sanctuary implements ModInitializer {
             // Grave protection (part c): the plot ground under a grave (podzol/grass) and the grave
             // block itself are unbreakable by EVERYONE, incl. the owner — Flan only stops
             // non-owners, which is why the ground could be dug out. Flora on top stays harvestable.
+            //
+            // Yard-region protection (0.8.3.3): additionally, ANY block inside a consecrated yard's
+            // footprint + Y band is unbreakable — pure geometry, registry-independent, so it also
+            // covers the bare yard floor and old/unregistered graves (the gmc101 gravel-dig grief).
+            // Harvestable flora on graves is carved out inside isProtectedYardRegion.
             if (CONFIG != null && CONFIG.gravesEnabled && world instanceof ServerLevel gl
-                    && com.k33bz.sanctuary.grave.Graves.isProtectedGraveBlock(
-                            gl.dimension().identifier().toString(), pos)) {
+                    && (com.k33bz.sanctuary.grave.Graves.isProtectedGraveBlock(
+                                gl.dimension().identifier().toString(), pos)
+                        || com.k33bz.sanctuary.grave.Graves.isProtectedYardRegion(
+                                gl.dimension().identifier().toString(), pos))) {
                 if (player instanceof ServerPlayer sp) {
                     sp.sendOverlayMessage(net.minecraft.network.chat.Component
                             .literal("This rests on consecrated ground.")
@@ -323,6 +330,7 @@ public class Sanctuary implements ModInitializer {
         ServerTickEvents.END_SERVER_TICK.register(server -> {
             StatBoards.tick(server); // renders on its own slower interval
             com.k33bz.sanctuary.grave.Gravekeeper.tickCouriers(server);
+            com.k33bz.sanctuary.grave.Gravekeeper.tickKeeperHover(server); // gentle hover-bob
             com.k33bz.sanctuary.grave.Gravekeeper.smiteSweep(server); // keeper zaps hostiles in-zone
             com.k33bz.sanctuary.grave.Graves.ensureKeepersPeriodic(server); // self-heal lost keepers
             SanctuaryConfig cfg = CONFIG;

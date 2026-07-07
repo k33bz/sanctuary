@@ -595,7 +595,8 @@ public final class Graves {
                     m -> m.entityTags().contains(Gravekeeper.KEEPER_TAG))) {
                 if (keeper.getX() < yard.bMinX + 0.5 || keeper.getX() > yard.bMaxX + 0.5
                         || keeper.getZ() < yard.bMinZ + 0.5 || keeper.getZ() > yard.bMaxZ + 0.5) {
-                    keeper.teleportTo(yard.x + 0.5, yard.y + 1.0, yard.z + 0.5);
+                    // Snap back to center at the hover base (the per-tick bob takes over the Y).
+                    keeper.teleportTo(yard.x + 0.5, yard.y + KeeperHover.BASE_LIFT, yard.z + 0.5);
                 }
             }
         }
@@ -799,6 +800,75 @@ public final class Graves {
     }
 
     /**
+     * Yard-region grief protection (0.8.3.3): whether {@code pos} lies inside ANY consecrated yard's
+     * protected volume — its XZ fence footprint across a Y band from a few blocks below the floor up
+     * through the fence/headstone/airspace above. This is PURE GEOMETRY over the yard bounds
+     * ({@link GraveyardProtect}); it does NOT consult the grave registry, so it protects the bare
+     * yard floor, OLD/unregistered graves (e.g. legacy gravel graves), new plots, the fence, and the
+     * airspace alike — closing the 0.8.3.2 gap where only registered grave plots were covered and a
+     * player dug gravel straight out of a fenced yard.
+     *
+     * <p><b>Flora-harvest carve-out preserved:</b> a block that is currently a HARVESTABLE flower on
+     * a registered grave (the intended {@code 1g2} harvest) is NOT protected — it stays breakable.
+     * That is the sole registry-aware exception layered on top of the geometric region.
+     *
+     * <p>Gated by {@code graveyardYardProtect} (default on); the band is {@code graveyardProtectDepth}
+     * below / {@code graveyardProtectHeight} above the floor. Auto/hold-only yards (no fence bounds)
+     * hold no world blocks and are skipped.
+     */
+    public static boolean isProtectedYardRegion(String dim, BlockPos pos) {
+        SanctuaryConfig cfg = Sanctuary.CONFIG;
+        if (cfg == null || !cfg.graveyardYardProtect) {
+            return false;
+        }
+        int depth = Math.max(0, cfg.graveyardProtectDepth);
+        int height = Math.max(0, cfg.graveyardProtectHeight);
+        boolean inAnyYard = false;
+        for (Yard y : store().yards) {
+            if (y.dim == null || !y.dim.equals(dim)) {
+                continue;
+            }
+            boolean hasBounds = GraveyardSmite.hasBounds(y.bMinX, y.bMaxX);
+            if (GraveyardProtect.inProtectedRegion(pos.getX(), pos.getY(), pos.getZ(),
+                    hasBounds, y.bMinX, y.bMaxX, y.bMinZ, y.bMaxZ, y.y, depth, height)) {
+                inAnyYard = true;
+                break;
+            }
+        }
+        if (!inAnyYard) {
+            return false;
+        }
+        // Flora carve-out: a harvestable flower on a registered grave stays breakable even inside the
+        // protected region (the intended harvest). isProtectedGraveBlock already returns FALSE for a
+        // stage-2 flower position, so "grave column here AND not plot-protected" == harvestable flora.
+        if (isHarvestableFloraHere(dim, pos)) {
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Whether {@code pos} is exactly the position of a harvestable flower on a registered graveyard
+     * grave (the {@code 1g2} harvest). True only when a grave's base block sits here AND it currently
+     * holds a stage-2 flower — the one block the yard-region protection must leave breakable.
+     */
+    private static boolean isHarvestableFloraHere(String dim, BlockPos pos) {
+        for (Grave g : store().graves) {
+            if (g.heldByKeeper || g.dim == null || !g.dim.equals(dim)) {
+                continue;
+            }
+            int gx = (int) Math.floor(g.x);
+            int gy = (int) Math.floor(g.y);
+            int gz = (int) Math.floor(g.z);
+            if (pos.getX() == gx && pos.getZ() == gz && pos.getY() == gy) {
+                int stage = g.floraStage == null ? -1 : g.floraStage;
+                return stage == 2; // a flower blooms here → harvestable, not protected
+            }
+        }
+        return false;
+    }
+
+    /**
      * Default gravekeeper (0.8.2): on server start, if NO graveyard exists yet but at least one
      * sanctuary anchor does, raise a stationary keeper at the OLDEST anchor as a HOLD-ONLY yard so
      * there is always a reclaim/hold hub. Idempotent — does nothing if a yard already exists or the
@@ -890,38 +960,145 @@ public final class Graves {
             if (level == null || !level.isLoaded(center)) {
                 continue; // can't verify an unloaded yard; try again next pass
             }
-            // EXACTLY-ONE invariant. spawnKeeper is idempotent (kills ALL keepers in reach, then
-            // summons one). On a FORCED pass (boot / the debug command) we always reset — the
-            // cold-chunk entity index is unreliable right after getChunkAt (it can read empty even
-            // when a keeper exists, which is what caused the boot dup), so a deterministic reset
-            // guarantees exactly one with no transient duplicate. On the PERIODIC pass we only reset
-            // when the (now reliable, warm-chunk) count isn't exactly one, so a lone keeper isn't
-            // respawned/flickered every 30s.
-            boolean reset;
-            int found = -1;
-            if (loadCold) {
-                reset = true;
-            } else {
-                net.minecraft.world.phys.AABB box = new net.minecraft.world.phys.AABB(
-                        yard.x - reach, level.getMinY(), yard.z - reach,
-                        yard.x + 1 + reach, level.getMaxY(), yard.z + 1 + reach);
-                // All tagged entities vs tagged VILLAGERS. A lightning-converted WITCH keeps the tag
-                // but is not a keeper; reset if the valid keeper count isn't exactly one OR any tagged
-                // non-villager (witch/other) lingers, so spawnKeeper's tag-scoped kill purges it.
-                var tagged = level.getEntitiesOfClass(net.minecraft.world.entity.Mob.class, box,
-                        m -> m.entityTags().contains(Gravekeeper.KEEPER_TAG));
-                found = (int) tagged.stream()
-                        .filter(m -> m instanceof net.minecraft.world.entity.npc.villager.Villager)
-                        .count();
-                reset = found != 1 || tagged.size() != found;
-            }
+            // EXACTLY-ONE invariant (0.8.3.3 — SPAWN-side, not cull-after). We COUNT first and only
+            // (re)spawn when the count isn't exactly one, on BOTH the forced and periodic passes —
+            // a lone, healthy keeper is left completely untouched (no reset, no flicker, no log). This
+            // is what stops the over-spawn: previously the forced/boot pass ALWAYS reset, which —
+            // combined with the boot pass racing the first periodic pass — churned keepers, and each
+            // reset used /kill (a death broadcast → the "Gravekeeper was killed" chat spam). Now
+            // spawnKeeper silently discards strays before summoning one, so even when a reset IS
+            // needed it collapses to exactly one with no death message.
+            //
+            // The count is over TAGGED VILLAGERS (a lightning-converted WITCH keeps the tag but is
+            // not a keeper). We reset when: no valid keeper, more than one, OR any tagged non-keeper
+            // (witch/other) lingers — spawnKeeper's tag-scoped discard purges all of them.
+            net.minecraft.world.phys.AABB box = new net.minecraft.world.phys.AABB(
+                    yard.x - reach, level.getMinY(), yard.z - reach,
+                    yard.x + 1 + reach, level.getMaxY(), yard.z + 1 + reach);
+            var tagged = level.getEntitiesOfClass(net.minecraft.world.entity.Mob.class, box,
+                    m -> m.entityTags().contains(Gravekeeper.KEEPER_TAG));
+            int found = (int) tagged.stream()
+                    .filter(m -> m instanceof net.minecraft.world.entity.npc.villager.Villager)
+                    .count();
+            boolean reset = keeperResetNeeded(found, tagged.size());
             if (reset) {
                 Gravekeeper.spawnKeeper(level, yard);
                 Sanctuary.LOGGER.info("[sanctuary] Self-heal: reset the Gravekeeper to exactly one at "
-                        + "yard ({}, {}, {}){}", yard.x, yard.y, yard.z,
-                        found >= 0 ? " (was " + found + ")" : " (forced)");
+                        + "yard ({}, {}, {}) (was {})", yard.x, yard.y, yard.z, found);
             }
         }
+    }
+
+    /**
+     * Pure single-keeper-invariant decision (0.8.3.3): given the number of valid keeper VILLAGERS in
+     * a yard's reach ({@code validKeepers}) and the total count of TAGGED entities there
+     * ({@code taggedTotal}, which includes lightning-converted witches that kept the tag), decide
+     * whether the self-heal must (re)spawn to restore exactly one keeper.
+     *
+     * <p>Reset is needed when the valid keeper count isn't exactly one (zero = lost, ≥2 = over-spawn)
+     * OR any tagged non-keeper lingers (a witch/other to be purged). A single healthy keeper with no
+     * strays ({@code validKeepers == 1 && taggedTotal == 1}) is left UNTOUCHED — no respawn, no
+     * flicker, no death broadcast. Extracted for Correction-of-Error unit tests of the invariant.
+     */
+    public static boolean keeperResetNeeded(int validKeepers, int taggedTotal) {
+        return validKeepers != 1 || taggedTotal != validKeepers;
+    }
+
+    /**
+     * Read-only admin diagnostics (0.8.3.3): one line per consecrated yard — its bounds, center,
+     * anchor, resting-grave count, and the LIVE keeper population (valid keepers + any lingering
+     * tagged strays) with each keeper's block position — followed by a world-total summary. Backs
+     * {@code /sanctuarygrave list}; also the go-to tool for diagnosing keeper over-spawn.
+     */
+    public static List<String> describeYardsAndKeepers(MinecraftServer server) {
+        List<String> lines = new ArrayList<>();
+        List<Yard> yards = store().yards;
+        if (yards.isEmpty()) {
+            lines.add("No consecrated yards.");
+        }
+        int reach = Gravekeeper.KEEPER_REACH;
+        for (Yard y : yards) {
+            boolean hasBounds = GraveyardSmite.hasBounds(y.bMinX, y.bMaxX);
+            String bounds = hasBounds
+                    ? String.format(Locale.ROOT, "bounds [%d..%d]x[%d..%d]", y.bMinX, y.bMaxX, y.bMinZ, y.bMaxZ)
+                    : (y.auto ? "hold-only (no bounds)" : "r=" + y.radius);
+            int graveCount = 0;
+            for (Grave g : store().graves) {
+                if (!g.heldByKeeper && g.inGraveyard && y.anchorId.equals(g.graveyardAnchor)) {
+                    graveCount++;
+                }
+            }
+            int held = 0;
+            for (Grave g : store().graves) {
+                if (g.heldByKeeper && y.anchorId.equals(g.graveyardAnchor)) {
+                    held++;
+                }
+            }
+            // Live keeper population, if the yard chunk is loaded.
+            String keeperInfo;
+            ServerLevel level = levelOf(server, y.dim);
+            BlockPos center = new BlockPos(y.x, y.y, y.z);
+            if (level == null || !level.isLoaded(center)) {
+                keeperInfo = "keepers: (chunk unloaded)";
+            } else {
+                net.minecraft.world.phys.AABB box = new net.minecraft.world.phys.AABB(
+                        y.x - reach, level.getMinY(), y.z - reach,
+                        y.x + 1 + reach, level.getMaxY(), y.z + 1 + reach);
+                var tagged = level.getEntitiesOfClass(net.minecraft.world.entity.Mob.class, box,
+                        m -> m.entityTags().contains(Gravekeeper.KEEPER_TAG));
+                long valid = tagged.stream()
+                        .filter(m -> m instanceof net.minecraft.world.entity.npc.villager.Villager)
+                        .count();
+                StringBuilder pos = new StringBuilder();
+                for (var k : tagged) {
+                    if (pos.length() > 0) {
+                        pos.append(", ");
+                    }
+                    pos.append(String.format(Locale.ROOT, "%s@(%d,%d,%d)",
+                            k instanceof net.minecraft.world.entity.npc.villager.Villager ? "keeper" : "STRAY",
+                            (int) Math.floor(k.getX()), (int) Math.floor(k.getY()), (int) Math.floor(k.getZ())));
+                }
+                keeperInfo = String.format(Locale.ROOT, "keepers: %d valid / %d tagged%s",
+                        valid, tagged.size(), pos.length() > 0 ? " [" + pos + "]" : "");
+            }
+            lines.add(String.format(Locale.ROOT,
+                    "Yard anchor=%s dim=%s center=(%d,%d,%d) %s — graves=%d (held=%d) — %s",
+                    y.anchorId, y.dim, y.x, y.y, y.z, bounds, graveCount, held, keeperInfo));
+        }
+        lines.add(String.format(Locale.ROOT, "Total: %d yards, %d world graves.",
+                yards.size(), store().graves.size()));
+        return lines;
+    }
+
+    /**
+     * Grave search (0.8.3.3): the UI-facing entry backing the Gravekeeper "Search" button and
+     * {@code /sanctuarygrave search}. With a non-blank {@code needle}, returns graves whose owner
+     * name contains it (case-insensitive); blank lists every grave. Each line carries the id, owner,
+     * dimension, position, and where it rests (wild / yard / keeper-held / looted). Text results, so
+     * the button can never resolve to an "unrecognized command".
+     */
+    public static List<String> searchGraves(String needle) {
+        String n = needle == null ? "" : needle.trim().toLowerCase(Locale.ROOT);
+        boolean filtering = !n.isEmpty();
+        List<String> lines = new ArrayList<>();
+        for (Grave g : store().graves) {
+            if (filtering && (g.ownerName == null
+                    || !g.ownerName.toLowerCase(Locale.ROOT).contains(n))) {
+                continue;
+            }
+            String where = g.looted ? "looted"
+                    : g.heldByKeeper ? "keeper-held"
+                    : g.inGraveyard ? "yard:" + g.graveyardAnchor
+                    : "wild";
+            lines.add(String.format(Locale.ROOT, "%s — %s — %s (%d,%d,%d) [%s] items=%d",
+                    g.id, g.ownerName == null ? "?" : g.ownerName, g.dim,
+                    (int) Math.floor(g.x), (int) Math.floor(g.y), (int) Math.floor(g.z),
+                    where, g.items.size()));
+        }
+        if (lines.isEmpty()) {
+            lines.add(filtering ? "No graves match \"" + needle.trim() + "\"." : "No graves recorded.");
+        }
+        return lines;
     }
 
     public static Yard nearestYard(Grave grave) {

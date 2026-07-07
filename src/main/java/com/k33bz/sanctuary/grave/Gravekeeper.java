@@ -91,24 +91,29 @@ public final class Gravekeeper {
      * opens as before. The keeper is Invulnerable, PersistenceRequired, and Silent.
      */
     public static void spawnKeeper(ServerLevel level, Graves.Yard yard) {
-        // Idempotent: kill EVERY tagged keeper-entity within KEEPER_REACH of the yard center (full Y
-        // column) FIRST, then summon exactly one. This makes spawnKeeper the single source of the
-        // "exactly one keeper per yard" invariant — it dedups strays/manual replacements and never
-        // leaves more than one. NOTE: NOT type-scoped to villager — a keeper struck by NATURAL
-        // lightning BEFORE the 0.8.3.1 immunity was deployed became a WITCH that KEPT the tag; those
-        // lingering tagged witches must be purged too (a type=villager kill would leave them). A
-        // dx/dy/dz volume selector is Y-explicit (independent of the command source's Y).
-        Graves.run(level, String.format(Locale.ROOT,
-                "kill @e[tag=%s,x=%d,y=%d,z=%d,dx=%d,dy=%d,dz=%d]",
-                KEEPER_TAG,
+        // Idempotent + the SINGLE source of the "exactly one keeper per yard" invariant (0.8.3.3):
+        // DISCARD every tagged keeper-entity within KEEPER_REACH of the yard center (full Y column)
+        // FIRST, then summon exactly one. Uses direct discard() — NOT the /kill command — so removing
+        // strays fires NO death event and broadcasts NO "Gravekeeper was killed" message (the chat
+        // spam the self-heal caused when it culled duplicates). discard() is silent: no death, no
+        // loot, no message. NOT type-scoped to villager — a keeper struck by NATURAL lightning BEFORE
+        // the 0.8.3.1 immunity became a WITCH that KEPT the tag; those lingering tagged witches must
+        // be purged too. A full-Y AABB is independent of any command source's Y.
+        net.minecraft.world.phys.AABB reachBox = new net.minecraft.world.phys.AABB(
                 yard.x - KEEPER_REACH, level.getMinY(), yard.z - KEEPER_REACH,
-                2 * KEEPER_REACH, level.getMaxY() - level.getMinY(), 2 * KEEPER_REACH));
+                yard.x + 1 + KEEPER_REACH, level.getMaxY(), yard.z + 1 + KEEPER_REACH);
+        for (Mob stray : level.getEntitiesOfClass(Mob.class, reachBox,
+                m -> m.entityTags().contains(KEEPER_TAG))) {
+            stray.discard(); // silent removal — no death broadcast, no loot
+        }
+        // NoGravity so the keeper holds a gentle hover just above the ground (the per-tick bob in
+        // tickKeeperHover drives its Y). Summoned AT the hover base (yard.y + BASE_LIFT), not high up.
         Graves.run(level, String.format(Locale.ROOT,
-                "summon minecraft:villager %d %d %d {Tags:[\"%s\"],NoAI:1b,Invulnerable:1b,"
-                        + "PersistenceRequired:1b,Silent:1b,"
+                "summon minecraft:villager %d %.2f %d {Tags:[\"%s\"],NoAI:1b,Invulnerable:1b,"
+                        + "PersistenceRequired:1b,Silent:1b,NoGravity:1b,"
                         + "VillagerData:{profession:\"minecraft:cleric\",level:5,type:\"minecraft:swamp\"},"
                         + "CustomName:{text:\"Gravekeeper\",color:\"gold\"},CustomNameVisible:1b}",
-                yard.x, yard.y + 1, yard.z, KEEPER_TAG));
+                yard.x, yard.y + KeeperHover.BASE_LIFT, yard.z, KEEPER_TAG));
     }
 
     /** Right-click on the keeper: list summonable graves (unfiltered). */
@@ -387,6 +392,43 @@ public final class Gravekeeper {
                     }
                 }
                 default -> it.remove();
+            }
+        }
+    }
+
+    /**
+     * Per-tick keeper hover-bob (0.8.3.3): each stationary keeper hovers just above the ground and
+     * bobs gently up/down (a slow, small sine — see {@link KeeperHover}). NoGravity holds it aloft;
+     * this sets only its Y so it hovers-and-bounces without any horizontal drift or pathing (full
+     * patrol AI is deferred to 0.8.4). Cheap: only loaded yards with a keeper present are touched.
+     */
+    public static void tickKeeperHover(MinecraftServer server) {
+        SanctuaryConfig cfg = Sanctuary.CONFIG;
+        if (cfg == null || !cfg.gravesEnabled) {
+            return;
+        }
+        if (Graves.store().yards.isEmpty()) {
+            return;
+        }
+        for (Graves.Yard yard : Graves.store().yards) {
+            ServerLevel level = Graves.levelOf(server, yard.dim);
+            net.minecraft.core.BlockPos center = new net.minecraft.core.BlockPos(yard.x, yard.y, yard.z);
+            if (level == null || !level.isLoaded(center)) {
+                continue;
+            }
+            net.minecraft.world.phys.AABB box = new net.minecraft.world.phys.AABB(
+                    yard.x - KEEPER_REACH, level.getMinY(), yard.z - KEEPER_REACH,
+                    yard.x + 1 + KEEPER_REACH, level.getMaxY(), yard.z + 1 + KEEPER_REACH);
+            List<Mob> keepers = level.getEntitiesOfClass(Mob.class, box,
+                    m -> m.entityTags().contains(KEEPER_TAG)
+                            && m instanceof net.minecraft.world.entity.npc.villager.Villager);
+            long t = level.getGameTime();
+            for (Mob keeper : keepers) {
+                // Desync multiple keepers by a stable per-entity phase from their id.
+                double phase = (keeper.getId() % 16) * (Math.PI / 8.0);
+                double y = KeeperHover.hoverY(yard.y, t, phase);
+                keeper.setPos(keeper.getX(), y, keeper.getZ());
+                keeper.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO); // no drift
             }
         }
     }

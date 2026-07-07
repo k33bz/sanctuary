@@ -207,20 +207,15 @@ public final class SanctuaryCommands {
                                     .executes(safe(ctx -> com.k33bz.sanctuary.grave.Gravekeeper.summon(
                                             ctx.getSource().getPlayerOrException(),
                                             StringArgumentType.getString(ctx, "id"))))))
-                    // Backs the Gravekeeper ledger search: bare = show all, greedy arg = filter.
+                    // UI-facing grave search backing the Gravekeeper "Search" button (and manual
+                    // use): bare = list every grave + position; greedy arg = filter by owner name.
+                    // Returns TEXT RESULTS (never "unrecognized command"). Permission 0 so the
+                    // dialog button — which runs as the clicking player — can invoke it.
                     .then(Commands.literal("search")
-                            .executes(safe(ctx -> {
-                                com.k33bz.sanctuary.grave.Gravekeeper.openDialog(
-                                        ctx.getSource().getPlayerOrException(), cfg(), null);
-                                return 1;
-                            }))
+                            .executes(safe(ctx -> graveSearch(ctx, null)))
                             .then(Commands.argument("query", StringArgumentType.greedyString())
-                                    .executes(safe(ctx -> {
-                                        com.k33bz.sanctuary.grave.Gravekeeper.openDialog(
-                                                ctx.getSource().getPlayerOrException(), cfg(),
-                                                StringArgumentType.getString(ctx, "query"));
-                                        return 1;
-                                    }))))
+                                    .executes(safe(ctx -> graveSearch(ctx,
+                                            StringArgumentType.getString(ctx, "query"))))))
                     // Ops (level 2): force-clear graves into the nearest keeper hold (loot safe).
                     // Default = wild graves only; "includegraveyard" also does in-yard graves.
                     .then(Commands.literal("clearworld")
@@ -260,6 +255,13 @@ public final class SanctuaryCommands {
                                         "Wild-flora migration run."), true);
                                 return 1;
                             })))
+                    // Ops (level 2): read-only diagnostics — list every consecrated yard (bounds +
+                    // center + anchor), its grave count, and the live keeper count + entity positions
+                    // per yard, plus the total world grave count. Invaluable for diagnosing keeper
+                    // over-spawn and locating graves.
+                    .then(Commands.literal("list")
+                            .requires(Commands.<CommandSourceStack>hasPermission(Commands.LEVEL_GAMEMASTERS))
+                            .executes(safe(SanctuaryCommands::graveList)))
                     // Ops (level 2): debug — run the keeper self-heal on demand (normally on
                     // SERVER_STARTED + periodically). Lets tests drive it without a restart.
                     .then(Commands.literal("healkeepers")
@@ -409,6 +411,31 @@ public final class SanctuaryCommands {
         }
         // Same gated action as the headstone right-click.
         com.k33bz.sanctuary.grave.Graves.tryClaim(player, grave, cfg);
+        return 1;
+    }
+
+    /** Ops read-only: list every consecrated yard (bounds/center/anchor), grave counts, and the live
+     *  keeper population + positions per yard, plus the world grave total. */
+    private static int graveList(CommandContext<CommandSourceStack> ctx) {
+        CommandSourceStack src = ctx.getSource();
+        src.sendSuccess(() -> Component.literal("Graveyards + keepers:"), false);
+        for (String line : com.k33bz.sanctuary.grave.Graves.describeYardsAndKeepers(src.getServer())) {
+            src.sendSuccess(() -> Component.literal("  " + line), false);
+        }
+        return 1;
+    }
+
+    /** UI-facing grave search (permission 0): text results by owner-name filter, or all graves. */
+    private static int graveSearch(CommandContext<CommandSourceStack> ctx, String query) {
+        CommandSourceStack src = ctx.getSource();
+        List<String> results = com.k33bz.sanctuary.grave.Graves.searchGraves(query);
+        String header = query == null || query.isBlank()
+                ? "All graves (" + (results.size()) + "):"
+                : "Graves matching \"" + query.trim() + "\":";
+        src.sendSuccess(() -> Component.literal(header), false);
+        for (String line : results) {
+            src.sendSuccess(() -> Component.literal("  " + line), false);
+        }
         return 1;
     }
 

@@ -495,11 +495,10 @@ public final class SanctuaryCommands {
     }
 
     /** UI-facing grave search (permission 0): text results by owner-name filter, or all graves. */
-    private static int graveSearch(CommandContext<CommandSourceStack> ctx, String query) {
+    private static int graveSearch(CommandContext<CommandSourceStack> ctx, String rawQuery) {
         CommandSourceStack src = ctx.getSource();
-        if (query != null && query.startsWith("*")) {
-            query = query.substring(1); // dialog-template sentinel (see Gravekeeper search input)
-        }
+        // Strip the dialog-template sentinel (see Gravekeeper search input).
+        String query = rawQuery != null && rawQuery.startsWith("*") ? rawQuery.substring(1) : rawQuery;
         List<String> results = com.k33bz.sanctuary.grave.Graves.searchGraves(query);
         boolean filtering = query != null && !query.isBlank();
         if (results.isEmpty()) {

@@ -1,0 +1,32 @@
+{
+  "_comment": "Gravekeeper mutterings (0.8.5). Sanctuary is a server-side mod: vanilla clients cannot resolve these keys, so the server reads this file at runtime (KeeperMutterLines) and sends the resolved literal text. Kept in lang/en_us.json form so it is translator-recognizable and i18n-ready if the mod ever ships a client half. Edit the strings freely; the framing key wraps the chosen line.",
+
+  "sanctuary.gravekeeper.mutter.frame": "The Gravekeeper mutters, \"%s\"",
+
+  "sanctuary.gravekeeper.mutter.0": "they never do stay buried.",
+  "sanctuary.gravekeeper.mutter.1": "rest now… rest.",
+  "sanctuary.gravekeeper.mutter.2": "another name for the stones.",
+  "sanctuary.gravekeeper.mutter.3": "the earth is patient.",
+  "sanctuary.gravekeeper.mutter.4": "I remember every one of you.",
+  "sanctuary.gravekeeper.mutter.5": "hush now… hush.",
+  "sanctuary.gravekeeper.mutter.6": "the flowers know what I know.",
+  "sanctuary.gravekeeper.mutter.7": "sleep, and trouble me no more.",
+  "sanctuary.gravekeeper.mutter.8": "cold hands, cold ground.",
+  "sanctuary.gravekeeper.mutter.9": "dig if you like — the ground gives nothing back.",
+  "sanctuary.gravekeeper.mutter.10": "so many… and room for so many more.",
+  "sanctuary.gravekeeper.mutter.11": "I've tended worse than you.",
+  "sanctuary.gravekeeper.mutter.12": "the dead keep better secrets than the living.",
+  "sanctuary.gravekeeper.mutter.13": "mind the graves, or join them.",
+  "sanctuary.gravekeeper.mutter.14": "night comes for us all.",
+  "sanctuary.gravekeeper.mutter.15": "a spade, a stone, a name. that's all any of us gets.",
+  "sanctuary.gravekeeper.mutter.16": "the quiet ones give me the least trouble.",
+  "sanctuary.gravekeeper.mutter.17": "worms and roots and time. that's the whole of it.",
+
+  "sanctuary.gravekeeper.mutter.night.0": "the veil thins after dark…",
+  "sanctuary.gravekeeper.mutter.night.1": "they whisper louder at night.",
+  "sanctuary.gravekeeper.mutter.night.2": "something walks that shouldn't…",
+
+  "sanctuary.gravekeeper.mutter.day.0": "sunlight won't warm the buried.",
+
+  "sanctuary.gravekeeper.mutter.manygraves": "so very many now…"
+}

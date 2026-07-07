@@ -400,6 +400,15 @@ public final class Gravekeeper {
     private static final java.util.Map<Integer, KeeperPatrol.State> PATROL_STATES =
             new java.util.HashMap<>();
 
+    /** Per-keeper mutter cadence state (0.8.5), keyed by entity id; pruned with PATROL_STATES. */
+    private static final class MutterState {
+        int cooldown = -1;   // ticks until the next mutter attempt; -1 = uninitialised (roll first)
+        int lastStatic = -1; // pool index of the last STATIC line, so we never repeat it back-to-back
+    }
+
+    private static final java.util.Map<Integer, MutterState> MUTTER_STATES =
+            new java.util.HashMap<>();
+
     /**
      * Per-tick keeper drift + hover-bob. As of 0.8.4 the keeper SLOWLY patrols its yard (issue #5):
      * {@link KeeperPatrol} eases it toward a wander target — preferring grave positions — at
@@ -472,13 +481,129 @@ public final class Gravekeeper {
                     keeper.setPos(keeper.getX(), bobY, keeper.getZ());
                 }
                 keeper.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO); // we drive position directly
+
+                // Ambient muttering (0.8.5): occasionally a quiet flavor line to nearby players only.
+                if (cfg.keeperMutter) {
+                    tickKeeperMutter(level, keeper, yard, cfg, graveTargets.size());
+                }
             }
         }
-        // Prune patrol state for keepers no longer present (despawn / chunk unload / self-heal reset),
-        // so the map can't grow unbounded across a long uptime.
+        // Prune patrol + mutter state for keepers no longer present (despawn / chunk unload / self-heal
+        // reset), so the maps can't grow unbounded across a long uptime.
         if (!PATROL_STATES.isEmpty()) {
             PATROL_STATES.keySet().retainAll(seen);
         }
+        if (!MUTTER_STATES.isEmpty()) {
+            MUTTER_STATES.keySet().retainAll(seen);
+        }
+    }
+
+    /**
+     * Ambient muttering (0.8.5): once the per-keeper cadence counter elapses, if at least one player is
+     * within {@code keeperMutterRadius}, pick ONE flavor line ({@link KeeperMutter}) and deliver it —
+     * subtle italic gray — ONLY to the nearby players (never global chat). Optionally a quiet villager
+     * ambient sound to the same area. The cadence is a jittered per-keeper interval; if nobody is near
+     * when it elapses, we DON'T reset to a full interval — a tiny retry delay lets it try again soon.
+     * Never the same static line twice in a row (tracked in {@link MutterState#lastStatic}).
+     */
+    private static void tickKeeperMutter(ServerLevel level, Mob keeper, Graves.Yard yard,
+                                         SanctuaryConfig cfg, int graveCount) {
+        MutterState ms = MUTTER_STATES.computeIfAbsent(keeper.getId(), id -> new MutterState());
+        if (ms.cooldown < 0) {
+            // First sighting: seed a fresh jittered interval so keepers don't all mutter in lockstep.
+            ms.cooldown = KeeperMutter.rollInterval(
+                    cfg.keeperMutterIntervalMin, cfg.keeperMutterIntervalMax, mutterRngFor(level, keeper.getId()));
+            return;
+        }
+        if (--ms.cooldown > 0) {
+            return;
+        }
+
+        // Proximity gate: collect the players within radius; deliver ONLY to them.
+        double kx = keeper.getX();
+        double ky = keeper.getY();
+        double kz = keeper.getZ();
+        double radius = Math.max(0.0, cfg.keeperMutterRadius);
+        List<ServerPlayer> nearby = new ArrayList<>();
+        for (ServerPlayer p : level.players()) {
+            if (KeeperMutter.withinRadius(kx, kz, p.getX(), p.getZ(), radius)) {
+                nearby.add(p);
+            }
+        }
+        if (nearby.isEmpty()) {
+            // Nobody heard it — DON'T burn a full interval; retry soon (a short jittered nudge).
+            ms.cooldown = 20 + level.getRandom().nextInt(60);
+            return;
+        }
+
+        // Build the pure selection context: night, grave count, current day, and the nearest grave's
+        // TRUE memory (raw store fields — survives headstone fuzzing).
+        boolean night = !level.isBrightOutside();
+        long currentDay = level.getOverworldClockTime() / 24000L;
+        KeeperMutter.GraveMemory nearMem = nearestGraveMemory(yard, kx, ky, kz);
+        KeeperMutter.Context ctx = new KeeperMutter.Context(
+                KeeperMutterLines.poolSize(), night, graveCount, currentDay, nearMem);
+
+        KeeperMutter.Line line = KeeperMutter.select(ctx, ms.lastStatic,
+                cfg.keeperMutterGraveWeight, cfg.keeperMutterContextWeight, mutterRngFor(level, keeper.getId()));
+        if (line.kind == KeeperMutter.Kind.STATIC) {
+            ms.lastStatic = line.index; // remember, so the next static pick can't repeat it
+        }
+
+        String resolved = KeeperMutterLines.resolve(line);
+        if (resolved != null && !resolved.isBlank()) {
+            Component msg = Component.literal(KeeperMutterLines.frame(resolved))
+                    .withStyle(net.minecraft.ChatFormatting.GRAY, net.minecraft.ChatFormatting.ITALIC);
+            for (ServerPlayer p : nearby) {
+                p.sendSystemMessage(msg);
+            }
+            if (cfg.keeperMutterSound) {
+                // Positional villager ambient at low volume (vanilla attenuates it by distance, so it
+                // stays a near-field murmur). Null source = ambient, not attributed to an entity.
+                level.playSound(null, kx, ky, kz,
+                        net.minecraft.sounds.SoundEvents.VILLAGER_AMBIENT,
+                        net.minecraft.sounds.SoundSource.NEUTRAL, 0.35f, 0.85f);
+            }
+        }
+
+        // Roll the next full jittered interval.
+        ms.cooldown = KeeperMutter.rollInterval(
+                cfg.keeperMutterIntervalMin, cfg.keeperMutterIntervalMax, mutterRngFor(level, keeper.getId()));
+    }
+
+    /**
+     * The memory of the grave the keeper is beside / nearest to (within a small "lingering" radius), as
+     * the keeper KNOWS it: the raw {@code deathCause}/{@code killerName}/{@code deathDay} store fields,
+     * NOT the fuzzed headstone text. Returns null when no grave is close enough. {@code hasCause} is
+     * false for legacy graves with no captured cause (→ the lost-memory line).
+     */
+    private static KeeperMutter.GraveMemory nearestGraveMemory(Graves.Yard yard,
+                                                               double kx, double ky, double kz) {
+        final double lingerR = 6.0;       // "beside" a grave: within 6 blocks horizontally
+        Graves.Grave best = null;
+        double bestDsq = lingerR * lingerR;
+        for (Graves.Grave g : Graves.store().graves) {
+            if (!g.inGraveyard || g.heldByKeeper || !yard.anchorId.equals(g.graveyardAnchor)) {
+                continue;
+            }
+            double dx = g.x - kx;
+            double dz = g.z - kz;
+            double dsq = dx * dx + dz * dz;
+            if (dsq <= bestDsq) {
+                bestDsq = dsq;
+                best = g;
+            }
+        }
+        if (best == null) {
+            return null;
+        }
+        // hasCause: a real captured cause AND (for MOB) a killer, OR a real day — legacy graves have
+        // deathDay==0 and null deathCause, which collapse to the lost-memory variant.
+        boolean hasCause = best.deathCause != null
+                && GraveEpitaph.Cause.parse(best.deathCause) != GraveEpitaph.Cause.GENERIC;
+        GraveEpitaph.Cause cause = GraveEpitaph.Cause.parse(best.deathCause);
+        return new KeeperMutter.GraveMemory(best.ownerName, cause, best.killerName,
+                best.deathDay, hasCause);
     }
 
     /**
@@ -499,6 +624,22 @@ public final class Gravekeeper {
     private static KeeperPatrol.Rng rngFor(ServerLevel level, int id) {
         final net.minecraft.util.RandomSource src = level.getRandom();
         return new KeeperPatrol.Rng() {
+            @Override
+            public double nextDouble() {
+                return src.nextDouble();
+            }
+
+            @Override
+            public int nextInt(int bound) {
+                return bound <= 0 ? 0 : src.nextInt(bound);
+            }
+        };
+    }
+
+    /** Same adapter for the pure mutter selector's RNG (separate interface, same source). */
+    private static KeeperMutter.Rng mutterRngFor(ServerLevel level, int id) {
+        final net.minecraft.util.RandomSource src = level.getRandom();
+        return new KeeperMutter.Rng() {
             @Override
             public double nextDouble() {
                 return src.nextDouble();

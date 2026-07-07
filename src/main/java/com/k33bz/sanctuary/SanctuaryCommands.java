@@ -497,6 +497,9 @@ public final class SanctuaryCommands {
     /** UI-facing grave search (permission 0): text results by owner-name filter, or all graves. */
     private static int graveSearch(CommandContext<CommandSourceStack> ctx, String query) {
         CommandSourceStack src = ctx.getSource();
+        if (query != null && query.startsWith("*")) {
+            query = query.substring(1); // dialog-template sentinel (see Gravekeeper search input)
+        }
         List<String> results = com.k33bz.sanctuary.grave.Graves.searchGraves(query);
         boolean filtering = query != null && !query.isBlank();
         if (results.isEmpty()) {
@@ -658,6 +661,9 @@ public final class SanctuaryCommands {
         if (name == null) {
             com.k33bz.sanctuary.anchor.AnchorDialog.openRename(player, best);
             return 1;
+        }
+        if (name.startsWith("*")) {
+            name = name.substring(1); // dialog-template sentinel (see AnchorDialog rename input)
         }
         // Trim length and strip the section sign so names can't inject colour/format codes.
         String clean = name.replace('§', ' ').trim();

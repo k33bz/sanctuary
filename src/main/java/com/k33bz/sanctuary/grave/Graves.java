@@ -1096,9 +1096,6 @@ public final class Graves {
                     (int) Math.floor(g.x), (int) Math.floor(g.y), (int) Math.floor(g.z),
                     where, g.items.size()));
         }
-        if (lines.isEmpty()) {
-            lines.add(filtering ? "No graves match \"" + needle.trim() + "\"." : "No graves recorded.");
-        }
         return lines;
     }
 

@@ -275,8 +275,11 @@ public final class RespawnChoice {
     }
 
     private static ActionButton button(String label, String command) {
+        // CommandTemplate (dialog-native), NOT ClickEvent.RunCommand: the 26.x client routes
+        // RunCommand clicks through the unattended-command confirm screen ("unrecognized or
+        // invalid command"), while templates submit silently. See DialogInputs.command.
         return new ActionButton(new CommonButtonData(Component.literal(label), 200),
-                Optional.of(new StaticAction(new ClickEvent.RunCommand(command))));
+                DialogInputs.command(command));
     }
 
     /**

@@ -498,9 +498,15 @@ public final class SanctuaryCommands {
     private static int graveSearch(CommandContext<CommandSourceStack> ctx, String query) {
         CommandSourceStack src = ctx.getSource();
         List<String> results = com.k33bz.sanctuary.grave.Graves.searchGraves(query);
-        String header = query == null || query.isBlank()
-                ? "All graves (" + (results.size()) + "):"
-                : "Graves matching \"" + query.trim() + "\":";
+        boolean filtering = query != null && !query.isBlank();
+        if (results.isEmpty()) {
+            src.sendSuccess(() -> Component.literal(filtering
+                    ? "No graves match \"" + query.trim() + "\"." : "No graves recorded."), false);
+            return 0;
+        }
+        String header = filtering
+                ? "Graves matching \"" + query.trim() + "\" (" + results.size() + "):"
+                : "All graves (" + results.size() + "):";
         src.sendSuccess(() -> Component.literal(header), false);
         for (String line : results) {
             src.sendSuccess(() -> Component.literal("  " + line), false);

@@ -152,6 +152,25 @@ public class SanctuaryConfig {
     public int keeperLingerTicksMax = 160;   // ~8s max pause
     public double keeperWanderMargin = 2.0;  // blocks kept inside the fence (never path to the edge)
 
+    // Gravekeeper mutterings (0.8.5): occasionally the keeper says ONE quiet flavor line to himself as
+    // he patrols, delivered ONLY to players within keeperMutterRadius (so it reads as muttering, never
+    // global chat). Cadence is a per-keeper jittered interval in
+    // [keeperMutterIntervalMin..keeperMutterIntervalMax] ticks (~40-90s). The backbone is a somber
+    // static pool (assets/sanctuary/lang/en_us.json); lower-weight contextual lines (night/day, "so
+    // many graves") and — the payoff — grave-MEMORY lines are sprinkled in. When lingering beside a
+    // grave that captured death data, the keeper reveals the TRUE cause + day the weathered headstone
+    // no longer shows; a grave with no captured cause yields a poignant "lost memory" line. Never the
+    // same static line twice in a row. keeperMutter=false disables muttering entirely (silent).
+    // keeperMutterSound plays a quiet villager ambient to the same nearby players. Tone/feel is best
+    // judged in-world — flagged for a k33bz playtest.
+    public boolean keeperMutter = true;
+    public double keeperMutterRadius = 14.0;      // blocks; a player must be this close to hear a mutter
+    public int keeperMutterIntervalMin = 800;     // ticks (~40s) — min gap between mutters, per keeper
+    public int keeperMutterIntervalMax = 1800;    // ticks (~90s) — max gap between mutters, per keeper
+    public boolean keeperMutterSound = true;      // quiet villager ambient sound alongside the line
+    public double keeperMutterGraveWeight = 0.65; // chance to speak a grave-memory line when one is near
+    public double keeperMutterContextWeight = 0.30; // chance to speak a night/day/many-graves line
+
     // Graveyard yard grief-protection (0.8.3.3): a consecrated yard's ENTIRE footprint is protected,
     // not just registered grave plots. ANY block inside the fence bounds, from graveyardProtectDepth
     // blocks below the floor up through graveyardProtectHeight above it, is unbreakable by everyone

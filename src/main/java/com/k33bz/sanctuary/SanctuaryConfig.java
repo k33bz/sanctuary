@@ -137,6 +137,16 @@ public class SanctuaryConfig {
     public int graveyardSmiteMargin = 10;
     public int graveyardSmiteIntervalTicks = 20;
 
+    // Graveyard yard grief-protection (0.8.3.3): a consecrated yard's ENTIRE footprint is protected,
+    // not just registered grave plots. ANY block inside the fence bounds, from graveyardProtectDepth
+    // blocks below the floor up through graveyardProtectHeight above it, is unbreakable by everyone
+    // (region-based, incl. ops) and no block may be placed there — closing the gap where the bare
+    // yard floor and old/unregistered graves could be dug/griefed. Harvestable flora on graves stays
+    // breakable. Set graveyardYardProtect=false to disable both the break- and place-deny.
+    public boolean graveyardYardProtect = true;
+    public int graveyardProtectDepth = 4;   // blocks below the floor kept protected (anti-tunnel)
+    public int graveyardProtectHeight = 20; // blocks above the floor (fence + headstones + airspace)
+
     // The Restless: once per night, an underground player carrying restlessMinInsomniaDays+
     // of sleep debt is visited by Restless Creakings spawned in the dark nearby (count grows
     // with insomnia, capped). They only move unwatched, dissolve at dawn, and never bother the

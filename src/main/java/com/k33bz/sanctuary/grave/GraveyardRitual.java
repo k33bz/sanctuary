@@ -94,47 +94,16 @@ public final class GraveyardRitual {
         }
 
         // Flood the pen from the effigy: fences/walls/gates are the boundary.
-        int max = Math.max(9, cfg.graveyardMaxSize);
-        int half = max / 2 + 1;
-        Set<Long> visited = new HashSet<>();
-        ArrayDeque<long[]> queue = new ArrayDeque<>();
-        queue.add(new long[]{skullPos.getX(), skullPos.getZ()});
-        visited.add(key(skullPos.getX(), skullPos.getZ()));
-        int minX = skullPos.getX(), maxX = skullPos.getX(), minZ = skullPos.getZ(), maxZ = skullPos.getZ();
-        while (!queue.isEmpty()) {
-            long[] cell = queue.poll();
-            int x = (int) cell[0], z = (int) cell[1];
-            for (int[] d : new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
-                int nx = x + d[0], nz = z + d[1];
-                if (Math.abs(nx - skullPos.getX()) > half || Math.abs(nz - skullPos.getZ()) > half
-                        || visited.size() > max * max) {
-                    fail(player, String.format(Locale.ROOT,
-                            "The pen is open or too vast — fence it with a gate, at most %dx%d.", max, max));
-                    return;
-                }
-                if (!visited.add(key(nx, nz))) {
-                    continue;
-                }
-                if (isBoundary(level, nx, skullPos.getY(), nz)) {
-                    continue; // the fence holds
-                }
-                minX = Math.min(minX, nx);
-                maxX = Math.max(maxX, nx);
-                minZ = Math.min(minZ, nz);
-                maxZ = Math.max(maxZ, nz);
-                queue.add(new long[]{nx, nz});
-            }
-        }
-        int spanX = maxX - minX + 1;
-        int spanZ = maxZ - minZ + 1;
-        int min = Math.max(3, cfg.graveyardMinSize);
-        if (spanX < min || spanZ < min) {
-            fail(player, String.format(Locale.ROOT,
-                    "The pen is too small — the Gravekeeper needs at least %dx%d inside the fence.", min, min));
+        PenScan scan = scanPen(level, skullPos, cfg);
+        if (!scan.ok()) {
+            fail(player, scan.error());
             return;
         }
+        int minX = scan.minX(), maxX = scan.maxX(), minZ = scan.minZ(), maxZ = scan.maxZ();
+        int spanX = scan.spanX();
+        int spanZ = scan.spanZ();
 
-        int newRadius = Math.max(3, (Math.min(spanX, spanZ) - 2) / 2);
+        int newRadius = scan.radius();
 
         // UPGRADE path (0.8.2 default keeper): the existing yard is the auto/default HOLD-ONLY one.
         // Consecrating a real graveyard relocates/upgrades it in place — the keeper moves to the new
@@ -225,6 +194,71 @@ public final class GraveyardRitual {
                         "The effigy crumbles. The Gravekeeper rises to tend %dx%d of consecrated ground.",
                         spanX, spanZ))
                 .withStyle(ChatFormatting.GOLD));
+    }
+
+    /** Outcome of flooding a pen: fence-tight bounds, or the reason it can't be a graveyard. */
+    public record PenScan(boolean ok, String error, int minX, int maxX, int minZ, int maxZ) {
+        static PenScan failure(String error) {
+            return new PenScan(false, error, 0, 0, 0, 0);
+        }
+
+        public int spanX() {
+            return maxX - minX + 1;
+        }
+
+        public int spanZ() {
+            return maxZ - minZ + 1;
+        }
+
+        public int radius() {
+            return Math.max(3, (Math.min(spanX(), spanZ()) - 2) / 2);
+        }
+    }
+
+    /**
+     * Flood the pen outward from {@code origin} (the skull's height — fences are matched within
+     * ±3 blocks of it) and validate its size. Shared by the survival ritual and the console
+     * {@code /sanctuarygraveyard consecrate} path, so both produce identical fence-true bounds.
+     */
+    public static PenScan scanPen(ServerLevel level, BlockPos origin, SanctuaryConfig cfg) {
+        int max = Math.max(9, cfg.graveyardMaxSize);
+        int half = max / 2 + 1;
+        Set<Long> visited = new HashSet<>();
+        ArrayDeque<long[]> queue = new ArrayDeque<>();
+        queue.add(new long[]{origin.getX(), origin.getZ()});
+        visited.add(key(origin.getX(), origin.getZ()));
+        int minX = origin.getX(), maxX = origin.getX(), minZ = origin.getZ(), maxZ = origin.getZ();
+        while (!queue.isEmpty()) {
+            long[] cell = queue.poll();
+            int x = (int) cell[0], z = (int) cell[1];
+            for (int[] d : new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
+                int nx = x + d[0], nz = z + d[1];
+                if (Math.abs(nx - origin.getX()) > half || Math.abs(nz - origin.getZ()) > half
+                        || visited.size() > max * max) {
+                    return PenScan.failure(String.format(Locale.ROOT,
+                            "The pen is open or too vast — fence it with a gate, at most %dx%d.", max, max));
+                }
+                if (!visited.add(key(nx, nz))) {
+                    continue;
+                }
+                if (isBoundary(level, nx, origin.getY(), nz)) {
+                    continue; // the fence holds
+                }
+                minX = Math.min(minX, nx);
+                maxX = Math.max(maxX, nx);
+                minZ = Math.min(minZ, nz);
+                maxZ = Math.max(maxZ, nz);
+                queue.add(new long[]{nx, nz});
+            }
+        }
+        int spanX = maxX - minX + 1;
+        int spanZ = maxZ - minZ + 1;
+        int min = Math.max(3, cfg.graveyardMinSize);
+        if (spanX < min || spanZ < min) {
+            return PenScan.failure(String.format(Locale.ROOT,
+                    "The pen is too small — the Gravekeeper needs at least %dx%d inside the fence.", min, min));
+        }
+        return new PenScan(true, null, minX, maxX, minZ, maxZ);
     }
 
     /** Consume the effigy blocks with a poof + sound. */

@@ -131,7 +131,9 @@ public final class AnchorDialog {
                 inputs);
         List<ActionButton> buttons = new ArrayList<>();
         buttons.add(new ActionButton(new CommonButtonData(Component.literal("Confirm"), 160),
-                com.k33bz.sanctuary.DialogInputs.command("sanctuaryrename set $(name)")));
+                // "*" sentinel: an empty name must not expand to a trailing-space command (client
+                // parse fails → confirm screen). Backend strips it; blank still means "clear".
+                com.k33bz.sanctuary.DialogInputs.command("sanctuaryrename set *$(name)")));
         Dialog dialog = new MultiActionDialog(common, buttons,
                 Optional.of(new ActionButton(new CommonButtonData(Component.literal("Cancel"), 100),
                         Optional.empty())),

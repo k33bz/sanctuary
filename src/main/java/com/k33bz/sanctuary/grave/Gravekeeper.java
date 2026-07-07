@@ -206,7 +206,10 @@ public final class Gravekeeper {
                 com.k33bz.sanctuary.DialogInputs.text("query", "Search owner",
                         filtering ? filter.trim() : "", 24, 200));
         buttons.add(new ActionButton(new CommonButtonData(Component.literal("Filter by owner"), 220),
-                com.k33bz.sanctuary.DialogInputs.command("sanctuarygrave search $(query)")));
+                // The "*" sentinel glues to the macro so an EMPTY query can't leave a trailing
+                // space ("sanctuarygrave search " fails the client's command parse → the
+                // "unrecognized or invalid command" confirm screen). Backend strips it.
+                com.k33bz.sanctuary.DialogInputs.command("sanctuarygrave search *$(query)")));
 
         Dialog dialog = new MultiActionDialog(new CommonDialogData(
                 Component.literal("The Gravekeeper"), java.util.Optional.empty(), true, false,

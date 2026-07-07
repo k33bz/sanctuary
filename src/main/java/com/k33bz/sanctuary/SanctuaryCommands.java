@@ -303,8 +303,77 @@ public final class SanctuaryCommands {
                                     .executes(safe(ctx -> graveyardSet(ctx,
                                             com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(ctx, "radius"))))))
                     .then(Commands.literal("remove")
-                            .executes(safe(SanctuaryCommands::graveyardRemove))));
+                            .executes(safe(SanctuaryCommands::graveyardRemove)))
+                    // Console-runnable consecration (no player entity needed — RCON/automation).
+                    // Floods the pen from <pos> exactly like the survival ritual, so the yard gets
+                    // real fence bounds; [owner] assigns ownership by offline-UUID name derivation.
+                    .then(Commands.literal("consecrate")
+                            .then(Commands.argument("pos",
+                                            net.minecraft.commands.arguments.coordinates.BlockPosArgument.blockPos())
+                                    .executes(safe(ctx -> graveyardConsecrate(ctx, null)))
+                                    .then(Commands.argument("owner", StringArgumentType.word())
+                                            .executes(safe(ctx -> graveyardConsecrate(ctx,
+                                                    StringArgumentType.getString(ctx, "owner"))))))));
         });
+    }
+
+    /**
+     * Consecrate a graveyard from the console: flood-fill the fence pen around {@code pos} (the
+     * ground level at the yard's center — the scan origin sits two blocks above, where the ritual
+     * skull would be) and raise the keeper. Replaces any existing yard on the same anchor, retiring
+     * its keeper. No effigy is consumed; this is the admin/automation twin of the survival ritual.
+     */
+    private static int graveyardConsecrate(CommandContext<CommandSourceStack> ctx, String ownerName)
+            throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        net.minecraft.server.level.ServerLevel level = ctx.getSource().getLevel();
+        net.minecraft.core.BlockPos ground =
+                net.minecraft.commands.arguments.coordinates.BlockPosArgument.getBlockPos(ctx, "pos");
+        SanctuaryConfig cfg = cfg();
+        if (Sanctuary.blocksBeyondNearestAnchor(cfg, ground.getX() + 0.5, ground.getZ() + 0.5) > 0) {
+            ctx.getSource().sendFailure(Component.literal("Graveyards belong inside a sanctuary."));
+            return 0;
+        }
+        String anchorId = "config";
+        double bestSq = Double.MAX_VALUE;
+        for (var a : com.k33bz.sanctuary.anchor.AnchorState.get().anchors) {
+            double dx = a.x - ground.getX(), dz = a.z - ground.getZ();
+            if (dx * dx + dz * dz < bestSq) {
+                bestSq = dx * dx + dz * dz;
+                anchorId = a.id != null ? a.id : "legacy";
+            }
+        }
+        var scan = com.k33bz.sanctuary.grave.GraveyardRitual.scanPen(level, ground.above(2), cfg);
+        if (!scan.ok()) {
+            ctx.getSource().sendFailure(Component.literal(scan.error()));
+            return 0;
+        }
+        var store = com.k33bz.sanctuary.grave.Graves.store();
+        String fAnchor = anchorId;
+        store.yards.stream().filter(y -> y.anchorId.equals(fAnchor)).findFirst().ifPresent(old ->
+                com.k33bz.sanctuary.grave.Graves.run(level, "kill @e[type=minecraft:villager,tag="
+                        + com.k33bz.sanctuary.grave.Gravekeeper.KEEPER_TAG
+                        + ",x=" + old.x + ",y=" + old.y + ",z=" + old.z + ",distance=..6]"));
+        store.yards.removeIf(y -> y.anchorId.equals(fAnchor));
+        var yard = new com.k33bz.sanctuary.grave.Graves.Yard();
+        yard.anchorId = anchorId;
+        yard.owner = ownerName == null ? null : com.k33bz.sanctuary.grave.OfflineUuid.of(ownerName).toString();
+        yard.dim = level.dimension().identifier().toString();
+        yard.x = (scan.minX() + scan.maxX()) / 2;
+        yard.y = ground.getY();
+        yard.z = (scan.minZ() + scan.maxZ()) / 2;
+        yard.radius = scan.radius();
+        yard.bMinX = scan.minX();
+        yard.bMaxX = scan.maxX();
+        yard.bMinZ = scan.minZ();
+        yard.bMaxZ = scan.maxZ();
+        store.yards.add(yard);
+        com.k33bz.sanctuary.grave.Graves.save();
+        com.k33bz.sanctuary.grave.Gravekeeper.spawnKeeper(level, yard);
+        int spanX = scan.spanX(), spanZ = scan.spanZ();
+        ctx.getSource().sendSuccess(() -> Component.literal(String.format(java.util.Locale.ROOT,
+                "Graveyard consecrated %dx%d (fence-bounded%s). The Gravekeeper rises.",
+                spanX, spanZ, ownerName == null ? "" : ", owner " + ownerName)), true);
+        return 1;
     }
 
     private static int graveyardSet(CommandContext<CommandSourceStack> ctx, int radius)

@@ -275,11 +275,12 @@ public final class RespawnChoice {
     }
 
     private static ActionButton button(String label, String command) {
-        // CommandTemplate (dialog-native), NOT ClickEvent.RunCommand: the 26.x client routes
-        // RunCommand clicks through the unattended-command confirm screen ("unrecognized or
-        // invalid command"), while templates submit silently. See DialogInputs.command.
+        // STATIC command → ClickEvent.RunCommand, NOT CommandTemplate: a CommandTemplate REQUIRES
+        // at least one $(var) macro and throws "No variables in macro" on a static command, which
+        // crashed the respawn dialog (0.8.6.1 regression). CommandTemplate is only for the $(var)
+        // form-submit buttons (e.g. "Wake at chosen sanctuary" uses sanctuarywake $(sanctuary)).
         return new ActionButton(new CommonButtonData(Component.literal(label), 200),
-                DialogInputs.command(command));
+                Optional.of(new StaticAction(new ClickEvent.RunCommand(command))));
     }
 
     /**

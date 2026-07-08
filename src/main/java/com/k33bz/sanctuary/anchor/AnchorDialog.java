@@ -78,7 +78,7 @@ public final class AnchorDialog {
             buttons.add(new ActionButton(
                     new CommonButtonData(Component.literal(
                             anchor.name == null || anchor.name.isBlank() ? "Name this sanctuary" : "Rename"), 160),
-                    com.k33bz.sanctuary.DialogInputs.command("sanctuaryrename")));
+                    Optional.of(new StaticAction(new ClickEvent.RunCommand("sanctuaryrename")))));
         }
 
         CommonDialogData common = new CommonDialogData(
@@ -98,7 +98,8 @@ public final class AnchorDialog {
 
     private static ActionButton feedButton(String label, String type, int count) {
         return new ActionButton(new CommonButtonData(Component.literal(label), 160),
-                com.k33bz.sanctuary.DialogInputs.command("sanctuaryfeed " + type + " " + count));
+                Optional.of(new StaticAction(new ClickEvent.RunCommand(
+                        "sanctuaryfeed " + type + " " + count))));
     }
 
     /** Owner (by UUID) or a creative admin may rename. Server-owned anchors need creative. */

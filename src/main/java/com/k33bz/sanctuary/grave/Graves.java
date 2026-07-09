@@ -778,7 +778,7 @@ public final class Graves {
      */
     public static boolean isProtectedGraveBlock(String dim, BlockPos pos) {
         for (Grave g : store().graves) {
-            if (g.heldByKeeper || !g.dim.equals(dim)) {
+            if (g.heldByKeeper || g.dim == null || !g.dim.equals(dim)) {
                 continue;
             }
             int gx = (int) Math.floor(g.x);

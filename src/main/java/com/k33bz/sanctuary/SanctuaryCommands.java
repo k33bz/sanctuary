@@ -965,7 +965,7 @@ public final class SanctuaryCommands {
         double days = Math.max(0L, gameTime - cfg().danger.epochTick) / 24000.0;
         float atSanctuary = SurvivalLogic.worldDangerMultiplier(
                 src.getServer().overworld().getDifficulty().getId(), gameTime, 0.0, cfg().danger);
-        String msg = String.format(
+        String msg = String.format(java.util.Locale.ROOT,
                 "World-age danger: %.1f in-game days since last reset -> x%.2f inside a sanctuary (cap x%.1f)",
                 days, atSanctuary, cfg().danger.maxMultiplier);
         src.sendSuccess(() -> Component.literal(msg), false);

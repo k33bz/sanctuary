@@ -96,6 +96,8 @@ public class SanctuaryConfig {
     public double graveClaimFeeFraction = 0.02;
     public double graveSummonFeeFraction = 0.05;
     public int graveyardDefaultRadius = 8;
+    public int graveMaxPerOwner = 8;   // cap on a player's simultaneous unclaimed WILD graves (0 = unlimited); death-spam abuse guard
+    public int graveMaxTotal = 3000;   // global hard cap on stored graves (0 = unlimited); backstop against store bloat
     // WILD looted/empty memorials crumble after this many real days (0 = never); stones
     // standing in a graveyard never decay -- eviction is the cemetery's groundskeeper.
     // Unlooted graves NEVER decay -- drift, eviction-to-hold, and robbery are their only fates.

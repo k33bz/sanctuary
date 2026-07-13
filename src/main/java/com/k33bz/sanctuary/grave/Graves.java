@@ -176,6 +176,7 @@ public final class Graves {
         grave.deathDay = player.level().getOverworldClockTime() / 24000L;
         categorizeCause(grave, source);
         grave.items = items;   // FIX: actually store the captured items (was orphaned -> empty graves / item loss)
+        enforceGraveCaps(player.level().getServer(), cfg, grave);
         store().graves.add(grave);
         save();
         spawnDisplays((ServerLevel) player.level(), grave);
@@ -185,6 +186,73 @@ public final class Graves {
         player.sendSystemMessage(Component.literal(String.format(Locale.ROOT,
                         "Your belongings rest in a grave at %d %d %d.", pos.getX(), pos.getY(), pos.getZ()))
                 .withStyle(ChatFormatting.LIGHT_PURPLE));
+    }
+
+    /**
+     * Bound the persisted grave store against death-spam abuse (2026-07 abuse audit). While the
+     * owner is at/over {@code graveMaxPerOwner} simultaneous fresh WILD graves — or the whole store
+     * is at {@code graveMaxTotal} — evict their oldest fresh wild grave. Only unclaimed, un-interred,
+     * non-keeper-held graves are counted and evictable, so memorialised / graveyard graves are never
+     * touched. Eviction removes the grave's displays, notifies the owner, and logs an "evicted"
+     * metric. The generous default cap means legitimate players never hit it; only scripted death
+     * spam or extreme hoarding triggers it. Without this, every death rewrites the entire grave
+     * store on the game thread (O(store size)) and the store grows without bound.
+     */
+    private static void enforceGraveCaps(MinecraftServer server, SanctuaryConfig cfg, Grave incoming) {
+        if (cfg == null) {
+            return;
+        }
+        if (cfg.graveMaxPerOwner > 0) {
+            while (countFreshWild(g -> java.util.Objects.equals(g.owner, incoming.owner)) >= cfg.graveMaxPerOwner) {
+                if (!evictOldestFreshWild(server, g -> java.util.Objects.equals(g.owner, incoming.owner))) {
+                    break;
+                }
+            }
+        }
+        if (cfg.graveMaxTotal > 0) {
+            while (store().graves.size() >= cfg.graveMaxTotal) {
+                if (!evictOldestFreshWild(server, g -> true)) {
+                    break;
+                }
+            }
+        }
+    }
+
+    /** Count fresh (unclaimed, un-interred, not keeper-held) wild graves matching {@code match}. */
+    private static long countFreshWild(java.util.function.Predicate<Grave> match) {
+        long n = 0;
+        for (Grave g : store().graves) {
+            if (!g.looted && !g.inGraveyard && !g.heldByKeeper && match.test(g)) {
+                n++;
+            }
+        }
+        return n;
+    }
+
+    /** Evict (remove + de-render) the oldest fresh wild grave matching {@code match}; false if none. */
+    private static boolean evictOldestFreshWild(MinecraftServer server, java.util.function.Predicate<Grave> match) {
+        Grave victim = null;
+        for (Grave g : store().graves) {
+            if (!g.looted && !g.inGraveyard && !g.heldByKeeper && match.test(g)
+                    && (victim == null || g.diedAtMs < victim.diedAtMs)) {
+                victim = g;
+            }
+        }
+        if (victim == null) {
+            return false;
+        }
+        ServerLevel level = server == null ? null : levelOf(server, victim.dim);
+        if (level != null) {
+            killDisplays(level, victim);
+        }
+        store().graves.remove(victim);
+        if (server != null) {
+            notifyOwner(server, victim,
+                    "Your oldest unclaimed grave was reclaimed by nature to make room (grave limit reached).");
+        }
+        com.k33bz.sanctuary.metrics.GraveEventLog.record("evicted", victim.id, victim.ownerName,
+                victim.dim, victim.x, victim.y, victim.z, victim.items.size(), victim.ownerName, false);
+        return true;
     }
 
     /**

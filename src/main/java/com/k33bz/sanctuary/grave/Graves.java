@@ -31,6 +31,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -615,7 +616,7 @@ public final class Graves {
         }
         List<Grave> resting = new ArrayList<>();
         for (Grave g : store().graves) {
-            if (g.inGraveyard && !g.heldByKeeper && g.dim.equals(yard.dim)
+            if (g.inGraveyard && !g.heldByKeeper && Objects.equals(g.dim, yard.dim)
                     && yard.anchorId.equals(g.graveyardAnchor)) {
                 resting.add(g);
             }
@@ -707,7 +708,7 @@ public final class Graves {
                     double pz = yard.z + gz * 3 + 0.5;
                     boolean taken = false;
                     for (Grave g : store().graves) {
-                        if (g.inGraveyard && !g.heldByKeeper && g.dim.equals(yard.dim)
+                        if (g.inGraveyard && !g.heldByKeeper && Objects.equals(g.dim, yard.dim)
                                 && Math.abs(g.x - px) < 0.6 && Math.abs(g.z - pz) < 0.6) {
                             taken = true;
                             break;
@@ -734,7 +735,7 @@ public final class Graves {
         Grave victim = null;
         for (boolean lootedPass : new boolean[]{true, false}) {
             for (Grave g : store().graves) {
-                if (g.inGraveyard && !g.heldByKeeper && g.dim.equals(yard.dim)
+                if (g.inGraveyard && !g.heldByKeeper && Objects.equals(g.dim, yard.dim)
                         && yard.anchorId.equals(g.graveyardAnchor) && g.looted == lootedPass
                         && (victim == null || g.diedAtMs < victim.diedAtMs)) {
                     victim = g;
@@ -1103,7 +1104,7 @@ public final class Graves {
         Yard best = null;
         double bestSq = Double.MAX_VALUE;
         for (Yard yard : store().yards) {
-            if (!yard.dim.equals(grave.dim)) {
+            if (!Objects.equals(yard.dim, grave.dim)) {
                 continue;
             }
             double dx = yard.x - grave.x, dz = yard.z - grave.z;
@@ -1119,7 +1120,7 @@ public final class Graves {
     public static Yard yardNear(ServerPlayer player, double range) {
         String dim = player.level().dimension().identifier().toString();
         for (Yard yard : store().yards) {
-            if (yard.dim.equals(dim)
+            if (Objects.equals(yard.dim, dim)
                     && player.distanceToSqr(yard.x + 0.5, yard.y + 0.5, yard.z + 0.5) < range * range) {
                 return yard;
             }
@@ -1319,6 +1320,9 @@ public final class Graves {
     }
 
     private static void notifyOwner(MinecraftServer server, Grave grave, String message) {
+        if (grave.owner == null) {
+            return;
+        }
         ServerPlayer owner = server.getPlayerList().getPlayer(java.util.UUID.fromString(grave.owner));
         if (owner != null) {
             owner.sendSystemMessage(Component.literal(message).withStyle(ChatFormatting.LIGHT_PURPLE));

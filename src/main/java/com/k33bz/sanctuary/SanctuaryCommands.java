@@ -333,15 +333,7 @@ public final class SanctuaryCommands {
             ctx.getSource().sendFailure(Component.literal("Graveyards belong inside a sanctuary."));
             return 0;
         }
-        String anchorId = "config";
-        double bestSq = Double.MAX_VALUE;
-        for (var a : com.k33bz.sanctuary.anchor.AnchorState.get().anchors) {
-            double dx = a.x - ground.getX(), dz = a.z - ground.getZ();
-            if (dx * dx + dz * dz < bestSq) {
-                bestSq = dx * dx + dz * dz;
-                anchorId = a.id != null ? a.id : "legacy";
-            }
-        }
+        String anchorId = nearestAnchorId(ground.getX(), ground.getZ());
         var scan = com.k33bz.sanctuary.grave.GraveyardRitual.scanPen(level, ground.above(2), cfg);
         if (!scan.ok()) {
             ctx.getSource().sendFailure(Component.literal(scan.error()));
@@ -384,15 +376,7 @@ public final class SanctuaryCommands {
             ctx.getSource().sendFailure(Component.literal("Graveyards belong inside a sanctuary."));
             return 0;
         }
-        String anchorId = "config";
-        double bestSq = Double.MAX_VALUE;
-        for (var a : com.k33bz.sanctuary.anchor.AnchorState.get().anchors) {
-            double dx = a.x - player.getX(), dz = a.z - player.getZ();
-            if (dx * dx + dz * dz < bestSq) {
-                bestSq = dx * dx + dz * dz;
-                anchorId = a.id != null ? a.id : "legacy";
-            }
-        }
+        String anchorId = nearestAnchorId(player.getX(), player.getZ());
         var store = com.k33bz.sanctuary.grave.Graves.store();
         String fAnchor = anchorId;
         store.yards.removeIf(y -> y.anchorId.equals(fAnchor));
@@ -458,21 +442,7 @@ public final class SanctuaryCommands {
             // Nearest grave to the player, in the same dimension, within 6 blocks — the same reach
             // the interaction hitbox affords. Keeper-held graves have no in-world headstone, so
             // (like the right-click) they are not reachable here; use /sanctuarygrave claimheld.
-            String dim = player.level().dimension().identifier().toString();
-            grave = null;
-            double bestSq = 6 * 6;
-            for (com.k33bz.sanctuary.grave.Graves.Grave g
-                    : com.k33bz.sanctuary.grave.Graves.store().graves) {
-                if (g.heldByKeeper || !dim.equals(g.dim)) {
-                    continue;
-                }
-                double dx = g.x - player.getX(), dy = g.y - player.getY(), dz = g.z - player.getZ();
-                double sq = dx * dx + dy * dy + dz * dz;
-                if (sq < bestSq) {
-                    bestSq = sq;
-                    grave = g;
-                }
-            }
+            grave = nearestReachableGrave(player, 6 * 6);
             if (grave == null) {
                 ctx.getSource().sendFailure(Component.literal("No grave within reach."));
                 return 0;
@@ -543,20 +513,7 @@ public final class SanctuaryCommands {
             grave = com.k33bz.sanctuary.grave.Graves.byId(id);
         } else {
             net.minecraft.server.level.ServerPlayer player = ctx.getSource().getPlayerOrException();
-            String dim = player.level().dimension().identifier().toString();
-            grave = null;
-            double bestSq = 8 * 8;
-            for (var g : com.k33bz.sanctuary.grave.Graves.store().graves) {
-                if (g.heldByKeeper || !dim.equals(g.dim)) {
-                    continue;
-                }
-                double dx = g.x - player.getX(), dy = g.y - player.getY(), dz = g.z - player.getZ();
-                double sq = dx * dx + dy * dy + dz * dz;
-                if (sq < bestSq) {
-                    bestSq = sq;
-                    grave = g;
-                }
-            }
+            grave = nearestReachableGrave(player, 8 * 8);
         }
         if (grave == null) {
             ctx.getSource().sendFailure(Component.literal("No grave found to age."));
@@ -572,6 +529,62 @@ public final class SanctuaryCommands {
         return 1;
     }
 
+    // --- shared nearest-entity scans (extracted from duplicated command backends) ---
+
+    /** Id of the anchor nearest {@code (refX, refZ)} in the XZ plane (unbounded); "config" if none.
+     *  A placed anchor without an id resolves to "legacy". */
+    private static String nearestAnchorId(double refX, double refZ) {
+        String id = "config";
+        double bestSq = Double.MAX_VALUE;
+        for (var a : com.k33bz.sanctuary.anchor.AnchorState.get().anchors) {
+            double dx = a.x - refX, dz = a.z - refZ;
+            double sq = dx * dx + dz * dz;
+            if (sq < bestSq) {
+                bestSq = sq;
+                id = a.id != null ? a.id : "legacy";
+            }
+        }
+        return id;
+    }
+
+    /** Placed anchor nearest the player in the XZ plane within {@code radiusSq}, optionally passing
+     *  {@code filter}; null if none in range. */
+    private static com.k33bz.sanctuary.anchor.AnchorState.PlacedAnchor nearestAnchorWithin(
+            net.minecraft.server.level.ServerPlayer player, double radiusSq,
+            java.util.function.Predicate<com.k33bz.sanctuary.anchor.AnchorState.PlacedAnchor> filter) {
+        com.k33bz.sanctuary.anchor.AnchorState.PlacedAnchor best = null;
+        double bestSq = radiusSq;
+        for (var a : com.k33bz.sanctuary.anchor.AnchorState.get().anchors) {
+            double dx = a.x - player.getX(), dz = a.z - player.getZ();
+            double sq = dx * dx + dz * dz;
+            if (sq < bestSq && (filter == null || filter.test(a))) {
+                bestSq = sq;
+                best = a;
+            }
+        }
+        return best;
+    }
+
+    /** Reachable (non-held, same-dim) grave nearest the player within {@code radiusSq} (3D); null if none. */
+    private static com.k33bz.sanctuary.grave.Graves.Grave nearestReachableGrave(
+            net.minecraft.server.level.ServerPlayer player, double radiusSq) {
+        String dim = player.level().dimension().identifier().toString();
+        com.k33bz.sanctuary.grave.Graves.Grave best = null;
+        double bestSq = radiusSq;
+        for (com.k33bz.sanctuary.grave.Graves.Grave g : com.k33bz.sanctuary.grave.Graves.store().graves) {
+            if (g.heldByKeeper || !dim.equals(g.dim)) {
+                continue;
+            }
+            double dx = g.x - player.getX(), dy = g.y - player.getY(), dz = g.z - player.getZ();
+            double sq = dx * dx + dy * dy + dz * dz;
+            if (sq < bestSq) {
+                bestSq = sq;
+                best = g;
+            }
+        }
+        return best;
+    }
+
     /** Feed the nearest anchor from the executing player's inventory (dialog button backend). */
     private static int dialogFeed(CommandContext<CommandSourceStack> ctx) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
         net.minecraft.server.level.ServerPlayer player = ctx.getSource().getPlayerOrException();
@@ -579,16 +592,7 @@ public final class SanctuaryCommands {
         int count = com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(ctx, "count");
 
         // nearest placed anchor within 6 blocks
-        com.k33bz.sanctuary.anchor.AnchorState.PlacedAnchor best = null;
-        double bestSq = 6 * 6;
-        for (com.k33bz.sanctuary.anchor.AnchorState.PlacedAnchor a
-                : com.k33bz.sanctuary.anchor.AnchorState.get().anchors) {
-            double dx = a.x - player.getX(), dz = a.z - player.getZ();
-            if (dx * dx + dz * dz < bestSq) {
-                bestSq = dx * dx + dz * dz;
-                best = a;
-            }
-        }
+        com.k33bz.sanctuary.anchor.AnchorState.PlacedAnchor best = nearestAnchorWithin(player, 6 * 6, null);
         if (best == null) {
             ctx.getSource().sendFailure(Component.literal("No sanctuary anchor within reach."));
             return 0;
@@ -641,17 +645,8 @@ public final class SanctuaryCommands {
     private static int anchorRename(CommandContext<CommandSourceStack> ctx, String name)
             throws com.mojang.brigadier.exceptions.CommandSyntaxException {
         net.minecraft.server.level.ServerPlayer player = ctx.getSource().getPlayerOrException();
-        com.k33bz.sanctuary.anchor.AnchorState.PlacedAnchor best = null;
-        double bestSq = 6 * 6;
-        for (com.k33bz.sanctuary.anchor.AnchorState.PlacedAnchor a
-                : com.k33bz.sanctuary.anchor.AnchorState.get().anchors) {
-            double dx = a.x - player.getX(), dz = a.z - player.getZ();
-            if (dx * dx + dz * dz < bestSq
-                    && com.k33bz.sanctuary.anchor.AnchorDialog.canRename(player, a)) {
-                bestSq = dx * dx + dz * dz;
-                best = a;
-            }
-        }
+        com.k33bz.sanctuary.anchor.AnchorState.PlacedAnchor best = nearestAnchorWithin(player, 6 * 6,
+                a -> com.k33bz.sanctuary.anchor.AnchorDialog.canRename(player, a));
         if (best == null) {
             player.sendOverlayMessage(Component.literal("No sanctuary of yours within reach to name.")
                     .withStyle(net.minecraft.ChatFormatting.YELLOW));
@@ -777,15 +772,7 @@ public final class SanctuaryCommands {
             }
         } else {
             net.minecraft.server.level.ServerPlayer player = ctx.getSource().getPlayerOrException();
-            com.k33bz.sanctuary.anchor.AnchorState.PlacedAnchor best = null;
-            double bestSq = 16 * 16;
-            for (var a : state.anchors) {
-                double dx = a.x - player.getX(), dz = a.z - player.getZ();
-                if (dx * dx + dz * dz < bestSq) {
-                    bestSq = dx * dx + dz * dz;
-                    best = a;
-                }
-            }
+            com.k33bz.sanctuary.anchor.AnchorState.PlacedAnchor best = nearestAnchorWithin(player, 16 * 16, null);
             if (best != null) {
                 targets.add(best);
             }

@@ -470,7 +470,7 @@ public class SanctuaryConfig {
                     return cfg;
                 }
             }
-        } catch (IOException | RuntimeException e) {
+        } catch (IOException | com.google.gson.JsonSyntaxException e) {
             Sanctuary.LOGGER.warn("[sanctuary] Failed to read config; using defaults", e);
         }
         SanctuaryConfig cfg = new SanctuaryConfig();

@@ -35,20 +35,21 @@ public final class VanillaTweaksPacks {
             if (in == null) {
                 return;
             }
-            BufferedReader reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8));
-            String line;
-            while ((line = reader.readLine()) != null) {
-                String name = line.trim();
-                if (name.isEmpty()) {
-                    continue;
-                }
-                boolean ok = ResourceManagerHelper.registerBuiltinResourcePack(
-                        Identifier.fromNamespaceAndPath(Sanctuary.MOD_ID, "vt/" + name),
-                        container,
-                        Component.literal("VT " + name.replace('_', ' ')),
-                        ResourcePackActivationType.NORMAL);
-                if (ok) {
-                    count++;
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    String name = line.trim();
+                    if (name.isEmpty()) {
+                        continue;
+                    }
+                    boolean ok = ResourceManagerHelper.registerBuiltinResourcePack(
+                            Identifier.fromNamespaceAndPath(Sanctuary.MOD_ID, "vt/" + name),
+                            container,
+                            Component.literal("VT " + name.replace('_', ' ')),
+                            ResourcePackActivationType.NORMAL);
+                    if (ok) {
+                        count++;
+                    }
                 }
             }
         } catch (Exception e) {

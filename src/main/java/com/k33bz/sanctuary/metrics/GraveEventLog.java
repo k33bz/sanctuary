@@ -52,6 +52,7 @@ public final class GraveEventLog {
                     actorName == null ? "null" : "\"" + escape(actorName) + "\"", robbery));
         } catch (IOException e) {
             Sanctuary.LOGGER.warn("[sanctuary] grave event log write failed", e);
+            close();
         }
     }
 

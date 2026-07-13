@@ -15,6 +15,7 @@ import com.k33bz.sanctuary.anchor.AnchorState;
 import java.util.ArrayDeque;
 import java.util.HashSet;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -80,7 +81,7 @@ public final class GraveyardRitual {
         }
         String fAnchor = anchorId;
         Graves.Yard existing = Graves.store().yards.stream()
-                .filter(y -> y.anchorId.equals(fAnchor)).findFirst().orElse(null);
+                .filter(y -> Objects.equals(y.anchorId, fAnchor)).findFirst().orElse(null);
         // Decide the action: FRESH (no yard), UPGRADE (only the auto/default yard — settle it into
         // real ground), RESIZE (a manual yard — expand it, validated below), or REJECT_OWNER (a
         // manual yard tended by someone else). The auto/default yard never blocks consecration.
@@ -140,7 +141,7 @@ public final class GraveyardRitual {
             GraveyardBounds.Rect next = new GraveyardBounds.Rect(minX, maxX, minZ, maxZ);
             java.util.List<double[]> positions = new java.util.ArrayList<>();
             for (Graves.Grave g : Graves.store().graves) {
-                if (g.inGraveyard && !g.heldByKeeper && existing.anchorId.equals(g.graveyardAnchor)) {
+                if (g.inGraveyard && !g.heldByKeeper && Objects.equals(existing.anchorId, g.graveyardAnchor)) {
                     positions.add(new double[]{g.x, g.z});
                 }
             }

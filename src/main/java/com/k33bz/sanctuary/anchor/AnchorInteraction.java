@@ -82,7 +82,8 @@ public final class AnchorInteraction {
      * exists on ACTIVE anchors — dormant ones sit dark and still, no extra checks needed.
      */
     public static void pulseAnchors(MinecraftServer server) {
-        if (AnchorState.get().anchors.isEmpty()) {
+        AnchorState state = AnchorState.get();
+        if (state == null || state.anchors.isEmpty()) {
             return;
         }
         String sel = "@e[type=minecraft:item_display,tag=" + SPIN_TAG + "]";

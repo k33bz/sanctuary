@@ -186,7 +186,8 @@ public final class RespawnChoice {
             }
         }
         long now = level.getGameTime();
-        for (AnchorState.PlacedAnchor a : AnchorState.get().anchors) {
+        for (AnchorState.PlacedAnchor a : AnchorState.get() == null
+                ? List.<AnchorState.PlacedAnchor>of() : AnchorState.get().anchors) {
             if (!a.isActive(now)) {
                 continue;
             }
@@ -206,7 +207,8 @@ public final class RespawnChoice {
         long now = level.getGameTime();
         String me = player.getUUID().toString();
         List<AnchorState.PlacedAnchor> mine = new ArrayList<>();
-        for (AnchorState.PlacedAnchor a : AnchorState.get().anchors) {
+        for (AnchorState.PlacedAnchor a : AnchorState.get() == null
+                ? List.<AnchorState.PlacedAnchor>of() : AnchorState.get().anchors) {
             if (a.isActive(now) && me.equals(a.ownerId)) {
                 mine.add(a);
             }

@@ -103,7 +103,7 @@ public final class RestlessSpawner {
 
     /** At dawn, the Restless dissolve — once per level per day. */
     private static void sweepAtDawn(ServerLevel level, long day, long hour) {
-        if (hour < 0L || hour > 2000L || day == lastDawnSweepDay) {
+        if (hour > 2000L || day == lastDawnSweepDay) {
             return;
         }
         lastDawnSweepDay = day;

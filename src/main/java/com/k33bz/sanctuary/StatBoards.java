@@ -193,7 +193,11 @@ public final class StatBoards {
         }
         tickCounter = 0;
         for (Board b : boards()) {
-            render(server, b);
+            try {
+                render(server, b);
+            } catch (RuntimeException e) {
+                Sanctuary.LOGGER.warn("[sanctuary] failed to render stat board " + b.objective + ", skipping", e);
+            }
         }
     }
 

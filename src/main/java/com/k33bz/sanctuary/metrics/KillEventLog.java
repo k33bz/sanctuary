@@ -51,7 +51,7 @@ public final class KillEventLog {
                     .map(t -> t.substring("sanctuary_src_".length()))
                     .findFirst().orElse("unknown");
             String killer = source.getEntity() instanceof ServerPlayer p
-                    ? "\"" + p.getGameProfile().name() + "\"" : "null";
+                    ? "\"" + escape(p.getGameProfile().name()) + "\"" : "null";
             writer.write(String.format(Locale.ROOT,
                     "{\"t\":%d,\"dim\":\"%s\",\"x\":%d,\"y\":%d,\"z\":%d,\"mob\":\"%s\",\"src\":\"%s\","
                             + "\"tier\":%d,\"xp\":%d,\"killer\":%s}%n",
@@ -64,6 +64,10 @@ public final class KillEventLog {
             Sanctuary.LOGGER.warn("[sanctuary] Kill event log write failed", e);
             close();
         }
+    }
+
+    private static String escape(String s) {
+        return s == null ? "" : s.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 
     /** Push buffered lines to disk (called by the tick loop; cheap no-op when idle). */

@@ -130,8 +130,13 @@ public class Sanctuary implements ModInitializer {
                     AfkTracker.forget(handler.player.getUUID());
                 });
         SanctuaryCommands.register();
-        // Final flush/close of the metrics stores on clean shutdown.
+        // Coalesced, off-thread grave-store persistence: mutations only flag the store dirty; this
+        // flushes it at most once per interval, off the death hot path (see Graves.flushIfDue).
+        ServerTickEvents.END_SERVER_TICK.register(
+                server -> com.k33bz.sanctuary.grave.Graves.flushIfDue(server.overworld().getGameTime()));
+        // Final flush/close of the metrics + grave stores on clean shutdown.
         net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
+            com.k33bz.sanctuary.grave.Graves.saveNow();
             com.k33bz.sanctuary.metrics.KillMetrics.flush();
             com.k33bz.sanctuary.metrics.KillEventLog.close();
             com.k33bz.sanctuary.metrics.GraveEventLog.close();

@@ -1,9 +1,15 @@
-Sanctuary bundles a selection of datapacks and crafting tweaks from:
+Sanctuary bundles datapacks and crafting recipes inspired by / derived from:
 
 Vanilla Tweaks: https://vanillatweaks.net/
 
+- "Sanctuary Crafting Tweaks" (sanctuary:crafting_tweaks) is Sanctuary's own
+  datapack of crafting recipes popularised by the Vanilla Tweaks Crafting
+  Tweaks. Crafting recipes are not copyrightable; this pack is maintained as
+  part of Sanctuary, with Vanilla Tweaks credited here for the concepts.
+- The remaining bundled datapacks (sanctuary:vt/<name>) are redistributed from
+  Vanilla Tweaks within this substantially larger free project per the Vanilla
+  Tweaks terms of use (https://vanillatweaks.net/terms/), with attribution here
+  and on the project's download pages.
+
 All bundled packs are disabled by default and opt-in per world via
-/datapack enable "sanctuary:vt/<name>". They are redistributed within this
-substantially larger free project per the Vanilla Tweaks terms of use
-(https://vanillatweaks.net/terms/), with attribution here and on the
-project's download pages.
+/datapack enable.

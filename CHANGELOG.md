@@ -1,3 +1,7 @@
+## 0.8.6.3
+
+Deep-review fixes: guard the stat-board tick against a malformed board (crash), recover grave/kill metrics logs after a write error + JSON-escape player names, and null-safety hardening (Objects.equals on persisted fields, AnchorState deref guards, Locale.ROOT). Published to Modrinth (first 0.8-line release).
+
 # Changelog
 
 All notable changes to Sanctuary (formerly XP Vitality).

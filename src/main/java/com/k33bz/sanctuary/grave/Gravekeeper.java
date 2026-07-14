@@ -403,6 +403,11 @@ public final class Gravekeeper {
     private static final java.util.Map<Integer, KeeperPatrol.State> PATROL_STATES =
             new java.util.HashMap<>();
 
+    /** Retry cooldown range (ticks) when nobody was in range to hear a mutter: a short jittered
+     *  nudge rather than burning a full interval. */
+    private static final int MUTTER_RETRY_MIN_TICKS = 20;
+    private static final int MUTTER_RETRY_RANGE_TICKS = 60;
+
     /** Per-keeper mutter cadence state (0.8.5), keyed by entity id; pruned with PATROL_STATES. */
     private static final class MutterState {
         int cooldown = -1;   // ticks until the next mutter attempt; -1 = uninitialised (roll first)
@@ -535,7 +540,7 @@ public final class Gravekeeper {
         }
         if (nearby.isEmpty()) {
             // Nobody heard it — DON'T burn a full interval; retry soon (a short jittered nudge).
-            ms.cooldown = 20 + level.getRandom().nextInt(60);
+            ms.cooldown = MUTTER_RETRY_MIN_TICKS + level.getRandom().nextInt(MUTTER_RETRY_RANGE_TICKS);
             return;
         }
 

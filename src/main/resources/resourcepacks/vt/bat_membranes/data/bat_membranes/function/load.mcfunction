@@ -1,1 +1,0 @@
-gamerule minecraft:spawn_phantoms false

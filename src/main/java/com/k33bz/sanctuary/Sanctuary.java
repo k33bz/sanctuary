@@ -121,6 +121,7 @@ public class Sanctuary implements ModInitializer {
         registerMobScaling();
         registerAnchorBreak();
         registerCrystalDrops();
+        registerNativeVtDrops();
         registerSoulRetention();
         com.k33bz.sanctuary.anchor.AnchorUpkeep.register();
         // Forget zone tracking on disconnect so the next login re-announces the player's zone.
@@ -130,8 +131,13 @@ public class Sanctuary implements ModInitializer {
                     AfkTracker.forget(handler.player.getUUID());
                 });
         SanctuaryCommands.register();
-        // Final flush/close of the metrics stores on clean shutdown.
+        // Coalesced, off-thread grave-store persistence: mutations only flag the store dirty; this
+        // flushes it at most once per interval, off the death hot path (see Graves.flushIfDue).
+        ServerTickEvents.END_SERVER_TICK.register(
+                server -> com.k33bz.sanctuary.grave.Graves.flushIfDue(server.overworld().getGameTime()));
+        // Final flush/close of the metrics + grave stores on clean shutdown.
         net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
+            com.k33bz.sanctuary.grave.Graves.saveNow();
             com.k33bz.sanctuary.metrics.KillMetrics.flush();
             com.k33bz.sanctuary.metrics.KillEventLog.close();
             com.k33bz.sanctuary.metrics.GraveEventLog.close();
@@ -250,6 +256,33 @@ public class Sanctuary implements ModInitializer {
                         LOGGER.info("[sanctuary] A Warden yielded Wild Essence");
                     }
                 }
+            }
+        });
+    }
+
+    /**
+     * Native replacements for the two load-bearing Vanilla Tweaks drop packs (formerly opt-in
+     * datapacks that could be silently off): {@code dragon_drops} (renewable dragon egg + elytra --
+     * the Sanctuary Crystal recipe needs renewable eggs) and {@code bat_membranes} (bats yield a
+     * phantom membrane). Config-gated, on by default; ports with the mod (compile/CI-caught).
+     */
+    private void registerNativeVtDrops() {
+        net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents.AFTER_DEATH.register((entity, source) -> {
+            SanctuaryConfig cfg = CONFIG;
+            if (cfg == null || !(entity.level() instanceof ServerLevel level)) {
+                return;
+            }
+            if (cfg.dragonDropsEnabled
+                    && entity instanceof net.minecraft.world.entity.boss.enderdragon.EnderDragon) {
+                Block.popResource(level, entity.blockPosition(),
+                        new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DRAGON_EGG));
+                Block.popResource(level, entity.blockPosition(),
+                        new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.ELYTRA));
+            } else if (cfg.batMembranesEnabled
+                    && entity instanceof net.minecraft.world.entity.ambient.Bat
+                    && entity.getRandom().nextBoolean()) {
+                Block.popResource(level, entity.blockPosition(),
+                        new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.PHANTOM_MEMBRANE));
             }
         });
     }

@@ -35,27 +35,39 @@ public final class VanillaTweaksPacks {
             if (in == null) {
                 return;
             }
-            BufferedReader reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8));
-            String line;
-            while ((line = reader.readLine()) != null) {
-                String name = line.trim();
-                if (name.isEmpty()) {
-                    continue;
-                }
-                boolean ok = ResourceManagerHelper.registerBuiltinResourcePack(
-                        Identifier.fromNamespaceAndPath(Sanctuary.MOD_ID, "vt/" + name),
-                        container,
-                        Component.literal("VT " + name.replace('_', ' ')),
-                        ResourcePackActivationType.NORMAL);
-                if (ok) {
-                    count++;
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    String name = line.trim();
+                    if (name.isEmpty()) {
+                        continue;
+                    }
+                    boolean ok = ResourceManagerHelper.registerBuiltinResourcePack(
+                            Identifier.fromNamespaceAndPath(Sanctuary.MOD_ID, "vt/" + name),
+                            container,
+                            Component.literal("VT " + name.replace('_', ' ')),
+                            ResourcePackActivationType.NORMAL);
+                    if (ok) {
+                        count++;
+                    }
                 }
             }
         } catch (Exception e) {
             Sanctuary.LOGGER.warn("[sanctuary] failed to register Vanilla Tweaks packs", e);
             return;
         }
-        Sanctuary.LOGGER.info("[sanctuary] registered {} bundled Vanilla Tweaks packs (all opt-in; "
+        // Sanctuary's own consolidated crafting-tweaks datapack: the crafting recipes formerly carried
+        // as ~23 separate VT "ct_*" packs, internalized into one Sanctuary-owned datapack. Crafting
+        // recipes are not copyrightable; Vanilla Tweaks is credited in credits.txt. Opt-in like the
+        // rest: /datapack enable "sanctuary:crafting_tweaks".
+        if (ResourceManagerHelper.registerBuiltinResourcePack(
+                Identifier.fromNamespaceAndPath(Sanctuary.MOD_ID, "crafting_tweaks"),
+                container,
+                Component.literal("Sanctuary Crafting Tweaks"),
+                ResourcePackActivationType.NORMAL)) {
+            count++;
+        }
+        Sanctuary.LOGGER.info("[sanctuary] registered {} bundled datapacks (all opt-in; "
                 + "enable per world via /datapack enable)", count);
     }
 }

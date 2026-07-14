@@ -122,6 +122,7 @@ public class Sanctuary implements ModInitializer {
         registerAnchorBreak();
         registerCrystalDrops();
         registerNativeVtDrops();
+        registerXpBottling();
         registerSoulRetention();
         com.k33bz.sanctuary.anchor.AnchorUpkeep.register();
         // Forget zone tracking on disconnect so the next login re-announces the player's zone.
@@ -284,6 +285,41 @@ public class Sanctuary implements ModInitializer {
                 Block.popResource(level, entity.blockPosition(),
                         new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.PHANTOM_MEMBRANE));
             }
+        });
+    }
+
+    /**
+     * Native replacement for the xp_bottling Vanilla Tweaks datapack: right-click an enchanting table
+     * with a glass bottle in the main hand to convert 12 XP points into a Bottle o' Enchanting
+     * (consumes one glass bottle). Config-gated; a {@code totalExperience >= 12} guard keeps it a
+     * fair, non-exploitable trade (12 removed vs a thrown bottle's ~3-11). Ports with the mod.
+     */
+    private void registerXpBottling() {
+        net.fabricmc.fabric.api.event.player.UseBlockCallback.EVENT.register((player, level, hand, hit) -> {
+            SanctuaryConfig cfg = CONFIG;
+            if (cfg == null || !cfg.xpBottlingEnabled || level.isClientSide()
+                    || hand != net.minecraft.world.InteractionHand.MAIN_HAND
+                    || !(player instanceof ServerPlayer sp)) {
+                return net.minecraft.world.InteractionResult.PASS;
+            }
+            if (!level.getBlockState(hit.getBlockPos())
+                    .is(net.minecraft.world.level.block.Blocks.ENCHANTING_TABLE)) {
+                return net.minecraft.world.InteractionResult.PASS;
+            }
+            net.minecraft.world.item.ItemStack held = sp.getItemInHand(hand);
+            if (!held.is(net.minecraft.world.item.Items.GLASS_BOTTLE) || sp.totalExperience < 12) {
+                return net.minecraft.world.InteractionResult.PASS;
+            }
+            held.shrink(1);
+            sp.giveExperiencePoints(-12);
+            net.minecraft.world.item.ItemStack bottle =
+                    new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.EXPERIENCE_BOTTLE);
+            if (!sp.getInventory().add(bottle)) {
+                sp.drop(bottle, false);
+            }
+            level.playSound(null, hit.getBlockPos(), net.minecraft.sounds.SoundEvents.BOTTLE_FILL_DRAGONBREATH,
+                    net.minecraft.sounds.SoundSource.PLAYERS, 1.0f, 1.25f);
+            return net.minecraft.world.InteractionResult.SUCCESS;
         });
     }
 

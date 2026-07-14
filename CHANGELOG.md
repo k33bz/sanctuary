@@ -1,3 +1,20 @@
+## 0.8.7.0
+
+Security hardening, Vanilla Tweaks internalization, and native feature migration.
+
+**Security**
+- Full RFC-8259 / SNBT escaping of player-controlled strings at every `/summon` and NDJSON sink (defense-in-depth, independent of upstream name validation).
+- `/sanctuarygrave claim <id>` now honours the same keeper-held + dimension + 6-block reach gates as the headstone right-click (no remote grave robbery or fee bypass).
+- Off-thread, coalesced, atomic grave-store persistence — removes the per-death full-file rewrite (death-spam tick DoS) and the crash-mid-write wipe; adds a grave-store cap.
+
+**Native features** (were opt-in Vanilla Tweaks datapacks; now ship in code, config-toggled)
+- `dragon_drops`: the ender dragon drops a renewable dragon egg + elytra each kill — the Sanctuary Crystal recipe needs renewable eggs, so this no longer depends on a datapack that can be silently disabled.
+- `bat_membranes`: bats drop a phantom membrane.
+- `xp_bottling`: right-click an enchanting table with a glass bottle to store 12 XP as a Bottle o' Enchanting.
+
+**Internal**
+- The Vanilla Tweaks crafting tweaks are internalized into one Sanctuary-owned datapack (`sanctuary:crafting_tweaks`); unused bundled datapacks removed.
+
 ## 0.8.6.3
 
 Deep-review fixes: guard the stat-board tick against a malformed board (crash), recover grave/kill metrics logs after a write error + JSON-escape player names, and null-safety hardening (Objects.equals on persisted fields, AnchorState deref guards, Locale.ROOT). Published to Modrinth (first 0.8-line release).

@@ -258,7 +258,7 @@ public final class Graves {
                         + "item:{id:\"minecraft:player_head\",count:1,components:{\"minecraft:profile\":\"%s\"}},"
                         + "transformation:{left_rotation:[0f,0f,0f,1f],right_rotation:[0f,0f,0f,1f],"
                         + "translation:[0f,1.05f,0f],scale:[0.45f,0.45f,0.45f]}}",
-                grave.x, grave.y, grave.z, GRAVE_TAG, tag, grave.ownerName));
+                grave.x, grave.y, grave.z, GRAVE_TAG, tag, displayName(grave.ownerName)));
         // label: line 1 = the NAME alone (no "Here lies"); line 2 = the age-fuzzy epitaph for any
         // unlooted grave (a public grave keeps its epitaph — its status shows in the RED color, not
         // by hiding the epitaph). A looted stone shows only its memorial line.
@@ -268,7 +268,7 @@ public final class Graves {
         run(level, String.format(Locale.ROOT,
                 "summon minecraft:text_display %.2f %.2f %.2f {Tags:[\"%s\",\"%s\"],billboard:\"vertical\","
                         + "text:{text:\"%s\\n\",color:\"white\",extra:[{text:\"%s\",color:\"%s\"}]}}",
-                grave.x, grave.y + 1.55, grave.z, GRAVE_TAG, tag, grave.ownerName,
+                grave.x, grave.y + 1.55, grave.z, GRAVE_TAG, tag, displayName(grave.ownerName),
                 escape(line2), color));
         // interaction hitbox for claiming
         run(level, String.format(Locale.ROOT,
@@ -519,9 +519,50 @@ public final class Graves {
         return 0;
     }
 
-    /** Escape a string for embedding inside an SNBT JSON-text component string literal. */
+    /**
+     * Escape a string for embedding inside an SNBT JSON-text component string literal. Robust to ANY
+     * input, not just validated usernames: control characters (which would break the single-line
+     * command or the SNBT string) are dropped, and backslash/quote are escaped.
+     */
     private static String escape(String s) {
-        return s.replace("\\", "\\\\").replace("\"", "\\\"");
+        if (s == null) {
+            return "";
+        }
+        StringBuilder b = new StringBuilder(s.length() + 8);
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c < 0x20) {
+                continue;
+            }
+            if (c == '\\' || c == '"') {
+                b.append('\\');
+            }
+            b.append(c);
+        }
+        return b.toString();
+    }
+
+    /**
+     * Escape a PLAYER-CONTROLLED name for a visible SNBT display label. Like {@link #escape} but also
+     * strips legacy section-sign (\u00a7) formatting codes so a name cannot recolour / obfuscate the
+     * label. Defense-in-depth: do NOT assume upstream username validation blocks these characters.
+     */
+    private static String displayName(String s) {
+        if (s == null) {
+            return "";
+        }
+        StringBuilder b = new StringBuilder(s.length() + 8);
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c < 0x20 || c == '\u00a7') {
+                continue;
+            }
+            if (c == '\\' || c == '"') {
+                b.append('\\');
+            }
+            b.append(c);
+        }
+        return b.toString();
     }
 
     /** Real-time sweep: drift due graves into their nearest graveyard when chunks allow. */

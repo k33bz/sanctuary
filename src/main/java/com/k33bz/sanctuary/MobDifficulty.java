@@ -369,7 +369,7 @@ public final class MobDifficulty {
                 revertToVanilla(mob, ms, tier);
                 continue;
             }
-            if (tier <= 0) {
+            if (tier == 0) {
                 continue;
             }
             level.sendParticles(particleFor(tier), mob.getX(), mob.getY() + mob.getBbHeight() * 0.6, mob.getZ(),

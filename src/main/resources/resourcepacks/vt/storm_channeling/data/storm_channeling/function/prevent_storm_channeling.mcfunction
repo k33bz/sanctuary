@@ -1,1 +1,0 @@
-tag @e[type=minecraft:trident] add storm_channeling.ineligible

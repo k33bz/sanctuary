@@ -69,6 +69,7 @@ public final class RespawnChoice {
     private static final Map<UUID, Offer> PENDING = new ConcurrentHashMap<>();
     private static Map<String, Ledger> ledger;
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+    private static final int TICKS_PER_SECOND = 20;
 
     private static Path path() {
         return FabricLoader.getInstance().getConfigDir().resolve("sanctuary_deaths.json");
@@ -109,7 +110,7 @@ public final class RespawnChoice {
         String id = oldPlayer.getUUID().toString();
         Ledger entry = ledger().computeIfAbsent(id, k -> new Ledger());
         long play = oldPlayer.getStats().getValue(Stats.CUSTOM.get(Stats.PLAY_TIME));
-        double minutes = Math.max(0, play - entry.playTicks) / 20.0 / 60.0;
+        double minutes = Math.max(0, play - entry.playTicks) / (double) TICKS_PER_SECOND / 60.0;
         int milestonesNow = SurvivalLogic.milestonesReached(oldPlayer.experienceLevel, cfg.milestonesArray());
         RespawnLedger.Update u = RespawnLedger.update(entry.escalation, minutes,
                 cfg.respawnEscalationDecayPer10Min, milestonesNow, entry.milestones,
@@ -163,7 +164,7 @@ public final class RespawnChoice {
             int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING, (int) anchor[0], (int) anchor[1]);
             player.teleportTo(anchor[0] + 0.5, y + 1.0, anchor[1] + 0.5);
         }
-        offer.expiresAtTick = level.getGameTime() + cfg.respawnOfferTimeoutSeconds * 20L;
+        offer.expiresAtTick = level.getGameTime() + cfg.respawnOfferTimeoutSeconds * (long) TICKS_PER_SECOND;
 
         // Owned active PLACED anchors, nearest-to-death first — a player who holds two or more
         // gets to pick which sanctuary to wake at (free); the nearest is the default selection.

@@ -108,8 +108,28 @@ public final class Graves {
     }
 
     private static Store store;
-    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+    // Compact (not pretty): smaller file + cheaper serialize. This is a runtime store, not a
+    // hand-edited config; gson still reads any previously pretty-printed file transparently.
+    private static final Gson GSON = new GsonBuilder().create();
     private static final Map<String, Long> CLAIM_COOLDOWN = new ConcurrentHashMap<>();
+
+    // --- coalesced, off-thread persistence ----------------------------------------------------
+    // A mutation only flags the store dirty (O(1)); the O(n) serialize runs at most once per
+    // FLUSH_INTERVAL_TICKS on the server tick, and the disk write is handed to this daemon thread.
+    // Death-spam can therefore no longer stall the tick with a per-death full-store write.
+    private static final java.util.concurrent.ExecutorService SAVE_IO =
+            java.util.concurrent.Executors.newSingleThreadExecutor(r -> {
+                Thread t = new Thread(r, "sanctuary-graves-io");
+                t.setDaemon(true);
+                return t;
+            });
+    private static volatile boolean dirty = false;
+    private static boolean flushedOnce = false;
+    private static long lastFlushTick = 0;
+    // ~1s: coalesces any death-spam burst into a single write while keeping the on-disk store
+    // near-fresh for external readers (leaderboards etc.). Under a *sustained* death rate this caps
+    // writes at ~1/s, which is trivial; bursts still collapse to one serialize per window.
+    private static final int FLUSH_INTERVAL_TICKS = 20;
 
     private static Path path() {
         return FabricLoader.getInstance().getConfigDir().resolve("sanctuary_graves.json");
@@ -131,11 +151,79 @@ public final class Graves {
         return store;
     }
 
+    /**
+     * Mark the store dirty. The disk write is coalesced and performed off the tick thread (see
+     * {@link #flushIfDue}); a mutation therefore costs O(1) on the hot path instead of an O(n)
+     * full-store serialize+write per call, so death-spam can no longer stall the server.
+     */
     public static void save() {
+        dirty = true;
+    }
+
+    /**
+     * Called each server tick: at most once per {@link #FLUSH_INTERVAL_TICKS}, serialize the store
+     * on the (calling) server thread — a consistent snapshot, since all mutations are on this same
+     * thread — and hand the bytes to a background thread for an atomic write. No disk I/O on tick.
+     */
+    public static void flushIfDue(long gameTime) {
+        if (!dirty) {
+            return;
+        }
+        // First dirty flush is prompt; afterwards rate-limit. (Subtraction is overflow-safe because
+        // both operands are non-negative once flushedOnce is set — never seed lastFlushTick negative.)
+        if (flushedOnce && gameTime - lastFlushTick < FLUSH_INTERVAL_TICKS) {
+            return;
+        }
+        flushedOnce = true;
+        lastFlushTick = gameTime;
+        dirty = false;
+        final String json;
         try {
-            Files.writeString(path(), GSON.toJson(store()));
+            json = GSON.toJson(store());
+        } catch (Exception e) {
+            dirty = true;
+            Sanctuary.LOGGER.warn("[sanctuary] could not serialize graves", e);
+            return;
+        }
+        SAVE_IO.execute(() -> writeAtomic(json));
+    }
+
+    /**
+     * Synchronous flush for clean shutdown: serialize on the calling thread, then drain the IO
+     * queue so the shutdown snapshot is the definitive last write (no stale async write clobbers it).
+     */
+    public static void saveNow() {
+        dirty = false;
+        final String json;
+        try {
+            json = GSON.toJson(store());
+        } catch (Exception e) {
+            Sanctuary.LOGGER.warn("[sanctuary] could not serialize graves on shutdown", e);
+            return;
+        }
+        SAVE_IO.execute(() -> writeAtomic(json));
+        SAVE_IO.shutdown();
+        try {
+            SAVE_IO.awaitTermination(5, java.util.concurrent.TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    /** Atomic write: temp file + ATOMIC_MOVE so a crash mid-write never leaves a truncated store. */
+    private static void writeAtomic(String json) {
+        try {
+            Path p = path();
+            Path tmp = p.resolveSibling(p.getFileName().toString() + ".tmp");
+            Files.writeString(tmp, json);
+            try {
+                Files.move(tmp, p, java.nio.file.StandardCopyOption.ATOMIC_MOVE,
+                        java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            } catch (java.nio.file.AtomicMoveNotSupportedException amns) {
+                Files.move(tmp, p, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            }
         } catch (IOException e) {
-            Sanctuary.LOGGER.warn("[sanctuary] could not save graves", e);
+            Sanctuary.LOGGER.warn("[sanctuary] could not write graves store", e);
         }
     }
 
@@ -176,6 +264,7 @@ public final class Graves {
         grave.deathDay = player.level().getOverworldClockTime() / 24000L;
         categorizeCause(grave, source);
         grave.items = items;   // FIX: actually store the captured items (was orphaned -> empty graves / item loss)
+        enforceGraveCaps(player.level().getServer(), cfg, grave);
         store().graves.add(grave);
         save();
         spawnDisplays((ServerLevel) player.level(), grave);
@@ -185,6 +274,73 @@ public final class Graves {
         player.sendSystemMessage(Component.literal(String.format(Locale.ROOT,
                         "Your belongings rest in a grave at %d %d %d.", pos.getX(), pos.getY(), pos.getZ()))
                 .withStyle(ChatFormatting.LIGHT_PURPLE));
+    }
+
+    /**
+     * Bound the persisted grave store against death-spam abuse (2026-07 abuse audit). While the
+     * owner is at/over {@code graveMaxPerOwner} simultaneous fresh WILD graves — or the whole store
+     * is at {@code graveMaxTotal} — evict their oldest fresh wild grave. Only unclaimed, un-interred,
+     * non-keeper-held graves are counted and evictable, so memorialised / graveyard graves are never
+     * touched. Eviction removes the grave's displays, notifies the owner, and logs an "evicted"
+     * metric. The generous default cap means legitimate players never hit it; only scripted death
+     * spam or extreme hoarding triggers it. Without this, every death rewrites the entire grave
+     * store on the game thread (O(store size)) and the store grows without bound.
+     */
+    private static void enforceGraveCaps(MinecraftServer server, SanctuaryConfig cfg, Grave incoming) {
+        if (cfg == null) {
+            return;
+        }
+        if (cfg.graveMaxPerOwner > 0) {
+            while (countFreshWild(g -> java.util.Objects.equals(g.owner, incoming.owner)) >= cfg.graveMaxPerOwner) {
+                if (!evictOldestFreshWild(server, g -> java.util.Objects.equals(g.owner, incoming.owner))) {
+                    break;
+                }
+            }
+        }
+        if (cfg.graveMaxTotal > 0) {
+            while (store().graves.size() >= cfg.graveMaxTotal) {
+                if (!evictOldestFreshWild(server, g -> true)) {
+                    break;
+                }
+            }
+        }
+    }
+
+    /** Count fresh (unclaimed, un-interred, not keeper-held) wild graves matching {@code match}. */
+    private static long countFreshWild(java.util.function.Predicate<Grave> match) {
+        long n = 0;
+        for (Grave g : store().graves) {
+            if (!g.looted && !g.inGraveyard && !g.heldByKeeper && match.test(g)) {
+                n++;
+            }
+        }
+        return n;
+    }
+
+    /** Evict (remove + de-render) the oldest fresh wild grave matching {@code match}; false if none. */
+    private static boolean evictOldestFreshWild(MinecraftServer server, java.util.function.Predicate<Grave> match) {
+        Grave victim = null;
+        for (Grave g : store().graves) {
+            if (!g.looted && !g.inGraveyard && !g.heldByKeeper && match.test(g)
+                    && (victim == null || g.diedAtMs < victim.diedAtMs)) {
+                victim = g;
+            }
+        }
+        if (victim == null) {
+            return false;
+        }
+        ServerLevel level = server == null ? null : levelOf(server, victim.dim);
+        if (level != null) {
+            killDisplays(level, victim);
+        }
+        store().graves.remove(victim);
+        if (server != null) {
+            notifyOwner(server, victim,
+                    "Your oldest unclaimed grave was reclaimed by nature to make room (grave limit reached).");
+        }
+        com.k33bz.sanctuary.metrics.GraveEventLog.record("evicted", victim.id, victim.ownerName,
+                victim.dim, victim.x, victim.y, victim.z, victim.items.size(), victim.ownerName, false);
+        return true;
     }
 
     /**
@@ -258,7 +414,7 @@ public final class Graves {
                         + "item:{id:\"minecraft:player_head\",count:1,components:{\"minecraft:profile\":\"%s\"}},"
                         + "transformation:{left_rotation:[0f,0f,0f,1f],right_rotation:[0f,0f,0f,1f],"
                         + "translation:[0f,1.05f,0f],scale:[0.45f,0.45f,0.45f]}}",
-                grave.x, grave.y, grave.z, GRAVE_TAG, tag, grave.ownerName));
+                grave.x, grave.y, grave.z, GRAVE_TAG, tag, displayName(grave.ownerName)));
         // label: line 1 = the NAME alone (no "Here lies"); line 2 = the age-fuzzy epitaph for any
         // unlooted grave (a public grave keeps its epitaph — its status shows in the RED color, not
         // by hiding the epitaph). A looted stone shows only its memorial line.
@@ -268,7 +424,7 @@ public final class Graves {
         run(level, String.format(Locale.ROOT,
                 "summon minecraft:text_display %.2f %.2f %.2f {Tags:[\"%s\",\"%s\"],billboard:\"vertical\","
                         + "text:{text:\"%s\\n\",color:\"white\",extra:[{text:\"%s\",color:\"%s\"}]}}",
-                grave.x, grave.y + 1.55, grave.z, GRAVE_TAG, tag, grave.ownerName,
+                grave.x, grave.y + 1.55, grave.z, GRAVE_TAG, tag, displayName(grave.ownerName),
                 escape(line2), color));
         // interaction hitbox for claiming
         run(level, String.format(Locale.ROOT,
@@ -519,9 +675,50 @@ public final class Graves {
         return 0;
     }
 
-    /** Escape a string for embedding inside an SNBT JSON-text component string literal. */
-    private static String escape(String s) {
-        return s.replace("\\", "\\\\").replace("\"", "\\\"");
+    /**
+     * Escape a string for embedding inside an SNBT JSON-text component string literal. Robust to ANY
+     * input, not just validated usernames: control characters (which would break the single-line
+     * command or the SNBT string) are dropped, and backslash/quote are escaped.
+     */
+    static String escape(String s) {
+        if (s == null) {
+            return "";
+        }
+        StringBuilder b = new StringBuilder(s.length() + 8);
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c < 0x20) {
+                continue;
+            }
+            if (c == '\\' || c == '"') {
+                b.append('\\');
+            }
+            b.append(c);
+        }
+        return b.toString();
+    }
+
+    /**
+     * Escape a PLAYER-CONTROLLED name for a visible SNBT display label. Like {@link #escape} but also
+     * strips legacy section-sign (\u00a7) formatting codes so a name cannot recolour / obfuscate the
+     * label. Defense-in-depth: do NOT assume upstream username validation blocks these characters.
+     */
+    static String displayName(String s) {
+        if (s == null) {
+            return "";
+        }
+        StringBuilder b = new StringBuilder(s.length() + 8);
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c < 0x20 || c == '\u00a7') {
+                continue;
+            }
+            if (c == '\\' || c == '"') {
+                b.append('\\');
+            }
+            b.append(c);
+        }
+        return b.toString();
     }
 
     /** Real-time sweep: drift due graves into their nearest graveyard when chunks allow. */
@@ -699,6 +896,15 @@ public final class Graves {
      * yard center. Returns null when every plot inside the radius is taken.
      */
     private static BlockPos nextPlot(ServerLevel level, Yard yard) {
+        // Pre-filter the graves that could occupy a plot in THIS yard's dimension, once, instead of
+        // rescanning the whole (wild + held + other-dim) grave store for every candidate cell. The
+        // per-cell occupancy test below is unchanged (same Math.abs(...) < 0.6 semantics).
+        List<Grave> occupants = new ArrayList<>();
+        for (Grave g : store().graves) {
+            if (g.inGraveyard && !g.heldByKeeper && Objects.equals(g.dim, yard.dim)) {
+                occupants.add(g);
+            }
+        }
         int rows = Math.max(1, yard.radius / 3);
         for (int r = 0; r <= rows; r++) {
             for (int side = 0; side < (r == 0 ? 1 : 2); side++) {
@@ -707,9 +913,8 @@ public final class Graves {
                     double px = yard.x + gx + 0.5;
                     double pz = yard.z + gz * 3 + 0.5;
                     boolean taken = false;
-                    for (Grave g : store().graves) {
-                        if (g.inGraveyard && !g.heldByKeeper && Objects.equals(g.dim, yard.dim)
-                                && Math.abs(g.x - px) < 0.6 && Math.abs(g.z - pz) < 0.6) {
+                    for (Grave g : occupants) {
+                        if (Math.abs(g.x - px) < 0.6 && Math.abs(g.z - pz) < 0.6) {
                             taken = true;
                             break;
                         }

@@ -96,6 +96,8 @@ public class SanctuaryConfig {
     public double graveClaimFeeFraction = 0.02;
     public double graveSummonFeeFraction = 0.05;
     public int graveyardDefaultRadius = 8;
+    public int graveMaxPerOwner = 8;   // cap on a player's simultaneous unclaimed WILD graves (0 = unlimited); death-spam abuse guard
+    public int graveMaxTotal = 3000;   // global hard cap on stored graves (0 = unlimited); backstop against store bloat
     // WILD looted/empty memorials crumble after this many real days (0 = never); stones
     // standing in a graveyard never decay -- eviction is the cemetery's groundskeeper.
     // Unlooted graves NEVER decay -- drift, eviction-to-hold, and robbery are their only fates.
@@ -223,6 +225,12 @@ public class SanctuaryConfig {
     public boolean wildEssenceEnabled = true;
     public double wardenEssenceChance = 1.0;       // Warden kill: guaranteed
     public double nightmareEssenceChance = 0.03;   // top tier (Nightmare / tier 4): 3%
+
+    // Native replacements for the load-bearing Vanilla Tweaks drop packs (were opt-in datapacks that
+    // could be silently disabled). dragonDropsEnabled keeps dragon eggs RENEWABLE -- the Sanctuary
+    // Crystal recipe requires a dragon egg, so this ships in code, not a forgettable opt-in pack.
+    public boolean dragonDropsEnabled = true;      // ender dragon drops a dragon egg + elytra each kill
+    public boolean batMembranesEnabled = true;     // bats drop a phantom membrane (0-1)
     // The lava-cauldron temper (Raw Wild Membrane -> Wild Membrane) empties the lava cauldron back
     // to a plain cauldron, consuming the lava. Set false to keep the lava (temper is then free).
     public boolean beaconLavaConsumed = true;
@@ -470,7 +478,7 @@ public class SanctuaryConfig {
                     return cfg;
                 }
             }
-        } catch (IOException | RuntimeException e) {
+        } catch (IOException | com.google.gson.JsonSyntaxException e) {
             Sanctuary.LOGGER.warn("[sanctuary] Failed to read config; using defaults", e);
         }
         SanctuaryConfig cfg = new SanctuaryConfig();

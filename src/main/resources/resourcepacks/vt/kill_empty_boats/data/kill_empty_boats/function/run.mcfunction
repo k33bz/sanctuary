@@ -1,1 +1,0 @@
-execute as @e[type=#minecraft:boat,nbt=!{Passengers:[{}]}] at @s unless entity @a[distance=..1] run kill @s

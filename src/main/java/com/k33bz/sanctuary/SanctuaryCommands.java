@@ -438,6 +438,22 @@ public final class SanctuaryCommands {
                 ctx.getSource().sendFailure(Component.literal("No grave with id '" + id + "'."));
                 return 0;
             }
+            // Claiming by id must honour the SAME gates as the headstone right-click and the bare
+            // branch below: keeper-held graves have no in-world headstone and carry a separate
+            // fee/gate, and a grave is only reachable in its own dimension within 6 blocks. Without
+            // this an id (leaked by /sanctuarygrave search at permission 0) reclaims keeper-held loot
+            // fee-free and robs remote public graves without ever walking to them.
+            if (grave.heldByKeeper) {
+                ctx.getSource().sendFailure(Component.literal(
+                        "That grave is held by a keeper — use /sanctuarygrave claimheld."));
+                return 0;
+            }
+            String reachDim = player.level().dimension().identifier().toString();
+            double rdx = grave.x - player.getX(), rdy = grave.y - player.getY(), rdz = grave.z - player.getZ();
+            if (!reachDim.equals(grave.dim) || rdx * rdx + rdy * rdy + rdz * rdz > 6 * 6) {
+                ctx.getSource().sendFailure(Component.literal("That grave is out of reach."));
+                return 0;
+            }
         } else {
             // Nearest grave to the player, in the same dimension, within 6 blocks — the same reach
             // the interaction hitbox affords. Keeper-held graves have no in-world headstone, so

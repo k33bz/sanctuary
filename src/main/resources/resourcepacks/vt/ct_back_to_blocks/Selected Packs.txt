@@ -1,4 +1,0 @@
-Vanilla Tweaks Crafting Tweaks
-Version: 26.2
-Packs:
-	back to blocks

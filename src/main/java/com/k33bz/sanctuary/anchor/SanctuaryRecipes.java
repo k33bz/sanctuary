@@ -31,6 +31,10 @@ public final class SanctuaryRecipes {
                 new RecipeSerializer<>(
                         MapCodec.unit(SanctuaryCrystalRecipe.INSTANCE),
                         StreamCodec.unit(SanctuaryCrystalRecipe.INSTANCE)));
+        com.k33bz.sanctuary.rift.RiftAnchorRecipe.serializer = registerSerializer("rift_anchor",
+                new RecipeSerializer<>(
+                        MapCodec.unit(com.k33bz.sanctuary.rift.RiftAnchorRecipe.INSTANCE),
+                        StreamCodec.unit(com.k33bz.sanctuary.rift.RiftAnchorRecipe.INSTANCE)));
         Sanctuary.LOGGER.info("[sanctuary] Registered crafted-sanctuary recipe serializers");
     }
 

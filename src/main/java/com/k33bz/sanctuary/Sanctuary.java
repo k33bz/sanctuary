@@ -125,6 +125,7 @@ public class Sanctuary implements ModInitializer {
         registerXpBottling();
         registerSoulRetention();
         com.k33bz.sanctuary.anchor.AnchorUpkeep.register();
+        com.k33bz.sanctuary.rift.Rifts.register();
         // Forget zone tracking on disconnect so the next login re-announces the player's zone.
         net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents.DISCONNECT.register(
                 (handler, server) -> {
@@ -424,6 +425,7 @@ public class Sanctuary implements ModInitializer {
             AnchorInteraction.pulseAnchors(server); // focus pulse at active anchors
             com.k33bz.sanctuary.anchor.LavaCauldronCook.sweep(server, cfg); // temper raw membranes
             com.k33bz.sanctuary.anchor.AnchorUpkeep.tick(server, cfg);
+            com.k33bz.sanctuary.rift.Rifts.tick(server, cfg);
             com.k33bz.sanctuary.grave.Graves.sweep(server, cfg);
             com.k33bz.sanctuary.metrics.KillMetrics.flush(); // no-op unless new kills landed
             com.k33bz.sanctuary.metrics.KillEventLog.flush();

@@ -108,8 +108,28 @@ public final class Graves {
     }
 
     private static Store store;
-    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+    // Compact (not pretty): smaller file + cheaper serialize. This is a runtime store, not a
+    // hand-edited config; gson still reads any previously pretty-printed file transparently.
+    private static final Gson GSON = new GsonBuilder().create();
     private static final Map<String, Long> CLAIM_COOLDOWN = new ConcurrentHashMap<>();
+
+    // --- coalesced, off-thread persistence ----------------------------------------------------
+    // A mutation only flags the store dirty (O(1)); the O(n) serialize runs at most once per
+    // FLUSH_INTERVAL_TICKS on the server tick, and the disk write is handed to this daemon thread.
+    // Death-spam can therefore no longer stall the tick with a per-death full-store write.
+    private static final java.util.concurrent.ExecutorService SAVE_IO =
+            java.util.concurrent.Executors.newSingleThreadExecutor(r -> {
+                Thread t = new Thread(r, "sanctuary-graves-io");
+                t.setDaemon(true);
+                return t;
+            });
+    private static volatile boolean dirty = false;
+    private static boolean flushedOnce = false;
+    private static long lastFlushTick = 0;
+    // ~1s: coalesces any death-spam burst into a single write while keeping the on-disk store
+    // near-fresh for external readers (leaderboards etc.). Under a *sustained* death rate this caps
+    // writes at ~1/s, which is trivial; bursts still collapse to one serialize per window.
+    private static final int FLUSH_INTERVAL_TICKS = 20;
 
     private static Path path() {
         return FabricLoader.getInstance().getConfigDir().resolve("sanctuary_graves.json");
@@ -131,11 +151,79 @@ public final class Graves {
         return store;
     }
 
+    /**
+     * Mark the store dirty. The disk write is coalesced and performed off the tick thread (see
+     * {@link #flushIfDue}); a mutation therefore costs O(1) on the hot path instead of an O(n)
+     * full-store serialize+write per call, so death-spam can no longer stall the server.
+     */
     public static void save() {
+        dirty = true;
+    }
+
+    /**
+     * Called each server tick: at most once per {@link #FLUSH_INTERVAL_TICKS}, serialize the store
+     * on the (calling) server thread — a consistent snapshot, since all mutations are on this same
+     * thread — and hand the bytes to a background thread for an atomic write. No disk I/O on tick.
+     */
+    public static void flushIfDue(long gameTime) {
+        if (!dirty) {
+            return;
+        }
+        // First dirty flush is prompt; afterwards rate-limit. (Subtraction is overflow-safe because
+        // both operands are non-negative once flushedOnce is set — never seed lastFlushTick negative.)
+        if (flushedOnce && gameTime - lastFlushTick < FLUSH_INTERVAL_TICKS) {
+            return;
+        }
+        flushedOnce = true;
+        lastFlushTick = gameTime;
+        dirty = false;
+        final String json;
         try {
-            Files.writeString(path(), GSON.toJson(store()));
+            json = GSON.toJson(store());
+        } catch (Exception e) {
+            dirty = true;
+            Sanctuary.LOGGER.warn("[sanctuary] could not serialize graves", e);
+            return;
+        }
+        SAVE_IO.execute(() -> writeAtomic(json));
+    }
+
+    /**
+     * Synchronous flush for clean shutdown: serialize on the calling thread, then drain the IO
+     * queue so the shutdown snapshot is the definitive last write (no stale async write clobbers it).
+     */
+    public static void saveNow() {
+        dirty = false;
+        final String json;
+        try {
+            json = GSON.toJson(store());
+        } catch (Exception e) {
+            Sanctuary.LOGGER.warn("[sanctuary] could not serialize graves on shutdown", e);
+            return;
+        }
+        SAVE_IO.execute(() -> writeAtomic(json));
+        SAVE_IO.shutdown();
+        try {
+            SAVE_IO.awaitTermination(5, java.util.concurrent.TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    /** Atomic write: temp file + ATOMIC_MOVE so a crash mid-write never leaves a truncated store. */
+    private static void writeAtomic(String json) {
+        try {
+            Path p = path();
+            Path tmp = p.resolveSibling(p.getFileName().toString() + ".tmp");
+            Files.writeString(tmp, json);
+            try {
+                Files.move(tmp, p, java.nio.file.StandardCopyOption.ATOMIC_MOVE,
+                        java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            } catch (java.nio.file.AtomicMoveNotSupportedException amns) {
+                Files.move(tmp, p, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            }
         } catch (IOException e) {
-            Sanctuary.LOGGER.warn("[sanctuary] could not save graves", e);
+            Sanctuary.LOGGER.warn("[sanctuary] could not write graves store", e);
         }
     }
 

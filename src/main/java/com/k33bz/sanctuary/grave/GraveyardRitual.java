@@ -288,7 +288,7 @@ public final class GraveyardRitual {
     }
 
     private static long key(int x, int z) {
-        return ((long) x << 32) ^ (z & 0xffffffffL);
+        return ((long) x << 32) | (z & 0xffffffffL);
     }
 
     private static void fail(ServerPlayer player, String message) {

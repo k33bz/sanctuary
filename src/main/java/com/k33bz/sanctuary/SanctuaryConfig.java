@@ -225,6 +225,12 @@ public class SanctuaryConfig {
     public boolean wildEssenceEnabled = true;
     public double wardenEssenceChance = 1.0;       // Warden kill: guaranteed
     public double nightmareEssenceChance = 0.03;   // top tier (Nightmare / tier 4): 3%
+
+    // Native replacements for the load-bearing Vanilla Tweaks drop packs (were opt-in datapacks that
+    // could be silently disabled). dragonDropsEnabled keeps dragon eggs RENEWABLE -- the Sanctuary
+    // Crystal recipe requires a dragon egg, so this ships in code, not a forgettable opt-in pack.
+    public boolean dragonDropsEnabled = true;      // ender dragon drops a dragon egg + elytra each kill
+    public boolean batMembranesEnabled = true;     // bats drop a phantom membrane (0-1)
     // The lava-cauldron temper (Raw Wild Membrane -> Wild Membrane) empties the lava cauldron back
     // to a plain cauldron, consuming the lava. Set false to keep the lava (temper is then free).
     public boolean beaconLavaConsumed = true;

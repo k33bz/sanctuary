@@ -680,7 +680,7 @@ public final class Graves {
      * input, not just validated usernames: control characters (which would break the single-line
      * command or the SNBT string) are dropped, and backslash/quote are escaped.
      */
-    private static String escape(String s) {
+    static String escape(String s) {
         if (s == null) {
             return "";
         }
@@ -703,7 +703,7 @@ public final class Graves {
      * strips legacy section-sign (\u00a7) formatting codes so a name cannot recolour / obfuscate the
      * label. Defense-in-depth: do NOT assume upstream username validation blocks these characters.
      */
-    private static String displayName(String s) {
+    static String displayName(String s) {
         if (s == null) {
             return "";
         }

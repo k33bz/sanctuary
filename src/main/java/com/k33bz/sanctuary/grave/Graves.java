@@ -699,6 +699,15 @@ public final class Graves {
      * yard center. Returns null when every plot inside the radius is taken.
      */
     private static BlockPos nextPlot(ServerLevel level, Yard yard) {
+        // Pre-filter the graves that could occupy a plot in THIS yard's dimension, once, instead of
+        // rescanning the whole (wild + held + other-dim) grave store for every candidate cell. The
+        // per-cell occupancy test below is unchanged (same Math.abs(...) < 0.6 semantics).
+        List<Grave> occupants = new ArrayList<>();
+        for (Grave g : store().graves) {
+            if (g.inGraveyard && !g.heldByKeeper && Objects.equals(g.dim, yard.dim)) {
+                occupants.add(g);
+            }
+        }
         int rows = Math.max(1, yard.radius / 3);
         for (int r = 0; r <= rows; r++) {
             for (int side = 0; side < (r == 0 ? 1 : 2); side++) {
@@ -707,9 +716,8 @@ public final class Graves {
                     double px = yard.x + gx + 0.5;
                     double pz = yard.z + gz * 3 + 0.5;
                     boolean taken = false;
-                    for (Grave g : store().graves) {
-                        if (g.inGraveyard && !g.heldByKeeper && Objects.equals(g.dim, yard.dim)
-                                && Math.abs(g.x - px) < 0.6 && Math.abs(g.z - pz) < 0.6) {
+                    for (Grave g : occupants) {
+                        if (Math.abs(g.x - px) < 0.6 && Math.abs(g.z - pz) < 0.6) {
                             taken = true;
                             break;
                         }

@@ -275,6 +275,15 @@ public class SanctuaryConfig {
     public boolean flanIntegration = true;
     public int flanClaimRadius = 16;
 
+    // Rift anchors (the gathering dimension). A Rift Anchor used on open ground OUTSIDE a sanctuary
+    // tears a persistent rift to riftDimension; stepping on it teleports across (a return rift opens
+    // on the far side the first time). Only creation is gated — you must explore into the wild — so
+    // players don't strip-mine the home world. See com.k33bz.sanctuary.rift.Rifts.
+    public boolean riftsEnabled = true;
+    public String riftDimension = "sanctuary:resource_world";
+    public int riftTravelCooldownTicks = 60;   // suppress re-teleport for ~3s after a crossing
+    public double riftTriggerRadius = 0.6;      // horizontal distance to a rift that triggers travel
+
     // System 7 — spawn-based wild-mob difficulty: hostiles are buffed by their distance from the
     // nearest anchor when they spawn (baked into their attributes), with tiered names + particles.
     public MobScaling mobScaling = new MobScaling();

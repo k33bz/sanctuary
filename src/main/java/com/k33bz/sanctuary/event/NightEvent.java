@@ -20,7 +20,17 @@ public enum NightEvent {
     /** Dodgeable falling hazards + distance-tiered drops out in the wild. */
     METEOR_SHOWER("Meteor Shower", ChatFormatting.DARK_PURPLE, "#8e44ad"),
     /** A calm night — fewer spawns and a small boon. */
-    STILL_NIGHT("Still Night", ChatFormatting.BLUE, "#2980b9");
+    STILL_NIGHT("Still Night", ChatFormatting.BLUE, "#2980b9"),
+    /** UNDERGROUND: foul air suffocates deep wild players unless they carry Water Breathing. */
+    BAD_AIR("Bad Air", ChatFormatting.DARK_GREEN, "#6b8e23"),
+    /** UNDERGROUND: caves seethe with extra hostiles around deep wild players. */
+    THE_SWARM("The Swarm", ChatFormatting.DARK_AQUA, "#148f77"),
+    /** UNDERGROUND: the deep rumbles — disorienting cave-ins for players below the surface. */
+    TREMORS("Tremors", ChatFormatting.GRAY, "#7b6f5a"),
+    /** UNDERGROUND: an oppressive dark + tougher, bolder cave mobs. */
+    THE_GLOOM("The Gloom", ChatFormatting.DARK_GRAY, "#2c3e50"),
+    /** UNDERGROUND: a miner's blessing — haste and sight for deep wild diggers. */
+    DEEP_RICHES("Deep Riches", ChatFormatting.GREEN, "#27ae60");
 
     private final String displayName;
     private final ChatFormatting color;

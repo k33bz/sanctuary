@@ -16,10 +16,10 @@ import java.util.UUID;
 /**
  * Persistent record of every open rift, in {@code config/sanctuary_rifts.json} (same Gson +
  * config-dir pattern as {@code AnchorState}/{@code PlayerProgress}). A rift is one air block a
- * player stands in; stepping onto it teleports to its linked rift in the paired dimension. An
- * overworld rift starts UNLINKED (freshly torn by a {@link RiftAnchor}); the resource-side return
- * rift is created already linked the first time someone crosses. Saves are synchronous — rifts are
- * created rarely (a player plants an anchor now and then), unlike the per-death grave store.
+ * player stands in (or a green ruined-portal opening); stepping onto it teleports to its linked rift in
+ * the paired dimension. An overworld rift starts UNLINKED (established by {@link RiftPortals} from a
+ * ruined portal); the resource-side return rift is created already linked the first time someone crosses.
+ * Saves are synchronous — rifts are created rarely (a portal is discovered now and then), not per-death.
  */
 public final class RiftStore {
 
@@ -37,6 +37,8 @@ public final class RiftStore {
         public int linkZ;
         public String owner;    // creator display name (messaging / future per-player limits)
         public String ownerId;  // creator UUID string
+        public boolean portal;  // true = a crying-obsidian green-membrane rift portal (bigger trigger box)
+        public int h;           // portal interior height (for the portal trigger box); 0 for point rifts
 
         public boolean at(String d, int bx, int by, int bz) {
             return d.equals(dim) && bx == x && by == y && bz == z;

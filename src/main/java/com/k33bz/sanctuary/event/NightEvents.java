@@ -29,8 +29,6 @@ public final class NightEvents {
     /** The currently-active event (ORDINARY = none). Read from spawn hooks on any thread → volatile. */
     public static volatile NightEvent ACTIVE = NightEvent.ORDINARY;
 
-    private static long counter = 0;
-
     // ---- config → schedule glue ----
 
     /** Build the weight array (indexed by NightEvent.ordinal) from config; disabled/0-weight excluded. */
@@ -41,6 +39,11 @@ public final class NightEvents {
         w[NightEvent.THE_HUNT.ordinal()] = c.the_hunt.enabled ? Math.max(0, c.the_hunt.weight) : 0;
         w[NightEvent.METEOR_SHOWER.ordinal()] = c.meteor_shower.enabled ? Math.max(0, c.meteor_shower.weight) : 0;
         w[NightEvent.STILL_NIGHT.ordinal()] = c.still_night.enabled ? Math.max(0, c.still_night.weight) : 0;
+        w[NightEvent.BAD_AIR.ordinal()] = c.bad_air.enabled ? Math.max(0, c.bad_air.weight) : 0;
+        w[NightEvent.THE_SWARM.ordinal()] = c.the_swarm.enabled ? Math.max(0, c.the_swarm.weight) : 0;
+        w[NightEvent.TREMORS.ordinal()] = c.tremors.enabled ? Math.max(0, c.tremors.weight) : 0;
+        w[NightEvent.THE_GLOOM.ordinal()] = c.the_gloom.enabled ? Math.max(0, c.the_gloom.weight) : 0;
+        w[NightEvent.DEEP_RICHES.ordinal()] = c.deep_riches.enabled ? Math.max(0, c.deep_riches.weight) : 0;
         return w;
     }
 
@@ -63,11 +66,19 @@ public final class NightEvents {
         return (cfg != null && cfg.nightEvents.enabled) ? ACTIVE : NightEvent.ORDINARY;
     }
 
-    /** Blood-Moon spawn/buff amplifier fed into MobDifficulty (multiplies the distance term). 1.0 = off. */
-    public static double spawnPowerFactor() {
+    /** Wild-mob buff amplifier fed into MobDifficulty at the SPAWN position (multiplies the distance term).
+     *  1.0 = off. Blood Moon buffs the whole surface wild (any position); The Gloom is underground-only, so
+     *  it buffs a spawn ONLY when that spawn is genuinely below the surface — matching its other cave effects. */
+    public static double spawnPowerFactorAt(net.minecraft.world.level.Level level, double x, double y, double z) {
         SanctuaryConfig cfg = Sanctuary.CONFIG;
-        if (cfg != null && cfg.nightEvents.enabled && ACTIVE == NightEvent.BLOOD_MOON) {
+        if (cfg == null || !cfg.nightEvents.enabled) {
+            return 1.0;
+        }
+        if (ACTIVE == NightEvent.BLOOD_MOON) {
             return Math.max(1.0, cfg.nightEvents.blood_moon.powerFactor);
+        }
+        if (ACTIVE == NightEvent.THE_GLOOM && EventDrivers.isUndergroundPos(level, x, y, z, cfg)) {
+            return Math.max(1.0, cfg.nightEvents.the_gloom.powerFactor);
         }
         return 1.0;
     }
@@ -82,7 +93,7 @@ public final class NightEvents {
         SanctuaryConfig.NightEvents c = cfg.nightEvents;
         if (!c.enabled) {
             if (ACTIVE != NightEvent.ORDINARY) {
-                deactivate(server, cfg);
+                deactivate(server, cfg, false); // feature switched off mid-night — not dawn
             }
             return;
         }
@@ -96,20 +107,19 @@ public final class NightEvents {
             NightEvent desired = resolveFor(server, day, c);
             if (ACTIVE == NightEvent.ORDINARY || store.activeNightDay != day) {
                 if (ACTIVE != NightEvent.ORDINARY) {
-                    deactivate(server, cfg); // a stale event from a prior night
+                    deactivate(server, cfg, false); // a stale/superseded event, not the dawn transition
                 }
                 if (desired != NightEvent.ORDINARY) {
                     activate(server, cfg, day, desired);
                 }
             }
         } else if (ACTIVE != NightEvent.ORDINARY) {
-            deactivate(server, cfg); // dawn
+            deactivate(server, cfg, true); // the clock crossed into day
         }
 
         if (ACTIVE != NightEvent.ORDINARY) {
-            EventDrivers.worldTick(server, cfg, ACTIVE, counter);
+            EventDrivers.worldTick(server, cfg, ACTIVE);
         }
-        counter++;
         maybeWriteExport(server, cfg);
     }
 
@@ -125,7 +135,7 @@ public final class NightEvents {
         writeExport(server, cfg);
     }
 
-    private static void deactivate(MinecraftServer server, SanctuaryConfig cfg) {
+    private static void deactivate(MinecraftServer server, SanctuaryConfig cfg, boolean dueToDawn) {
         NightEvent was = ACTIVE;
         ACTIVE = NightEvent.ORDINARY;
         NightEventStore store = NightEventStore.get();
@@ -134,7 +144,7 @@ public final class NightEvents {
         store.save();
         if (was != NightEvent.ORDINARY) {
             EventDrivers.onEnd(server, cfg, was);
-            announceEnd(server, was);
+            announceEnd(server, was, dueToDawn);
         }
         writeExport(server, cfg);
     }
@@ -144,10 +154,13 @@ public final class NightEvents {
         if (cfg == null || !cfg.nightEvents.enabled || ACTIVE == NightEvent.ORDINARY) {
             return;
         }
+        if (player.isSpectator() || player.isCreative()) {
+            return; // spectators/creative admins roaming the wild don't trigger night-event effects
+        }
         if (!(player.level() instanceof ServerLevel level) || !cfg.isScalingDimension(level)) {
             return;
         }
-        EventDrivers.playerTick(player, level, cfg, ACTIVE, counter);
+        EventDrivers.playerTick(player, level, cfg, ACTIVE, level.getServer().overworld().getGameTime());
     }
 
     // ---- boot recovery ----
@@ -186,10 +199,13 @@ public final class NightEvents {
         }
     }
 
-    private static void announceEnd(MinecraftServer server, NightEvent ev) {
+    private static void announceEnd(MinecraftServer server, NightEvent ev, boolean dueToDawn) {
+        // "Dawn breaks" only when the clock actually crossed into day; a mid-night toggle/force reads oddly.
+        String line = dueToDawn
+                ? "Dawn breaks — " + ev.displayName() + " fades."
+                : "The " + ev.displayName() + " subsides.";
         server.getPlayerList().broadcastSystemMessage(
-                Component.literal("Dawn breaks — " + ev.displayName() + " fades.").withStyle(ChatFormatting.GRAY),
-                false);
+                Component.literal(line).withStyle(ChatFormatting.GRAY), false);
     }
 
     private static String startLine(NightEvent ev) {
@@ -198,6 +214,11 @@ public final class NightEvents {
             case THE_HUNT -> "The Hunt begins — out in the wild, they will seek you and break your doors.";
             case METEOR_SHOWER -> "A Meteor Shower falls on the wildlands — danger, and rare spoils, rain down.";
             case STILL_NIGHT -> "A Still Night settles — the wild rests easy tonight.";
+            case BAD_AIR -> "Bad Air seeps through the deep — below the surface, breath fails. Carry Water Breathing.";
+            case THE_SWARM -> "The Swarm wakes in the deep — the caves seethe with hunting things tonight.";
+            case TREMORS -> "Tremors rack the deep — stone groans and falls. Mind the ceilings below.";
+            case THE_GLOOM -> "The Gloom descends — the deep drinks all light, and worse things grow bold.";
+            case DEEP_RICHES -> "Deep Riches glimmer — a rare night to dig; the stone gives its treasures freely.";
             default -> "The night is ordinary.";
         };
     }
@@ -208,6 +229,11 @@ public final class NightEvents {
             case THE_HUNT -> "You are being hunted in the wild";
             case METEOR_SHOWER -> "Falling hazards + distance-tiered drops";
             case STILL_NIGHT -> "Fewer spawns, a small boon";
+            case BAD_AIR -> "Underground: toxic air, deadly without Water Breathing";
+            case THE_SWARM -> "Underground: far more cave hostiles";
+            case TREMORS -> "Underground: cave-ins and disorientation";
+            case THE_GLOOM -> "Underground: darkness and tougher mobs";
+            case DEEP_RICHES -> "Underground: haste and sight for miners";
             default -> "";
         };
     }

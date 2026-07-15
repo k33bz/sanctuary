@@ -31,10 +31,8 @@ public final class SanctuaryRecipes {
                 new RecipeSerializer<>(
                         MapCodec.unit(SanctuaryCrystalRecipe.INSTANCE),
                         StreamCodec.unit(SanctuaryCrystalRecipe.INSTANCE)));
-        com.k33bz.sanctuary.rift.RiftAnchorRecipe.serializer = registerSerializer("rift_anchor",
-                new RecipeSerializer<>(
-                        MapCodec.unit(com.k33bz.sanctuary.rift.RiftAnchorRecipe.INSTANCE),
-                        StreamCodec.unit(com.k33bz.sanctuary.rift.RiftAnchorRecipe.INSTANCE)));
+        // Rift Anchor retired: rift access is now via the world's ruined portals (RiftPortals), so the
+        // crafted head + its recipe are gone.
         Sanctuary.LOGGER.info("[sanctuary] Registered crafted-sanctuary recipe serializers");
     }
 

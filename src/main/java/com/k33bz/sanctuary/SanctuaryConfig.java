@@ -282,7 +282,17 @@ public class SanctuaryConfig {
     public boolean riftsEnabled = true;
     public String riftDimension = "sanctuary:resource_world";
     public int riftTravelCooldownTicks = 60;   // suppress re-teleport for ~3s after a crossing
-    public double riftTriggerRadius = 0.6;      // horizontal distance to a rift that triggers travel
+    public double riftTriggerRadius = 0.6;      // horizontal distance to a point rift that triggers travel
+    // Rift portals: a nether-portal frame containing CRYING OBSIDIAN, lit with flint & steel, fills with a
+    // green membrane and becomes a resource-world gateway (plain obsidian frames stay Nether). See RiftPortals.
+    public double riftPortalTriggerRadius = 1.4; // step-into distance for a green-membrane portal
+    public int riftMinCrying = 2;                // crying-obsidian blocks within 2 of a player = a ruined-portal gateway
+    // NOTE: kept low on purpose — real ruined portals carry only ~2-3 crying-obsidian blocks, so raising this
+    // would break detection on genuine world-gen portals. Forging is instead gated by overworld-only +
+    // wild-only + frame-adjacency + the caps below (see com.k33bz.sanctuary.rift.RiftPortals.checkRuined).
+    public int riftMaxPerPlayer = 8;             // max rift portals one player may open (0 = unlimited)
+    public int riftMaxTotal = 500;               // global rift-portal cap — bounds the store + weekly-reset pads
+    public int[] riftDefaultPortal = {-490, 63, 276}; // a known ruined portal to pre-light green at boot
 
     // Phase-2: weekly LIVE regeneration of sanctuary:resource_world (blocks/entities/poi) OUTSIDE a
     // small preserved pad around each rift, so bases near rifts survive and the wild refreshes. OFF
@@ -303,31 +313,64 @@ public class SanctuaryConfig {
     public static class NightEvents {
         public boolean enabled = true;
         public long seed = 0;                 // world seed, published on SERVER_STARTED so mc.kast.ro agrees
-        public int scheduleVersion = 1;       // bump = intentional reshuffle of the whole future schedule
+        public int scheduleVersion = 2;       // bump = intentional reshuffle of the whole future schedule
         public int nightStartTime = 13000;    // daytime tick where the night window opens
         public int firstEventDay = 3;         // fresh-world grace: earlier days are always ordinary
         public boolean noRepeat = true;       // event(d) != event(d-1)
         public int exportUpcomingDays = 14;
         public int exportRefreshTicks = 200;
+        // A player is "underground" for cave events when this many blocks below the surface heightmap.
+        public int undergroundDepth = 6;
         public Ordinary ordinary = new Ordinary();
+        // Surface events
         public BloodMoon blood_moon = new BloodMoon();
         public Hunt the_hunt = new Hunt();
         public Meteor meteor_shower = new Meteor();
         public Still still_night = new Still();
+        // Underground events (fire only for players below the surface, out in the wild)
+        public BadAir bad_air = new BadAir();
+        public Swarm the_swarm = new Swarm();
+        public Tremors tremors = new Tremors();
+        public Gloom the_gloom = new Gloom();
+        public DeepRiches deep_riches = new DeepRiches();
 
-        public static class Ordinary { public boolean enabled = true; public int weight = 50; }
-        public static class BloodMoon { public boolean enabled = true; public int weight = 12;
+        // Ordinary strongly dominates so a special night is ~1 in 8 (events sum 20 vs ordinary 140 = 12.5%).
+        public static class Ordinary { public boolean enabled = true; public int weight = 140; }
+        public static class BloodMoon { public boolean enabled = true; public int weight = 2;
             public double powerFactor = 1.6; public int extraPerPlayer = 3; public int spawnIntervalTicks = 200;
-            public int spawnRadiusMin = 24; public int spawnRadiusMax = 44; public int maxAddedGlobal = 120; }
-        public static class Hunt { public boolean enabled = true; public int weight = 12;
+            public int spawnRadiusMin = 24; public int spawnRadiusMax = 44;
+            // Per-player LOCAL hostile ceiling (within 48 blocks): stop adding wild spawns once this many
+            // hostiles already crowd the player. Kept at/under the vanilla local monster budget (~70).
+            public int maxNearbyHostiles = 32; }
+        public static class Hunt { public boolean enabled = true; public int weight = 2;
             public double followRangeMult = 3.0; public boolean doorBreak = true;
             public int retargetIntervalTicks = 40; public double retargetRange = 48.0; }
-        public static class Meteor { public boolean enabled = true; public int weight = 12;
+        public static class Meteor { public boolean enabled = true; public int weight = 2;
             public int intervalTicks = 120; public int perInterval = 2; public int radiusMin = 8;
             public int radiusMax = 40; public int warnTicks = 25; public int startHeight = 90;
             public float power = 2.0f; public boolean blockDamage = false; }
-        public static class Still { public boolean enabled = true; public int weight = 14;
+        public static class Still { public boolean enabled = true; public int weight = 3;
             public double spawnCut = 0.6; public int boonSeconds = 3; public int boonAmplifier = 0; }
+        // Bad Air: deep wild players suffocate unless they carry Water Breathing (or Conduit Power). No
+        // water is placed — foul air is modeled as drown-type damage + a choking Nausea, gated on the potion.
+        public static class BadAir { public boolean enabled = true; public int weight = 2;
+            // Toxic damage every intervalTicks (spaced wider than the ~10-tick invuln window so it lands
+            // reliably) + a choking Nausea. Warded by Water Breathing. ~2 HP/s by default = ~10s to kill.
+            public float damage = 2.0f; public int intervalTicks = 20; public boolean nausea = true; }
+        // The Swarm: extra weighted cave-mob spawns around deep wild players.
+        public static class Swarm { public boolean enabled = true; public int weight = 2;
+            public int extraPerPlayer = 3; public int spawnIntervalTicks = 180; public int maxNearbyHostiles = 24; }
+        // Tremors: interval rumbles — brief Blindness/Nausea + a small chance of falling-debris damage.
+        public static class Tremors { public boolean enabled = true; public int weight = 2;
+            public int intervalTicks = 140; public int blindnessTicks = 40;
+            public float debrisDamage = 3.0f; public double debrisChance = 0.35; }
+        // The Gloom: continuous Darkness underground + fewer-but-tougher extra spawns.
+        public static class Gloom { public boolean enabled = true; public int weight = 2;
+            public double powerFactor = 1.5; public int extraPerPlayer = 2; public int spawnIntervalTicks = 240;
+            public int maxNearbyHostiles = 20; public boolean darkness = true; }
+        // Deep Riches: a mining boon — Haste + Night Vision for deep wild diggers.
+        public static class DeepRiches { public boolean enabled = true; public int weight = 3;
+            public int hasteAmplifier = 1; public boolean nightVision = true; public int boonSeconds = 6; }
     }
 
     // System 7 — spawn-based wild-mob difficulty: hostiles are buffed by their distance from the

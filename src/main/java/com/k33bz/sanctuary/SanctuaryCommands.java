@@ -151,6 +151,17 @@ public final class SanctuaryCommands {
         num("nightEvents.meteor.power", () -> cfg().nightEvents.meteor_shower.power, v -> cfg().nightEvents.meteor_shower.power = (float) v, 0, 20);
         bool("nightEvents.meteor.blockDamage", () -> cfg().nightEvents.meteor_shower.blockDamage, b -> cfg().nightEvents.meteor_shower.blockDamage = b);
         num("nightEvents.still.spawnCut", () -> cfg().nightEvents.still_night.spawnCut, v -> cfg().nightEvents.still_night.spawnCut = v, 0, 1);
+        // Underground events
+        num("nightEvents.weight.bad_air", () -> cfg().nightEvents.bad_air.weight, v -> cfg().nightEvents.bad_air.weight = (int) Math.round(v), 0, 1000);
+        num("nightEvents.weight.the_swarm", () -> cfg().nightEvents.the_swarm.weight, v -> cfg().nightEvents.the_swarm.weight = (int) Math.round(v), 0, 1000);
+        num("nightEvents.weight.tremors", () -> cfg().nightEvents.tremors.weight, v -> cfg().nightEvents.tremors.weight = (int) Math.round(v), 0, 1000);
+        num("nightEvents.weight.the_gloom", () -> cfg().nightEvents.the_gloom.weight, v -> cfg().nightEvents.the_gloom.weight = (int) Math.round(v), 0, 1000);
+        num("nightEvents.weight.deep_riches", () -> cfg().nightEvents.deep_riches.weight, v -> cfg().nightEvents.deep_riches.weight = (int) Math.round(v), 0, 1000);
+        num("nightEvents.undergroundDepth", () -> (double) cfg().nightEvents.undergroundDepth, v -> cfg().nightEvents.undergroundDepth = (int) Math.round(v), 1, 64);
+        num("nightEvents.badAir.damage", () -> (double) cfg().nightEvents.bad_air.damage, v -> cfg().nightEvents.bad_air.damage = (float) v, 0, 20);
+        num("nightEvents.tremors.debrisChance", () -> cfg().nightEvents.tremors.debrisChance, v -> cfg().nightEvents.tremors.debrisChance = v, 0, 1);
+        bool("nightEvents.gloom.darkness", () -> cfg().nightEvents.the_gloom.darkness, b -> cfg().nightEvents.the_gloom.darkness = b);
+        num("nightEvents.deepRiches.hasteAmplifier", () -> (double) cfg().nightEvents.deep_riches.hasteAmplifier, v -> cfg().nightEvents.deep_riches.hasteAmplifier = (int) Math.round(v), 0, 5);
         num("rift.resetIntervalTicks", () -> cfg().riftResetIntervalTicks, v -> cfg().riftResetIntervalTicks = (int) Math.round(v), 20, 100_000_000);
         num("rift.resetPadChunks", () -> cfg().riftResetPadChunks, v -> cfg().riftResetPadChunks = (int) Math.round(v), 0, 16);
         num("rift.resetChunksPerTick", () -> cfg().riftResetChunksPerTick, v -> cfg().riftResetChunksPerTick = (int) Math.round(v), 1, 8192);

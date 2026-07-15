@@ -88,6 +88,9 @@ public class Sanctuary implements ModInitializer {
                 .register(com.k33bz.sanctuary.rift.RiftReset::onServerStarted);
         net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STARTED
                 .register(com.k33bz.sanctuary.event.NightEvents::onServerStarted);
+        // Keep the default crying-obsidian rift portal lit, if an admin built its frame.
+        net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STARTED
+                .register(com.k33bz.sanctuary.rift.RiftPortals::onServerStarted);
         // System 10 -- right-clicks on headstones (claim/rob) and the Gravekeeper (summon menu).
         net.fabricmc.fabric.api.event.player.UseEntityCallback.EVENT.register(
                 (p, world, hand, entity, hit) -> {
@@ -130,7 +133,9 @@ public class Sanctuary implements ModInitializer {
         registerNativeVtDrops();
         registerSoulRetention();
         com.k33bz.sanctuary.anchor.AnchorUpkeep.register();
-        com.k33bz.sanctuary.rift.Rifts.register();
+        // Rift access is now via crying-obsidian nether portals (RiftPortals), not the Rift Anchor head.
+        // Rifts.tick still drives travel + weekly-reset linking for the registered portals.
+        com.k33bz.sanctuary.rift.RiftPortals.register();
         // Phase-2 rift reset: its own UNTHROTTLED server-tick handler (the state machine self-throttles;
         // it is a modulo-gated no-op while idle) + login-rescue for players offline across a reset.
         ServerTickEvents.END_SERVER_TICK.register(com.k33bz.sanctuary.rift.RiftReset::tick);
@@ -142,6 +147,7 @@ public class Sanctuary implements ModInitializer {
                 (handler, server) -> {
                     MobDifficulty.clearPlayer(handler.player.getUUID());
                     AfkTracker.forget(handler.player.getUUID());
+                    com.k33bz.sanctuary.rift.Rifts.forget(handler.player.getUUID());
                 });
         SanctuaryCommands.register();
         // Coalesced, off-thread grave-store persistence: mutations only flag the store dirty; this

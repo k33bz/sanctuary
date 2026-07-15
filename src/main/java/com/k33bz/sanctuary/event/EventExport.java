@@ -45,6 +45,8 @@ public final class EventExport {
             Map<String, Object> algo = new LinkedHashMap<>();
             algo.put("name", "sha256-weighted-v1");
             algo.put("scheduleVersion", c.scheduleVersion);
+            algo.put("firstEventDay", c.firstEventDay); // grace days — the website needs these to recompute
+            algo.put("noRepeat", c.noRepeat);           // the no-repeat rule the schedule was drawn with
             List<String> order = new ArrayList<>();
             for (NightEvent e : NightEvent.values()) {
                 order.add(e.key());

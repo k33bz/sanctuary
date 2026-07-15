@@ -45,6 +45,12 @@ public final class RiftStore {
 
     public List<Rift> rifts = new ArrayList<>();
 
+    // --- Phase-2 weekly-reset schedule state (see com.k33bz.sanctuary.rift.RiftReset) ---
+    public long lastResetTick = -1;   // overworld game-time of the last completed reset (-1 = never)
+    public int resetEpoch = 0;        // bumped once per completed reset; drives offline login-rescue
+    public String resetPhase = "IDLE";// crash-resume marker; non-IDLE at boot = a reset was interrupted
+    public java.util.Map<String, Integer> resetSeen = new java.util.HashMap<>(); // uuid -> epoch already handled
+
     private static RiftStore instance;
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
@@ -113,6 +119,12 @@ public final class RiftStore {
                 if (s != null) {
                     if (s.rifts == null) {
                         s.rifts = new ArrayList<>();
+                    }
+                    if (s.resetSeen == null) {
+                        s.resetSeen = new java.util.HashMap<>();
+                    }
+                    if (s.resetPhase == null) {
+                        s.resetPhase = "IDLE";
                     }
                     return s;
                 }

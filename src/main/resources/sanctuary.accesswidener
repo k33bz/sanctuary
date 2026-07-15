@@ -6,3 +6,11 @@ accessible	field	net/minecraft/world/entity/Mob	xpReward	I
 # Let the mod attach hunter goals (door-breaking) to deep-wildlands mobs.
 accessible	field	net/minecraft/world/entity/Mob	goalSelector	Lnet/minecraft/world/entity/ai/goal/GoalSelector;
 accessible	field	net/minecraft/world/entity/Mob	targetSelector	Lnet/minecraft/world/entity/ai/goal/GoalSelector;
+
+# Phase-2 resource_world weekly reset: reach the entity + POI per-chunk region storages so a chunk
+# can be cleared via SimpleRegionStorage.write(pos, (CompoundTag) null). (Block storage needs nothing:
+# ServerChunkCache.chunkMap is public and ChunkMap IS-A SimpleRegionStorage.)
+accessible	field	net/minecraft/server/level/ServerLevel	entityManager	Lnet/minecraft/world/level/entity/PersistentEntitySectionManager;
+accessible	field	net/minecraft/world/level/entity/PersistentEntitySectionManager	permanentStorage	Lnet/minecraft/world/level/entity/EntityPersistentStorage;
+accessible	field	net/minecraft/world/level/chunk/storage/EntityStorage	simpleRegionStorage	Lnet/minecraft/world/level/chunk/storage/SimpleRegionStorage;
+accessible	field	net/minecraft/world/level/chunk/storage/SectionStorage	simpleRegionStorage	Lnet/minecraft/world/level/chunk/storage/SimpleRegionStorage;

@@ -161,6 +161,15 @@ public final class Rifts {
 
     private static void travel(MinecraftServer server, SanctuaryConfig cfg, ServerPlayer player,
                                RiftStore.Rift from, long now) {
+        // Re-entry lockout: while a weekly reset is in flight, refuse any crossing that would enter
+        // or leave the gathering world (an entry mid-clear invites a chunk-load race; the evacuator
+        // handles anyone already inside).
+        if (RiftReset.travelLocked()
+                && (cfg.riftDimension.equals(from.dim) || !from.linked
+                        || cfg.riftDimension.equals(from.linkDim))) {
+            player.sendSystemMessage(hint("The gathering world is being remade — try again shortly."));
+            return;
+        }
         String name = player.getScoreboardName();
         if (name == null || !SAFE_NAME.matcher(name).matches()) {
             Sanctuary.LOGGER.warn("[sanctuary] refusing rift travel for a non-vanilla player name");

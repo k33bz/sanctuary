@@ -90,6 +90,7 @@ public final class RiftReset {
     private static CompletableFuture<?>[] flushFutures = null;
 
     private static long tickCounter = 0;
+    private static final long RETRY_BACKOFF_TICKS = 6000; // ~5 min: retry a transiently-aborted run soon
 
     /** True while a reset is anywhere in flight — rift travel into/out of resource_world is refused. */
     public static boolean travelLocked() {
@@ -237,16 +238,18 @@ public final class RiftReset {
 
     private static void tickEvacuate(MinecraftServer server, SanctuaryConfig cfg) {
         long now = server.overworld().getGameTime();
+        boolean liveRemain = false;
         for (ServerPlayer p : new ArrayList<>(rw.players())) {
             if (p.isDeadOrDying()) {
-                continue; // mid-death; it leaves the dimension on respawn (UNLOAD's size()==0 is the real gate)
+                continue; // on the respawn screen; it leaves on respawn — don't let it block the run
             }
+            liveRemain = true;
             evacuate(server, cfg, p);
         }
-        if (rw.players().isEmpty()) {
-            enter(State.UNLOAD, now);
+        if (!liveRemain) {
+            enter(State.UNLOAD, now); // dead players leave on respawn; UNLOAD's size()==0 is the real gate
         } else if (now - stateEnteredTick > cfg.riftResetUnloadTimeoutTicks) {
-            abort(server, "could not evacuate all players");
+            abort(server, "could not evacuate all live players");
         }
     }
 
@@ -384,9 +387,13 @@ public final class RiftReset {
             rw.noSave = false;
         }
         restoreForced();
-        // Push the schedule forward a full interval so a broken run can't spin (admin can retry manually).
+        // Retry in ~RETRY_BACKOFF_TICKS rather than skipping a full interval, so a transient blocker (an
+        // AFK player dead on the respawn screen, a slow flush) self-heals; a persistently-broken run just
+        // re-aborts every ~5 min (logged), never spins per-tick.
         if (!dryRun) {
-            store.lastResetTick = now;
+            SanctuaryConfig cfg = Sanctuary.CONFIG;
+            long interval = cfg != null ? cfg.riftResetIntervalTicks : 0L;
+            store.lastResetTick = now - interval + Math.min(interval, RETRY_BACKOFF_TICKS);
         }
         store.resetPhase = "IDLE";
         store.save();

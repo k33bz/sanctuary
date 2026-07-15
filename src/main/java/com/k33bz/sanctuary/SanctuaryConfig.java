@@ -276,6 +276,27 @@ public class SanctuaryConfig {
     public boolean flanIntegration = true;
     public int flanClaimRadius = 16;
 
+    // Rift anchors (the gathering dimension). A Rift Anchor used on open ground OUTSIDE a sanctuary
+    // tears a persistent rift to riftDimension; stepping on it teleports across (a return rift opens
+    // on the far side the first time). Only creation is gated — you must explore into the wild — so
+    // players don't strip-mine the home world. See com.k33bz.sanctuary.rift.Rifts.
+    public boolean riftsEnabled = true;
+    public String riftDimension = "sanctuary:resource_world";
+    public int riftTravelCooldownTicks = 60;   // suppress re-teleport for ~3s after a crossing
+    public double riftTriggerRadius = 0.6;      // horizontal distance to a rift that triggers travel
+
+    // Phase-2: weekly LIVE regeneration of sanctuary:resource_world (blocks/entities/poi) OUTSIDE a
+    // small preserved pad around each rift, so bases near rifts survive and the wild refreshes. OFF
+    // by default — opt in per server after a dry-run. See com.k33bz.sanctuary.rift.RiftReset.
+    public boolean riftResetEnabled = false;
+    public int riftResetIntervalTicks = 12_096_000;  // 7 real days * 24 * 3600 * 20 tps
+    public int riftResetPadChunks = 1;               // preserved each side of a rift -> (2r+1)^2 = 3x3
+    public int riftResetChunksPerTick = 128;         // CLEAR throttle (each chunk = 3 async region writes)
+    public int riftResetRegionsPerTick = 64;         // ENUMERATE throttle (region-header reads per tick)
+    public int riftResetWarnSeconds = 300;           // countdown broadcast before evacuation (0 = none)
+    public int riftResetUnloadTimeoutTicks = 1200;   // 60s to reach full unload or ABORT (world untouched)
+    public int riftResetFlushTimeoutTicks = 2400;    // 120s per flush wait or ABORT
+
     // System 7 — spawn-based wild-mob difficulty: hostiles are buffed by their distance from the
     // nearest anchor when they spawn (baked into their attributes), with tiered names + particles.
     public MobScaling mobScaling = new MobScaling();

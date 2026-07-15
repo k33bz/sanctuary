@@ -138,6 +138,12 @@ public final class SanctuaryCommands {
         bool("restless", () -> cfg().restlessEnabled, b -> cfg().restlessEnabled = b);
         bool("graves", () -> cfg().gravesEnabled, b -> cfg().gravesEnabled = b);
         bool("wildEssence", () -> cfg().wildEssenceEnabled, b -> cfg().wildEssenceEnabled = b);
+        bool("riftReset", () -> cfg().riftResetEnabled, b -> cfg().riftResetEnabled = b);
+        num("rift.resetIntervalTicks", () -> cfg().riftResetIntervalTicks, v -> cfg().riftResetIntervalTicks = (int) Math.round(v), 20, 100_000_000);
+        num("rift.resetPadChunks", () -> cfg().riftResetPadChunks, v -> cfg().riftResetPadChunks = (int) Math.round(v), 0, 16);
+        num("rift.resetChunksPerTick", () -> cfg().riftResetChunksPerTick, v -> cfg().riftResetChunksPerTick = (int) Math.round(v), 1, 8192);
+        num("rift.resetRegionsPerTick", () -> cfg().riftResetRegionsPerTick, v -> cfg().riftResetRegionsPerTick = (int) Math.round(v), 1, 4096);
+        num("rift.resetWarnSeconds", () -> cfg().riftResetWarnSeconds, v -> cfg().riftResetWarnSeconds = (int) Math.round(v), 0, 3600);
     }
 
     public static void register() {
@@ -314,6 +320,34 @@ public final class SanctuaryCommands {
                                     .then(Commands.argument("owner", StringArgumentType.word())
                                             .executes(safe(ctx -> graveyardConsecrate(ctx,
                                                     StringArgumentType.getString(ctx, "owner"))))))));
+            // Ops: manage the resource_world weekly reset (status / manual trigger / cancel / dry-run).
+            dispatcher.register(Commands.literal("sanctuaryrift")
+                    .requires(Commands.<CommandSourceStack>hasPermission(Commands.LEVEL_GAMEMASTERS))
+                    .then(Commands.literal("status").executes(safe(ctx -> {
+                        String s = com.k33bz.sanctuary.rift.RiftReset.status(ctx.getSource().getServer());
+                        ctx.getSource().sendSuccess(() -> Component.literal("Rift reset: " + s), false);
+                        return 1;
+                    })))
+                    .then(Commands.literal("reset")
+                            .executes(safe(ctx -> {
+                                boolean ok = com.k33bz.sanctuary.rift.RiftReset.requestManual(false);
+                                ctx.getSource().sendSuccess(() -> Component.literal(ok
+                                        ? "Rift reset triggered." : "A rift reset is already in progress."), true);
+                                return ok ? 1 : 0;
+                            }))
+                            .then(Commands.literal("cancel").executes(safe(ctx -> {
+                                com.k33bz.sanctuary.rift.RiftReset.requestCancel();
+                                ctx.getSource().sendSuccess(() -> Component.literal(
+                                        "Rift reset cancellation requested."), true);
+                                return 1;
+                            })))
+                            .then(Commands.literal("dryrun").executes(safe(ctx -> {
+                                boolean ok = com.k33bz.sanctuary.rift.RiftReset.requestManual(true);
+                                ctx.getSource().sendSuccess(() -> Component.literal(ok
+                                        ? "Rift reset DRY-RUN triggered (logs the clear set, writes nothing)."
+                                        : "A rift reset is already in progress."), true);
+                                return ok ? 1 : 0;
+                            })))));
         });
     }
 

@@ -1,3 +1,23 @@
+## Unreleased
+
+**Rift-world** — a resource-gathering dimension reached by sanctuary-gated Rift Anchors.
+- `sanctuary:resource_world`: an overworld-preset dimension (Terralith terrain, full ores) so
+  players gather there instead of strip-mining the home world.
+- **Rift Anchor** (craftable player-head marker: 1 ender pearl + 4 obsidian + 4 amethyst shard):
+  used on open ground OUTSIDE a sanctuary it tears a persistent rift; refused inside one — so you
+  must explore into the wild. Stepping on a rift crosses to the resource world and a return rift
+  auto-opens on the far side.
+- Config: `riftsEnabled` / `riftDimension` / `riftTravelCooldownTicks` / `riftTriggerRadius`;
+  rifts persist in `config/sanctuary_rifts.json`.
+- Cross-dim landing force-generates the destination column before reading its heightmap (prevents
+  a void-drop into an ungenerated chunk).
+
+**Rift-world weekly reset** — the gathering world (`sanctuary:resource_world`) can regenerate on a
+schedule (or `/sanctuaryrift reset`), preserving a small pad around each rift so nearby bases survive.
+Live, no restart; OFF by default (`riftResetEnabled`). It evacuates players, fully unloads the dimension,
+clears block/entity/POI region data for non-pad chunks, then restores saves + force-loads. Commands:
+`/sanctuaryrift status|reset|reset cancel|reset dryrun`; tuning via `/sanctuary set rift.reset*`.
+
 ## 0.8.7.0
 
 Security hardening, Vanilla Tweaks internalization, and native feature migration.

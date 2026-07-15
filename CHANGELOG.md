@@ -12,6 +12,12 @@
 - Cross-dim landing force-generates the destination column before reading its heightmap (prevents
   a void-drop into an ungenerated chunk).
 
+**Rift-world weekly reset** — the gathering world (`sanctuary:resource_world`) can regenerate on a
+schedule (or `/sanctuaryrift reset`), preserving a small pad around each rift so nearby bases survive.
+Live, no restart; OFF by default (`riftResetEnabled`). It evacuates players, fully unloads the dimension,
+clears block/entity/POI region data for non-pad chunks, then restores saves + force-loads. Commands:
+`/sanctuaryrift status|reset|reset cancel|reset dryrun`; tuning via `/sanctuary set rift.reset*`.
+
 ## 0.8.7.0
 
 Security hardening, Vanilla Tweaks internalization, and native feature migration.

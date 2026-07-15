@@ -296,6 +296,40 @@ public class SanctuaryConfig {
     public int riftResetUnloadTimeoutTicks = 1200;   // 60s to reach full unload or ABORT (world untouched)
     public int riftResetFlushTimeoutTicks = 2400;    // 120s per flush wait or ABORT
 
+    // Night events — themed nightly events on a deterministic seeded schedule. Effects only touch the
+    // wild + overworld (sanctuaries/Nether/End/rift are spared). See com.k33bz.sanctuary.event.NightEvents.
+    public NightEvents nightEvents = new NightEvents();
+
+    public static class NightEvents {
+        public boolean enabled = true;
+        public long seed = 0;                 // world seed, published on SERVER_STARTED so mc.kast.ro agrees
+        public int scheduleVersion = 1;       // bump = intentional reshuffle of the whole future schedule
+        public int nightStartTime = 13000;    // daytime tick where the night window opens
+        public int firstEventDay = 3;         // fresh-world grace: earlier days are always ordinary
+        public boolean noRepeat = true;       // event(d) != event(d-1)
+        public int exportUpcomingDays = 14;
+        public int exportRefreshTicks = 200;
+        public Ordinary ordinary = new Ordinary();
+        public BloodMoon blood_moon = new BloodMoon();
+        public Hunt the_hunt = new Hunt();
+        public Meteor meteor_shower = new Meteor();
+        public Still still_night = new Still();
+
+        public static class Ordinary { public boolean enabled = true; public int weight = 50; }
+        public static class BloodMoon { public boolean enabled = true; public int weight = 12;
+            public double powerFactor = 1.6; public int extraPerPlayer = 3; public int spawnIntervalTicks = 200;
+            public int spawnRadiusMin = 24; public int spawnRadiusMax = 44; public int maxAddedGlobal = 120; }
+        public static class Hunt { public boolean enabled = true; public int weight = 12;
+            public double followRangeMult = 3.0; public boolean doorBreak = true;
+            public int retargetIntervalTicks = 40; public double retargetRange = 48.0; }
+        public static class Meteor { public boolean enabled = true; public int weight = 12;
+            public int intervalTicks = 120; public int perInterval = 2; public int radiusMin = 8;
+            public int radiusMax = 40; public int warnTicks = 25; public int startHeight = 90;
+            public float power = 2.0f; public boolean blockDamage = false; }
+        public static class Still { public boolean enabled = true; public int weight = 14;
+            public double spawnCut = 0.6; public int boonSeconds = 3; public int boonAmplifier = 0; }
+    }
+
     // System 7 — spawn-based wild-mob difficulty: hostiles are buffed by their distance from the
     // nearest anchor when they spawn (baked into their attributes), with tiered names + particles.
     public MobScaling mobScaling = new MobScaling();

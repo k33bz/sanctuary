@@ -139,6 +139,18 @@ public final class SanctuaryCommands {
         bool("graves", () -> cfg().gravesEnabled, b -> cfg().gravesEnabled = b);
         bool("wildEssence", () -> cfg().wildEssenceEnabled, b -> cfg().wildEssenceEnabled = b);
         bool("riftReset", () -> cfg().riftResetEnabled, b -> cfg().riftResetEnabled = b);
+        bool("nightEvents", () -> cfg().nightEvents.enabled, b -> cfg().nightEvents.enabled = b);
+        num("nightEvents.weight.ordinary", () -> cfg().nightEvents.ordinary.weight, v -> cfg().nightEvents.ordinary.weight = (int) Math.round(v), 0, 1000);
+        num("nightEvents.weight.blood_moon", () -> cfg().nightEvents.blood_moon.weight, v -> cfg().nightEvents.blood_moon.weight = (int) Math.round(v), 0, 1000);
+        num("nightEvents.weight.the_hunt", () -> cfg().nightEvents.the_hunt.weight, v -> cfg().nightEvents.the_hunt.weight = (int) Math.round(v), 0, 1000);
+        num("nightEvents.weight.meteor_shower", () -> cfg().nightEvents.meteor_shower.weight, v -> cfg().nightEvents.meteor_shower.weight = (int) Math.round(v), 0, 1000);
+        num("nightEvents.weight.still_night", () -> cfg().nightEvents.still_night.weight, v -> cfg().nightEvents.still_night.weight = (int) Math.round(v), 0, 1000);
+        num("nightEvents.bloodMoon.powerFactor", () -> cfg().nightEvents.blood_moon.powerFactor, v -> cfg().nightEvents.blood_moon.powerFactor = v, 1, 10);
+        num("nightEvents.bloodMoon.extraPerPlayer", () -> cfg().nightEvents.blood_moon.extraPerPlayer, v -> cfg().nightEvents.blood_moon.extraPerPlayer = (int) Math.round(v), 0, 40);
+        bool("nightEvents.hunt.doorBreak", () -> cfg().nightEvents.the_hunt.doorBreak, b -> cfg().nightEvents.the_hunt.doorBreak = b);
+        num("nightEvents.meteor.power", () -> cfg().nightEvents.meteor_shower.power, v -> cfg().nightEvents.meteor_shower.power = (float) v, 0, 20);
+        bool("nightEvents.meteor.blockDamage", () -> cfg().nightEvents.meteor_shower.blockDamage, b -> cfg().nightEvents.meteor_shower.blockDamage = b);
+        num("nightEvents.still.spawnCut", () -> cfg().nightEvents.still_night.spawnCut, v -> cfg().nightEvents.still_night.spawnCut = v, 0, 1);
         num("rift.resetIntervalTicks", () -> cfg().riftResetIntervalTicks, v -> cfg().riftResetIntervalTicks = (int) Math.round(v), 20, 100_000_000);
         num("rift.resetPadChunks", () -> cfg().riftResetPadChunks, v -> cfg().riftResetPadChunks = (int) Math.round(v), 0, 16);
         num("rift.resetChunksPerTick", () -> cfg().riftResetChunksPerTick, v -> cfg().riftResetChunksPerTick = (int) Math.round(v), 1, 8192);
@@ -348,6 +360,65 @@ public final class SanctuaryCommands {
                                         : "A rift reset is already in progress."), true);
                                 return ok ? 1 : 0;
                             })))));
+            // Ops: inspect + drive the night-events schedule (force/skip make it bot-testable).
+            dispatcher.register(Commands.literal("sanctuarynight")
+                    .requires(Commands.<CommandSourceStack>hasPermission(Commands.LEVEL_GAMEMASTERS))
+                    .then(Commands.literal("status").executes(safe(ctx -> {
+                        var sv = ctx.getSource().getServer();
+                        long day = Math.floorDiv(sv.overworld().getOverworldClockTime(), 24000L);
+                        com.k33bz.sanctuary.event.NightEvent tonight =
+                                com.k33bz.sanctuary.event.NightEvents.resolveFor(sv, day, cfg().nightEvents);
+                        ctx.getSource().sendSuccess(() -> Component.literal(String.format(java.util.Locale.ROOT,
+                                "Night events %s. Day %d tonight: %s. Active now: %s.",
+                                cfg().nightEvents.enabled ? "ON" : "OFF", day, tonight.displayName(),
+                                com.k33bz.sanctuary.event.NightEvents.ACTIVE.displayName())), false);
+                        return 1;
+                    })))
+                    .then(Commands.literal("schedule").then(Commands.argument("days",
+                            com.mojang.brigadier.arguments.IntegerArgumentType.integer(1, 60)).executes(safe(ctx -> {
+                        var sv = ctx.getSource().getServer();
+                        long day = Math.floorDiv(sv.overworld().getOverworldClockTime(), 24000L);
+                        int n = com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(ctx, "days");
+                        StringBuilder sb = new StringBuilder("Upcoming nights:");
+                        for (int i = 0; i < n; i++) {
+                            long d = day + i;
+                            sb.append("\n  ").append(d).append(": ")
+                              .append(com.k33bz.sanctuary.event.NightEvents.resolveFor(sv, d, cfg().nightEvents).displayName());
+                        }
+                        ctx.getSource().sendSuccess(() -> Component.literal(sb.toString()), false);
+                        return 1;
+                    }))))
+                    .then(Commands.literal("preview").then(Commands.argument("day",
+                            com.mojang.brigadier.arguments.LongArgumentType.longArg(0)).executes(safe(ctx -> {
+                        var sv = ctx.getSource().getServer();
+                        long d = com.mojang.brigadier.arguments.LongArgumentType.getLong(ctx, "day");
+                        com.k33bz.sanctuary.event.NightEvent e =
+                                com.k33bz.sanctuary.event.NightEvents.resolveFor(sv, d, cfg().nightEvents);
+                        ctx.getSource().sendSuccess(() -> Component.literal("Day " + d + ": " + e.displayName() + " (" + e.key() + ")"), false);
+                        return 1;
+                    }))))
+                    .then(Commands.literal("force").then(Commands.argument("event", StringArgumentType.word()).executes(safe(ctx -> {
+                        long day = Math.floorDiv(ctx.getSource().getServer().overworld().getOverworldClockTime(), 24000L);
+                        com.k33bz.sanctuary.event.NightEvent e =
+                                com.k33bz.sanctuary.event.NightEvent.parse(StringArgumentType.getString(ctx, "event"));
+                        com.k33bz.sanctuary.event.NightEventStore st = com.k33bz.sanctuary.event.NightEventStore.get();
+                        st.skippedDays.remove(day);
+                        st.forcedByDay.put(Long.toString(day), e.key());
+                        st.activeNightDay = -1; // let the next tick re-arm to the forced event
+                        st.save();
+                        ctx.getSource().sendSuccess(() -> Component.literal("Forced tonight (day " + day + ") to " + e.displayName() + "."), true);
+                        return 1;
+                    }))))
+                    .then(Commands.literal("skip").executes(safe(ctx -> {
+                        long day = Math.floorDiv(ctx.getSource().getServer().overworld().getOverworldClockTime(), 24000L);
+                        com.k33bz.sanctuary.event.NightEventStore st = com.k33bz.sanctuary.event.NightEventStore.get();
+                        st.forcedByDay.remove(Long.toString(day));
+                        st.skippedDays.add(day);
+                        st.activeNightDay = -1;
+                        st.save();
+                        ctx.getSource().sendSuccess(() -> Component.literal("Tonight (day " + day + ") will be ordinary."), true);
+                        return 1;
+                    }))));
         });
     }
 

@@ -23,11 +23,18 @@ public class NaturalSpawnerMixin {
     private static void sanctuary$suppressHostileSpawns(ServerLevel level, Mob mob, double distance,
                                                         CallbackInfoReturnable<Boolean> cir) {
         SanctuaryConfig cfg = Sanctuary.CONFIG;
-        if (cfg == null || !cfg.suppressHostileSpawnsInSanctuary
-                || !(mob instanceof Enemy) || !cfg.isScalingDimension(level)) {
+        if (cfg == null || !(mob instanceof Enemy) || !cfg.isScalingDimension(level)) {
             return;
         }
-        if (Sanctuary.blocksBeyondNearestAnchor(cfg, mob.getX(), mob.getZ()) <= 0.0) {
+        double beyond = Sanctuary.blocksBeyondNearestAnchor(cfg, mob.getX(), mob.getZ());
+        // Still Night: thin out wild hostile spawns for a calmer night.
+        if (cfg.nightEvents.enabled && beyond > 0.0
+                && com.k33bz.sanctuary.event.NightEvents.ACTIVE == com.k33bz.sanctuary.event.NightEvent.STILL_NIGHT
+                && level.getRandom().nextFloat() < cfg.nightEvents.still_night.spawnCut) {
+            cir.setReturnValue(false);
+            return;
+        }
+        if (cfg.suppressHostileSpawnsInSanctuary && beyond <= 0.0) {
             cir.setReturnValue(false);
         }
     }

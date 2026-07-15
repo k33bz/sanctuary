@@ -68,6 +68,9 @@ public final class MobDifficulty {
         // Fuzzy zone edges: this individual rolled slightly stronger or weaker than its distance
         // says, so tier boundaries are bands, not lines. All of its stats share the one roll.
         beyond = SurvivalLogic.fuzzedBeyond(beyond, mob.getRandom().nextGaussian(), ms.edgeFuzz);
+        // Blood Moon: amplify the distance term so this wild mob's health/damage/speed/xp/tier all scale up
+        // together (existing caps still clamp). Baked as permanent modifiers -> it stays dangerous after dawn.
+        beyond *= com.k33bz.sanctuary.event.NightEvents.spawnPowerFactor();
 
         double healthMult = SurvivalLogic.mobPowerMultiplier(beyond, ms.healthPerBlock, ms.healthMaxMultiplier);
         double damageMult = SurvivalLogic.mobPowerMultiplier(beyond, ms.damagePerBlock, ms.damageMaxMultiplier,

@@ -86,6 +86,8 @@ public class Sanctuary implements ModInitializer {
         // that interrupted a previous reset (partial clears are safe; just clear the phase flag).
         net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STARTED
                 .register(com.k33bz.sanctuary.rift.RiftReset::onServerStarted);
+        net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STARTED
+                .register(com.k33bz.sanctuary.event.NightEvents::onServerStarted);
         // System 10 -- right-clicks on headstones (claim/rob) and the Gravekeeper (summon menu).
         net.fabricmc.fabric.api.event.player.UseEntityCallback.EVENT.register(
                 (p, world, hand, entity, hit) -> {
@@ -133,6 +135,7 @@ public class Sanctuary implements ModInitializer {
         // Phase-2 rift reset: its own UNTHROTTLED server-tick handler (the state machine self-throttles;
         // it is a modulo-gated no-op while idle) + login-rescue for players offline across a reset.
         ServerTickEvents.END_SERVER_TICK.register(com.k33bz.sanctuary.rift.RiftReset::tick);
+        ServerTickEvents.END_SERVER_TICK.register(com.k33bz.sanctuary.event.NightEvents::tick);
         net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents.JOIN.register(
                 (handler, sender, server) -> com.k33bz.sanctuary.rift.RiftReset.onPlayerJoin(server, handler.player));
         // Forget zone tracking on disconnect so the next login re-announces the player's zone.
@@ -430,6 +433,7 @@ public class Sanctuary implements ModInitializer {
                 }
                 MobDifficulty.tickBoundary(player, cfg);
                 AfkTracker.tick(player, cfg);
+                com.k33bz.sanctuary.event.NightEvents.tickPlayer(player, cfg);
             }
             AnchorInteraction.pulseAnchors(server); // focus pulse at active anchors
             com.k33bz.sanctuary.anchor.LavaCauldronCook.sweep(server, cfg); // temper raw membranes

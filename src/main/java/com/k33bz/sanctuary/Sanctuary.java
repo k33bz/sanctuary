@@ -153,6 +153,10 @@ public class Sanctuary implements ModInitializer {
         });
         ServerTickEvents.END_SERVER_TICK.register(com.k33bz.sanctuary.rift.RiftReset::tick);
         ServerTickEvents.END_SERVER_TICK.register(com.k33bz.sanctuary.event.NightEvents::tick);
+        // First-join traveller's kit (Middle-earth fare). Registered as its own listener so it is
+        // independent of whatever else greets the player.
+        net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents.JOIN.register(
+                (handler, sender, server) -> StartingKit.onJoin(handler.player));
         net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents.JOIN.register(
                 (handler, sender, server) -> com.k33bz.sanctuary.rift.RiftReset.onPlayerJoin(server, handler.player));
         // Forget zone tracking on disconnect so the next login re-announces the player's zone.

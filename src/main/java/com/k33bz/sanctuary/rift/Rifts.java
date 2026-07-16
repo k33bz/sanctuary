@@ -51,6 +51,7 @@ public final class Rifts {
     public static void forget(UUID id) {
         COOLDOWN.remove(id);
         ARRIVED_ON.remove(id);
+        RiftPortals.forget(id);
     }
 
     // Rift creation is no longer a player action — the world's ruined portals ARE the gateways
@@ -64,6 +65,7 @@ public final class Rifts {
         }
         RiftStore store = RiftStore.get();
         long now = server.overworld().getGameTime();
+        java.util.Set<String> shimmered = new java.util.HashSet<>(); // render each rift's particle plane once/tick
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             if (player.isDeadOrDying()) {
                 continue;
@@ -85,16 +87,11 @@ public final class Rifts {
                 double dx = (r.x + 0.5) - px;
                 double dz = (r.z + 0.5) - pz;
                 double horiz = Math.sqrt(dx * dx + dz * dz);
-                if (horiz < 24.0) {
-                    // gentle ambient shimmer at nearby rifts — green for portals, portal-purple for point rifts
-                    run(server, String.format(Locale.ROOT,
-                            r.portal ? "particle minecraft:composter %.2f %.2f %.2f 0.32 %.2f 0.32 0.01 8"
-                                     : "particle minecraft:reverse_portal %.2f %.2f %.2f 0.22 0.55 0.22 0.015 6",
-                            r.x + 0.5, r.y + (r.portal ? 1.0 : 0.4), r.z + 0.5,
-                            r.portal ? Math.max(0.4, r.h * 0.35) : 0.55));
+                if (horiz < 24.0 && shimmered.add(r.id)) {
+                    shimmer(server, r); // green particle plane across a portal's opening; a puff at a point rift
                 }
-                // A green-membrane portal triggers when you step into its opening (a taller, wider box than a
-                // point rift, since you touch the glass from the front rather than stand on an air block).
+                // A ruined-portal rift triggers when you step into its opening (a taller, wider box than a
+                // point rift — you walk into the particle plane from the front rather than stand on a cell).
                 double radius = r.portal ? cfg.riftPortalTriggerRadius : cfg.riftTriggerRadius;
                 double dyLimit = r.portal ? (r.h + 0.5) : 1.6;
                 if (standingOn == null && horiz <= radius && Math.abs(py - r.y) < dyLimit) {
@@ -195,10 +192,11 @@ public final class Rifts {
                         dest.getChunkAt(new BlockPos(cx, groundY, cz));
                     }
                 }
-                RiftPortals.buildReturnPortal(dest, base);
+                int[] cells = RiftPortals.buildReturnPortal(dest, base);
                 back = store.create(destDim, anchor, from.owner, from.ownerId);
                 back.portal = true;
                 back.h = 3;
+                back.membrane = cells;
             }
             store.link(from, back);
             destRift = back;
@@ -229,6 +227,29 @@ public final class Rifts {
 
     private static Component hint(String text) {
         return Component.literal(text).withStyle(ChatFormatting.LIGHT_PURPLE);
+    }
+
+    /** Ambient shimmer: for a ruined-portal rift, a green particle plane across every opening cell (the
+     *  membrane, rendered by particles — no block is placed); for a point rift, a single reverse-portal puff. */
+    private static void shimmer(MinecraftServer server, RiftStore.Rift r) {
+        // Every particle MUST be dispatched with "execute in <dim>": run() builds a command source from
+        // server.createCommandSourceStack(), whose level is always the overworld, and ParticleCommand
+        // resolves its target level from the source. Without the override, a gathering-world rift's plane
+        // would be spawned in the OVERWORLD at those coordinates — invisible to the player standing at the
+        // portal, and leaking stray green sparks into the overworld column above the source portal.
+        if (r.portal && r.membrane != null && r.membrane.length >= 3) {
+            for (int i = 0; i + 2 < r.membrane.length; i += 3) {
+                run(server, String.format(Locale.ROOT,
+                        "execute in %s run particle minecraft:composter %.2f %.2f %.2f 0.24 0.24 0.24 0.004 3",
+                        r.dim, r.membrane[i] + 0.5, r.membrane[i + 1] + 0.5, r.membrane[i + 2] + 0.5));
+            }
+        } else {
+            run(server, String.format(Locale.ROOT,
+                    r.portal ? "execute in %s run particle minecraft:composter %.2f %.2f %.2f 0.32 %.2f 0.32 0.01 8"
+                             : "execute in %s run particle minecraft:reverse_portal %.2f %.2f %.2f 0.22 0.55 0.22 0.015 6",
+                    r.dim, r.x + 0.5, r.y + (r.portal ? 1.0 : 0.4), r.z + 0.5,
+                    r.portal ? Math.max(0.4, r.h * 0.35) : 0.55));
+        }
     }
 
     private static void run(MinecraftServer server, String command) {

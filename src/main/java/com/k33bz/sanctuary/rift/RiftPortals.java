@@ -46,6 +46,9 @@ public final class RiftPortals {
     private static final java.util.Map<java.util.UUID, Long> CAP_WARNED = new java.util.HashMap<>();
     private static final long CAP_WARN_COOLDOWN = 200L; // 10s between refusals
 
+    /** The block the pre-particle build filled openings with; swept to air on upgrade. See isLegacyMembrane. */
+    private static final String LEGACY_MEMBRANE_ID = "minecraft:green_stained_glass";
+
     /** Drop per-player cap-warning state on disconnect (called from {@link Rifts#forget}). */
     public static void forget(java.util.UUID id) {
         CAP_WARNED.remove(id);
@@ -206,12 +209,25 @@ public final class RiftPortals {
             for (int dy = -reach; dy <= reach; dy++) {
                 for (int dz = -reach; dz <= reach; dz++) {
                     BlockPos p = centre.offset(dx, dy, dz);
-                    if (w.getBlockState(p).is(Blocks.GREEN_STAINED_GLASS)) {
+                    if (isLegacyMembrane(w.getBlockState(p))) {
                         w.setBlock(p, Blocks.AIR.defaultBlockState(), 3);
                     }
                 }
             }
         }
+    }
+
+    /**
+     * True for the block the pre-particle build used to fill openings (green stained glass).
+     *
+     * <p>Matched by REGISTRY ID, not a {@code Blocks} constant: 26.2 drops the per-colour dyed-block fields
+     * ({@code Blocks.GREEN_STAINED_GLASS} and friends no longer exist), so a symbol reference compiles on
+     * 26.1 and breaks the 26.2 build — while a world upgraded from the glass era still has the block sitting
+     * in its portal openings and still needs sweeping.
+     */
+    private static boolean isLegacyMembrane(BlockState s) {
+        return LEGACY_MEMBRANE_ID.equals(
+                net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(s.getBlock()).toString());
     }
 
     /** The loaded level for a dimension id, or null. Matches by id so no registry lookup is needed. */

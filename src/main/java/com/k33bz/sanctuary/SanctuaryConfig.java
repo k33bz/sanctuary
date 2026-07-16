@@ -279,6 +279,10 @@ public class SanctuaryConfig {
     // tears a persistent rift to riftDimension; stepping on it teleports across (a return rift opens
     // on the far side the first time). Only creation is gated — you must explore into the wild — so
     // players don't strip-mine the home world. See com.k33bz.sanctuary.rift.Rifts.
+    // A traveller's kit handed out once on first join (Middle-earth fare: lembas, cram,
+    // honey-cakes, miruvor, ent-draught, breeches and boots). Roster: config/sanctuary_kit.json.
+    public boolean startingKitEnabled = true;
+
     public boolean riftsEnabled = true;
     public String riftDimension = "sanctuary:resource_world";
     public int riftTravelCooldownTicks = 60;   // suppress re-teleport for ~3s after a crossing

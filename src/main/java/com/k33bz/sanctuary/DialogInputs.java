@@ -3,6 +3,10 @@ package com.k33bz.sanctuary;
 import com.mojang.serialization.JsonOps;
 import com.google.gson.JsonPrimitive;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.dialog.Dialog;
+import net.minecraft.server.dialog.MultiActionDialog;
+import net.minecraft.server.dialog.CommonDialogData;
+import net.minecraft.server.dialog.ActionButton;
 import net.minecraft.server.dialog.Input;
 import net.minecraft.server.dialog.action.Action;
 import net.minecraft.server.dialog.action.CommandTemplate;
@@ -50,5 +54,22 @@ public final class DialogInputs {
                 .parse(JsonOps.INSTANCE, new JsonPrimitive(template))
                 .getOrThrow(msg -> new IllegalArgumentException("bad dialog command template: " + msg));
         return Optional.of(new CommandTemplate(parsed));
+    }
+
+    /**
+     * Build a {@link MultiActionDialog} that is always encodable.
+     *
+     * <p>Its action list MUST be non-empty: the network codec rejects an empty one ("List must have
+     * contents"), so the {@code show_dialog} packet fails to encode and the server DROPS THE PLAYER
+     * mid-dialog. Every caller here builds its buttons conditionally, so an unlucky combination
+     * (dying with no bed and no sanctuary; viewing an exempt anchor you can't rename) silently produced
+     * a zero-action dialog and kicked the player. When nothing optional applies, the exit button becomes
+     * the sole action instead — same UI, one button, and it always encodes.
+     */
+    public static Dialog multiAction(CommonDialogData common, List<ActionButton> buttons,
+                                     ActionButton exit, int columns) {
+        return buttons.isEmpty()
+                ? new MultiActionDialog(common, List.of(exit), Optional.empty(), columns)
+                : new MultiActionDialog(common, buttons, Optional.of(exit), columns);
     }
 }

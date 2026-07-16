@@ -89,9 +89,10 @@ public final class AnchorDialog {
                 DialogAction.CLOSE, // clicking a button closes; the feed command re-opens fresh
                 body,
                 List.of());
-        Dialog dialog = new MultiActionDialog(common, buttons,
-                Optional.of(new ActionButton(new CommonButtonData(Component.literal("Close"), 100),
-                        Optional.empty())),
+        // Guarded: an EXEMPT anchor viewed by someone who can't rename it yields no buttons at all,
+        // which would fail to encode and disconnect them. See DialogInputs.multiAction.
+        Dialog dialog = com.k33bz.sanctuary.DialogInputs.multiAction(common, buttons,
+                new ActionButton(new CommonButtonData(Component.literal("Close"), 100), Optional.empty()),
                 2);
         player.openDialog(Holder.direct(dialog));
     }
@@ -135,9 +136,8 @@ public final class AnchorDialog {
                 // "*" sentinel: an empty name must not expand to a trailing-space command (client
                 // parse fails → confirm screen). Backend strips it; blank still means "clear".
                 com.k33bz.sanctuary.DialogInputs.command("sanctuaryrename set *$(name)")));
-        Dialog dialog = new MultiActionDialog(common, buttons,
-                Optional.of(new ActionButton(new CommonButtonData(Component.literal("Cancel"), 100),
-                        Optional.empty())),
+        Dialog dialog = com.k33bz.sanctuary.DialogInputs.multiAction(common, buttons,
+                new ActionButton(new CommonButtonData(Component.literal("Cancel"), 100), Optional.empty()),
                 1);
         player.openDialog(Holder.direct(dialog));
     }

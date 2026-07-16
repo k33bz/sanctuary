@@ -138,6 +138,18 @@ public class Sanctuary implements ModInitializer {
         com.k33bz.sanctuary.rift.RiftPortals.register();
         // Phase-2 rift reset: its own UNTHROTTLED server-tick handler (the state machine self-throttles;
         // it is a modulo-gated no-op while idle) + login-rescue for players offline across a reset.
+        // PEACEFUL gathering world: discard hostiles the moment they load in the resource dimension.
+        // This can't be done with data alone — dimension_type.monster_spawn_light_level is floored at 0 by
+        // its codec, which still permits spawning in pitch-black caves, and fixed_time only silences the
+        // surface. Discarding on load also covers spawners and structure mobs, not just natural spawns.
+        // Passive/creature mobs are untouched, so the world still has sheep and cows to farm.
+        ServerEntityEvents.ENTITY_LOAD.register((entity, world) -> {
+            SanctuaryConfig c = CONFIG;
+            if (c != null && entity instanceof Monster
+                    && c.riftDimension.equals(world.dimension().identifier().toString())) {
+                entity.discard();
+            }
+        });
         ServerTickEvents.END_SERVER_TICK.register(com.k33bz.sanctuary.rift.RiftReset::tick);
         ServerTickEvents.END_SERVER_TICK.register(com.k33bz.sanctuary.event.NightEvents::tick);
         net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents.JOIN.register(

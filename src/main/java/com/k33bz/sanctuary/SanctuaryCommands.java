@@ -139,6 +139,7 @@ public final class SanctuaryCommands {
         bool("graves", () -> cfg().gravesEnabled, b -> cfg().gravesEnabled = b);
         bool("wildEssence", () -> cfg().wildEssenceEnabled, b -> cfg().wildEssenceEnabled = b);
         bool("riftReset", () -> cfg().riftResetEnabled, b -> cfg().riftResetEnabled = b);
+        bool("riftResetRestore", () -> cfg().riftResetRestoreFromSnapshot, b -> cfg().riftResetRestoreFromSnapshot = b);
         bool("nightEvents", () -> cfg().nightEvents.enabled, b -> cfg().nightEvents.enabled = b);
         num("nightEvents.weight.ordinary", () -> cfg().nightEvents.ordinary.weight, v -> cfg().nightEvents.ordinary.weight = (int) Math.round(v), 0, 1000);
         num("nightEvents.weight.blood_moon", () -> cfg().nightEvents.blood_moon.weight, v -> cfg().nightEvents.blood_moon.weight = (int) Math.round(v), 0, 1000);

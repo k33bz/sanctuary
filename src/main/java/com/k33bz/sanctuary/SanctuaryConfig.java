@@ -306,6 +306,12 @@ public class SanctuaryConfig {
     public int riftResetWarnSeconds = 300;           // countdown broadcast before evacuation (0 = none)
     public int riftResetUnloadTimeoutTicks = 1200;   // 60s to reach full unload or ABORT (world untouched)
     public int riftResetFlushTimeoutTicks = 2400;    // 120s per flush wait or ABORT
+    // Snapshot-restore: when true, the weekly reset RESTORES each non-pad chunk from a pristine snapshot
+    // (instant-ready, no gen-lag, deterministic) instead of clearing it to regenerate from seed. Capture
+    // the snapshot once, from a freshly pre-generated + untouched resource world (save-all flush, then copy
+    // its region/ entities/ poi/ folders into riftSnapshotDir). Missing snapshot -> falls back to regen.
+    public boolean riftResetRestoreFromSnapshot = false;
+    public String riftSnapshotDir = "sanctuary_rift_snapshot"; // relative to the server game dir, or absolute
 
     // Night events — themed nightly events on a deterministic seeded schedule. Effects only touch the
     // wild + overworld (sanctuaries/Nether/End/rift are spared). See com.k33bz.sanctuary.event.NightEvents.

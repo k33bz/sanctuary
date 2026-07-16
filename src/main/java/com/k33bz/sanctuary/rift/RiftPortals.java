@@ -41,6 +41,16 @@ public final class RiftPortals {
     private static final int FILL_REACH = 2;        // membrane flood stays within this manhattan distance of centre
     private static final double DEDUPE = 5.0;       // don't register a new portal within this of an existing one
 
+    /** Per-player game-time of the last at-your-cap refusal, so the message can't repeat every tick while
+     *  the player stands in a wild opening. Dropped on disconnect via {@link #forget}. */
+    private static final java.util.Map<java.util.UUID, Long> CAP_WARNED = new java.util.HashMap<>();
+    private static final long CAP_WARN_COOLDOWN = 200L; // 10s between refusals
+
+    /** Drop per-player cap-warning state on disconnect (called from {@link Rifts#forget}). */
+    public static void forget(java.util.UUID id) {
+        CAP_WARNED.remove(id);
+    }
+
     public static void register() {
         // No ignition hook — ruined portals auto-activate on contact via checkRuined() (driven by Rifts.tick).
     }
@@ -50,9 +60,10 @@ public final class RiftPortals {
     }
 
     static boolean isOpen(BlockState s) {
-        // Only genuine air (or an already-placed membrane) counts as a portal opening. NETHER_PORTAL and
-        // FIRE are excluded so a lit vanilla Nether portal is never hijacked into a rift gateway.
-        return s.isAir() || s.is(Blocks.GREEN_STAINED_GLASS);
+        // A portal opening is genuine air — the gateway is marked by a green PARTICLE plane, not a block, so
+        // there is no membrane block to also accept. NETHER_PORTAL/FIRE aren't air, so a lit vanilla Nether
+        // portal is still never hijacked into a rift gateway.
+        return s.isAir();
     }
 
     /**
@@ -86,27 +97,40 @@ public final class RiftPortals {
                 return; // already an established portal here — let the travel check handle it
             }
         }
-        if (countCrying(w, feet) < cfg.riftMinCrying) {
-            return; // a real ruined portal carries crying obsidian; a plain (all-obsidian) portal never fires
-        }
         // Creation caps: bound the store, the return-portal spam, and the weekly-reset pad carving.
-        // (0 = unlimited for either cap.)
+        // (0 = unlimited for either cap.) Both are pure store reads, so they're evaluated BEFORE the
+        // 5x5x5 crying-obsidian sweep — a capped player standing in a frame shouldn't pay for it per tick.
         if (cfg.riftMaxTotal > 0 && store.rifts.size() >= cfg.riftMaxTotal) {
             return;
         }
         String ownerId = p.getUUID().toString();
+        boolean capped = false;
         if (cfg.riftMaxPerPlayer > 0) {
             int mine = 0;
             for (RiftStore.Rift r : store.rifts) {
-                if (r.portal && ownerId.equals(r.ownerId)) {
+                // Only the wild OVERWORLD gateways a player opens count against their cap. travel() creates
+                // the resource-side return portal with the same ownerId, so counting every dimension would
+                // silently halve the configured cap for anyone who actually crosses the rifts they open.
+                if (r.portal && r.dim.equals("minecraft:overworld") && ownerId.equals(r.ownerId)) {
                     mine++;
                 }
             }
-            if (mine >= cfg.riftMaxPerPlayer) {
+            capped = mine >= cfg.riftMaxPerPlayer;
+        }
+        if (countCrying(w, feet) < cfg.riftMinCrying) {
+            return; // a real ruined portal carries crying obsidian; a plain (all-obsidian) portal never fires
+        }
+        if (capped) {
+            // checkRuined runs per player per tick, so the refusal needs its own latch (like Rifts.COOLDOWN)
+            // or it repeats every tick for as long as they stand in the opening and scrolls their chat away.
+            long now = w.getGameTime();
+            Long last = CAP_WARNED.get(p.getUUID());
+            if (last == null || now - last >= CAP_WARN_COOLDOWN) {
+                CAP_WARNED.put(p.getUUID(), now);
                 p.sendSystemMessage(Component.literal("The wild will hold no more rifts of your making.")
                         .withStyle(ChatFormatting.LIGHT_PURPLE));
-                return;
             }
+            return;
         }
         establish(w, feet, p.getScoreboardName(), ownerId);
     }
@@ -123,21 +147,84 @@ public final class RiftPortals {
 
     /** Light + register a rift portal centred on {@code centre} (a ruined-portal opening the player stands in). */
     static void establish(ServerLevel w, BlockPos centre, String owner, String ownerId) {
-        fillMembrane(w, centre);
+        int[] cells = computeOpening(w, centre); // the opening plane for the particle membrane — no blocks placed
         RiftStore store = RiftStore.get();
         String dim = w.dimension().identifier().toString();
-        if (!store.exists(dim, centre)) {
-            RiftStore.Rift r = store.create(dim, centre, owner, ownerId); // create() persists the base record
-            r.portal = true;
-            r.h = 3;
-            store.save(); // persist the portal/h flags set after create()
+        RiftStore.Rift r = store.riftAt(dim, centre);
+        if (r == null) {
+            r = store.create(dim, centre, owner, ownerId); // create() persists the base record
         }
+        r.portal = true;
+        r.h = 3;
+        r.membrane = cells;
+        store.save(); // persist the portal/h/membrane fields
         run(w.getServer(), String.format(Locale.ROOT,
                 "particle minecraft:composter %.2f %.2f %.2f 0.4 0.7 0.4 0.05 40",
                 centre.getX() + 0.5, centre.getY() + 1.0, centre.getZ() + 0.5));
         run(w.getServer(), String.format(Locale.ROOT,
                 "playsound minecraft:block.beacon.activate block @a %.2f %.2f %.2f 1 1.4",
                 centre.getX() + 0.5, centre.getY() + 0.5, centre.getZ() + 0.5));
+    }
+
+    // --- one-shot upgrade: pre-particle portals (green stained glass, no membrane cells) ---
+
+    /**
+     * Worlds that ran the pre-particle build filled each portal opening with GREEN STAINED GLASS and stored
+     * no membrane cells. Those records are unreachable from both membrane writers ({@link #establish} bails
+     * on the DEDUPE hit, {@link Rifts#travel} only builds a return side when none is linked), and
+     * {@link #isOpen} now accepts air ONLY — so without this pass a live world's existing portals would keep
+     * their glass forever, never render a particle plane, and stay un-standable. Clears the stale glass back
+     * to air and records the opening so the plane renders from the first tick after the upgrade.
+     */
+    private static void migrateLegacyMembranes(MinecraftServer server) {
+        RiftStore store = RiftStore.get();
+        int fixed = 0;
+        for (RiftStore.Rift r : store.rifts) {
+            if (!r.portal || r.membrane != null) {
+                continue; // point rift, or already on the particle membrane
+            }
+            ServerLevel w = levelOf(server, r.dim);
+            if (w == null) {
+                continue; // dimension gone (e.g. a stale record) — leave it for the legacy puff
+            }
+            BlockPos centre = new BlockPos(r.x, r.y, r.z);
+            w.getChunkAt(centre); // the column may not be loaded at boot
+            sweepLegacyGlass(w, centre); // MUST precede computeOpening: the flood only crosses isOpen() cells
+            r.membrane = computeOpening(w, centre);
+            fixed++;
+        }
+        if (fixed > 0) {
+            store.save();
+            Sanctuary.LOGGER.info("[sanctuary] migrated {} legacy rift portal(s) from glass to particle membranes", fixed);
+        }
+    }
+
+    /** Clear the pre-particle green membrane blocks around a legacy portal so its opening reads as air. */
+    private static void sweepLegacyGlass(ServerLevel w, BlockPos centre) {
+        int reach = FILL_REACH + 1; // the old fill stayed within FILL_REACH of centre; +1 for safety
+        for (int dx = -reach; dx <= reach; dx++) {
+            for (int dy = -reach; dy <= reach; dy++) {
+                for (int dz = -reach; dz <= reach; dz++) {
+                    BlockPos p = centre.offset(dx, dy, dz);
+                    if (w.getBlockState(p).is(Blocks.GREEN_STAINED_GLASS)) {
+                        w.setBlock(p, Blocks.AIR.defaultBlockState(), 3);
+                    }
+                }
+            }
+        }
+    }
+
+    /** The loaded level for a dimension id, or null. Matches by id so no registry lookup is needed. */
+    private static ServerLevel levelOf(MinecraftServer server, String dimId) {
+        if (dimId == null) {
+            return null;
+        }
+        for (ServerLevel w : server.getAllLevels()) {
+            if (w.dimension().identifier().toString().equals(dimId)) {
+                return w;
+            }
+        }
+        return null;
     }
 
     private static int countCrying(ServerLevel w, BlockPos centre) {
@@ -155,48 +242,52 @@ public final class RiftPortals {
     }
 
     /**
-     * Flood-fill the opening with the green membrane, CONSTRAINED to the portal's own vertical plane. The
-     * plane is the horizontal axis carrying the frame's side columns; the perpendicular ("depth") axis — the
-     * walk-through faces — is left clear. This means (a) an incomplete/open ruined frame can't bleed glass
-     * out across the landscape, and (b) the opening's front/back cells stay air, so a traveller landing at or
-     * beside the opening is never entombed. The player's own cell is left open regardless.
+     * The opening cells of a ruined portal — a plane flood-fill from {@code centre}, CONSTRAINED to the
+     * portal's own vertical plane (the horizontal axis carrying the frame's side columns; the perpendicular
+     * "depth"/walk-through axis is left out). These are where the green PARTICLE plane is rendered each tick.
+     * NOTHING is placed, so an incomplete/open ruined frame can't bleed anything across the landscape and a
+     * traveller landing at or in the opening is never entombed. Returned as flattened x,y,z triples.
      */
-    private static void fillMembrane(ServerLevel w, BlockPos centre) {
+    private static int[] computeOpening(ServerLevel w, BlockPos centre) {
         boolean fx = frameAlong(w, centre, Direction.Axis.X);
         boolean fz = frameAlong(w, centre, Direction.Axis.Z);
         Direction.Axis depth = (fz && !fx) ? Direction.Axis.X : Direction.Axis.Z; // default plane = X-Y
-        Set<BlockPos> fill = new HashSet<>();
+        java.util.List<BlockPos> cells = new java.util.ArrayList<>();
+        Set<BlockPos> seen = new HashSet<>();
         Deque<BlockPos> q = new ArrayDeque<>();
         q.add(centre.immutable());
-        while (!q.isEmpty() && fill.size() < MEMBRANE_CAP) {
+        while (!q.isEmpty() && cells.size() < MEMBRANE_CAP) {
             BlockPos b = q.poll();
-            if (fill.contains(b) || centre.distManhattan(b) > FILL_REACH) {
+            if (seen.contains(b) || centre.distManhattan(b) > FILL_REACH) {
                 continue;
             }
             int depthOff = depth == Direction.Axis.X ? (b.getX() - centre.getX()) : (b.getZ() - centre.getZ());
             if (depthOff != 0) {
-                continue; // stay in the plane — never fill the open walk-through faces
+                continue; // stay in the plane — the open walk-through faces aren't part of the membrane
             }
             BlockState s = w.getBlockState(b);
             if (isFrame(s)) {
                 continue; // frame boundary
             }
-            if (!s.isAir() && !s.is(Blocks.GREEN_STAINED_GLASS)) {
-                continue; // only fill genuinely open cells
+            if (!s.isAir()) {
+                continue; // only genuinely open cells
             }
-            fill.add(b.immutable());
+            seen.add(b.immutable());
+            cells.add(b.immutable());
             for (Direction d : Direction.values()) {
-                if (d.getAxis() != depth) { // don't even traverse toward the open faces
+                if (d.getAxis() != depth) { // don't traverse toward the open faces
                     q.add(b.relative(d));
                 }
             }
         }
-        BlockState glass = Blocks.GREEN_STAINED_GLASS.defaultBlockState();
-        for (BlockPos b : fill) {
-            if (!b.equals(centre) && w.getBlockState(b).isAir()) {
-                w.setBlockAndUpdate(b, glass);
-            }
+        int[] out = new int[cells.size() * 3];
+        for (int i = 0; i < cells.size(); i++) {
+            BlockPos b = cells.get(i);
+            out[i * 3] = b.getX();
+            out[i * 3 + 1] = b.getY();
+            out[i * 3 + 2] = b.getZ();
         }
+        return out;
     }
 
     /** True if a portal-frame block sits within 2 cells of {@code c} along {@code axis} (a side column). */
@@ -249,19 +340,18 @@ public final class RiftPortals {
     }
 
     /**
-     * Build a matching green return portal at a resource-world landing (a crying-obsidian frame + green
-     * membrane in the X-Y plane at {@code base.z}, with a standing platform in front at +Z). Every write is
-     * gated by {@link #replaceable} so it lays over air/natural terrain only — never carving through a
-     * player build. Returns the membrane-interior anchor (bottom-left); {@link Rifts} registers that as the
-     * {@code portal} rift and lands the traveller on the platform 2 blocks out. {@code base} = the ground cell.
+     * Build a matching return portal at a resource-world landing: a crying-obsidian frame in the X-Y plane at
+     * {@code base.z} with a standing platform in front (+Z) and an AIR opening (a green particle plane, not a
+     * block). Every write is gated by {@link #replaceable} so it lays over air/natural terrain only — never
+     * carving through a player build. Returns the opening cells (flattened x,y,z triples) for {@link Rifts} to
+     * store on the return rift so the particle plane renders there. {@code base} = the ground cell.
      */
-    static BlockPos buildReturnPortal(ServerLevel dest, BlockPos base) {
+    static int[] buildReturnPortal(ServerLevel dest, BlockPos base) {
         int bx = base.getX();
         int by = base.getY();
         int bz = base.getZ();
         BlockState cry = Blocks.CRYING_OBSIDIAN.defaultBlockState();
         BlockState obs = Blocks.OBSIDIAN.defaultBlockState();
-        BlockState glass = Blocks.GREEN_STAINED_GLASS.defaultBlockState();
         BlockState air = Blocks.AIR.defaultBlockState();
         // floor under the frame + a 2-deep standing platform in front (+Z)
         for (int x = bx - 1; x <= bx + 2; x++) {
@@ -277,10 +367,16 @@ public final class RiftPortals {
             place(dest, new BlockPos(bx - 1, y, bz), cry);
             place(dest, new BlockPos(bx + 2, y, bz), cry);
         }
-        // green membrane interior (2 wide x 3 tall)
+        // opening interior (2 wide x 3 tall): cleared to AIR — a green particle plane, not a block. Record
+        // the cells so Rifts can render the shimmer here.
+        int[] cells = new int[2 * 3 * 3];
+        int i = 0;
         for (int x = bx; x <= bx + 1; x++) {
             for (int y = by + 1; y <= by + 3; y++) {
-                place(dest, new BlockPos(x, y, bz), glass);
+                clearIfNatural(dest, new BlockPos(x, y, bz), air);
+                cells[i++] = x;
+                cells[i++] = y;
+                cells[i++] = bz;
             }
         }
         // clear headroom in front so the player can stand + step in (clears air/natural only)
@@ -291,7 +387,7 @@ public final class RiftPortals {
                 }
             }
         }
-        return new BlockPos(bx, by + 1, bz);
+        return cells;
     }
 
     /** Place {@code state} only where the target is air or natural terrain — never overwrite a player build. */
@@ -330,7 +426,13 @@ public final class RiftPortals {
 
     public static void onServerStarted(MinecraftServer server) {
         SanctuaryConfig cfg = Sanctuary.CONFIG;
-        if (cfg == null || !cfg.riftsEnabled || cfg.riftDefaultPortal == null || cfg.riftDefaultPortal.length < 3) {
+        if (cfg == null || !cfg.riftsEnabled) {
+            return;
+        }
+        // Upgrade pre-particle portals first: the default-portal check below early-returns on any world
+        // that already has a rift registered, so a migration placed after it would never run there.
+        migrateLegacyMembranes(server);
+        if (cfg.riftDefaultPortal == null || cfg.riftDefaultPortal.length < 3) {
             return;
         }
         ServerLevel over = server.overworld();

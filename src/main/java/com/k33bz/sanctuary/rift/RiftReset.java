@@ -21,6 +21,7 @@ import net.minecraft.world.level.chunk.storage.SimpleRegionStorage;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.storage.LevelResource;
 import net.minecraft.nbt.CompoundTag;
+import net.fabricmc.loader.api.FabricLoader;
 import com.k33bz.sanctuary.Sanctuary;
 import com.k33bz.sanctuary.SanctuaryConfig;
 
@@ -88,6 +89,7 @@ public final class RiftReset {
     private static SimpleRegionStorage poiStore = null;
     private static PoiManager poi = null;
     private static CompletableFuture<?>[] flushFutures = null;
+    private static RiftSnapshot snapshot = null; // pristine snapshot to RESTORE from; null = clear+regen
 
     private static long tickCounter = 0;
     private static final long RETRY_BACKOFF_TICKS = 6000; // ~5 min: retry a transiently-aborted run soon
@@ -193,6 +195,15 @@ public final class RiftReset {
         }
         preserved.clear();
         computePreserved(cfg, store, preserved);
+        // RESTORE mode: open the pristine snapshot now (its own region handles; read-only; closed in
+        // teardown). A missing snapshot leaves it null -> CLEAR falls back to clear+regen per chunk.
+        if (snapshot != null) {
+            snapshot.close();
+            snapshot = null;
+        }
+        if (cfg.riftResetRestoreFromSnapshot && !dryRun) {
+            snapshot = RiftSnapshot.openIfPresent(snapshotDir(cfg), rw.dimension());
+        }
         toClear.clear();
         workQueue.clear();
         regionFiles = null;
@@ -305,7 +316,14 @@ public final class RiftReset {
             regionsScanned++;
         }
         if (regionFileIdx >= regionFiles.size()) {
-            workQueue.addAll(toClear);
+            // Order chunks by region so the snapshot reader (RESTORE mode) touches one region .mca at a
+            // time — its LRU handle cache then stays at ~1 open file instead of one per region.
+            List<Long> ordered = new ArrayList<>(toClear);
+            ordered.sort((a, b) -> {
+                int c = Integer.compare(unpackX(a) >> 5, unpackX(b) >> 5);
+                return c != 0 ? c : Integer.compare(unpackZ(a) >> 5, unpackZ(b) >> 5);
+            });
+            workQueue.addAll(ordered);
             if (dryRun) {
                 Sanctuary.LOGGER.info("[sanctuary] rift reset DRY-RUN: would clear {} chunks across {} region files "
                         + "(preserving {} pad chunks). Writing nothing.", toClear.size(), regionsScanned, preserved.size());
@@ -332,7 +350,11 @@ public final class RiftReset {
         while (budget-- > 0 && !workQueue.isEmpty()) {
             long key = workQueue.poll();
             ChunkPos pos = new ChunkPos(unpackX(key), unpackZ(key));
-            blockStore.write(pos, (CompoundTag) null);
+            // RESTORE writes the pristine BLOCK chunk only; entities + POI are ALWAYS cleared to null and
+            // rebuild from the restored blocks on load — this removes the duplicate-UUID / POI-desync
+            // classes and means the snapshot need only contain region/. A null block (no snapshot open, or
+            // this chunk absent / unreadable / newer than the server) = clear + regen from seed (fallback).
+            blockStore.write(pos, snapshot != null ? snapshot.block(pos) : (CompoundTag) null);
             entStore.write(pos, (CompoundTag) null);
             poiStore.write(pos, (CompoundTag) null);
             clearedCount++;
@@ -393,7 +415,10 @@ public final class RiftReset {
         if (!dryRun) {
             SanctuaryConfig cfg = Sanctuary.CONFIG;
             long interval = cfg != null ? cfg.riftResetIntervalTicks : 0L;
-            store.lastResetTick = now - interval + Math.min(interval, RETRY_BACKOFF_TICKS);
+            // Clamp: lastResetTick < 0 is the reserved "never reset" sentinel that tickIdle's due-check and
+            // status() both gate on. On a young world (game time < interval) the backoff arithmetic goes
+            // negative, which would silently disarm the retry AND every future weekly reset until restart.
+            store.lastResetTick = Math.max(0L, now - interval + Math.min(interval, RETRY_BACKOFF_TICKS));
         }
         store.resetPhase = "IDLE";
         store.save();
@@ -413,6 +438,10 @@ public final class RiftReset {
     }
 
     private static void teardown() {
+        if (snapshot != null) {
+            snapshot.close();
+            snapshot = null;
+        }
         savedForced.clear();
         stateFirstTick = false;
         state = State.IDLE;
@@ -470,14 +499,27 @@ public final class RiftReset {
         }
     }
 
+    /** The pristine-snapshot directory: {@code riftSnapshotDir} if absolute, else under the server game dir. */
+    private static Path snapshotDir(SanctuaryConfig cfg) {
+        String s = (cfg.riftSnapshotDir == null || cfg.riftSnapshotDir.isBlank())
+                ? "sanctuary_rift_snapshot" : cfg.riftSnapshotDir;
+        Path p = Path.of(s);
+        return p.isAbsolute() ? p : FabricLoader.getInstance().getGameDir().resolve(p);
+    }
+
     // ---- preserved-pad math (GLOBAL chunk coords only; our own packing) ----
 
     static void computePreserved(SanctuaryConfig cfg, RiftStore store, Set<Long> out) {
-        int pad = Math.max(0, cfg.riftResetPadChunks);
         for (RiftStore.Rift r : store.rifts) {
             if (!cfg.riftDimension.equals(r.dim)) {
                 continue;
             }
+            // A return portal's footprint spans x-1..x+2, so it straddles a chunk border whenever its anchor
+            // sits near one. At pad=0 (which the config and command both permit) the neighbour chunk would be
+            // restored from the snapshot — burying half the frame and refilling a membrane cell with stone —
+            // while the rift record survives and keeps rendering/triggering a half-buried gateway. So a portal
+            // rift always keeps at least its own 3x3.
+            int pad = Math.max(r.portal ? 1 : 0, cfg.riftResetPadChunks);
             int rcx = r.x >> 4; // arithmetic shift = floorDiv(16), correct for negatives
             int rcz = r.z >> 4;
             for (int cx = rcx - pad; cx <= rcx + pad; cx++) {

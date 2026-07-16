@@ -37,8 +37,10 @@ public final class RiftStore {
         public int linkZ;
         public String owner;    // creator display name (messaging / future per-player limits)
         public String ownerId;  // creator UUID string
-        public boolean portal;  // true = a crying-obsidian green-membrane rift portal (bigger trigger box)
+        public boolean portal;  // true = a crying-obsidian ruined-portal rift gateway (bigger trigger box)
         public int h;           // portal interior height (for the portal trigger box); 0 for point rifts
+        public int[] membrane;  // opening cells as flattened x,y,z triples — where the green PARTICLE plane
+                                // is rendered (no blocks placed); null for point rifts / legacy records
 
         public boolean at(String d, int bx, int by, int bz) {
             return d.equals(dim) && bx == x && by == y && bz == z;

@@ -212,11 +212,11 @@ public final class Gravekeeper {
                 // "unrecognized or invalid command" confirm screen). Backend strips it.
                 com.k33bz.sanctuary.DialogInputs.command("sanctuarygrave search *$(query)")));
 
-        Dialog dialog = new MultiActionDialog(new CommonDialogData(
+        Dialog dialog = com.k33bz.sanctuary.DialogInputs.multiAction(new CommonDialogData(
                 Component.literal("The Gravekeeper"), java.util.Optional.empty(), true, false,
                 DialogAction.CLOSE, body, inputs), buttons,
-                java.util.Optional.of(new ActionButton(
-                        new CommonButtonData(Component.literal("Leave"), 100), java.util.Optional.empty())),
+                new ActionButton(
+                        new CommonButtonData(Component.literal("Leave"), 100), java.util.Optional.empty()),
                 1);
         player.openDialog(Holder.direct(dialog));
     }

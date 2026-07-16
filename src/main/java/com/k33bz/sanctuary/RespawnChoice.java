@@ -270,9 +270,12 @@ public final class RespawnChoice {
                 DialogAction.CLOSE,
                 body,
                 inputs);
-        Dialog dialog = new MultiActionDialog(common, buttons,
-                Optional.of(new ActionButton(
-                        new CommonButtonData(Component.literal("Rest here (free)"), 120), Optional.empty())),
+        // Guarded: every button above is conditional, so a player dying with no bed, fewer than two
+        // owned sanctuaries and no resurrect offer (e.g. in the gathering world) produced a ZERO-action
+        // dialog, which fails to encode and disconnects them. See DialogInputs.multiAction.
+        Dialog dialog = com.k33bz.sanctuary.DialogInputs.multiAction(common, buttons,
+                new ActionButton(
+                        new CommonButtonData(Component.literal("Rest here (free)"), 120), Optional.empty()),
                 1);
         player.openDialog(Holder.direct(dialog));
     }

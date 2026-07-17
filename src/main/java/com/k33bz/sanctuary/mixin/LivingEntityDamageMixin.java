@@ -47,7 +47,7 @@ public class LivingEntityDamageMixin {
 
         float worldMult = SurvivalLogic.worldDangerMultiplier(
                 serverLevel.getDifficulty().getId(),
-                serverLevel.getGameTime(),
+                com.k33bz.sanctuary.DangerClock.ageTicks(),
                 Sanctuary.blocksBeyondNearestAnchor(cfg, player.getX(), player.getZ()),
                 cfg.danger
         );

@@ -152,6 +152,10 @@ public class Sanctuary implements ModInitializer {
         });
         ServerTickEvents.END_SERVER_TICK.register(com.k33bz.sanctuary.rift.RiftReset::tick);
         ServerTickEvents.END_SERVER_TICK.register(com.k33bz.sanctuary.event.NightEvents::tick);
+        // World-danger age clock: accrue occupied ticks only while players are online.
+        ServerTickEvents.END_SERVER_TICK.register(com.k33bz.sanctuary.DangerClock::tick);
+        net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STARTED
+                .register(com.k33bz.sanctuary.DangerClock::load);
         // First-join traveller's kit (Middle-earth fare). Registered as its own listener so it is
         // independent of whatever else greets the player.
         net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents.JOIN.register(
@@ -172,6 +176,7 @@ public class Sanctuary implements ModInitializer {
                 server -> com.k33bz.sanctuary.grave.Graves.flushIfDue(server.overworld().getGameTime()));
         // Final flush/close of the metrics + grave stores on clean shutdown.
         net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
+            com.k33bz.sanctuary.DangerClock.save();
             com.k33bz.sanctuary.grave.Graves.saveNow();
             com.k33bz.sanctuary.metrics.KillMetrics.flush();
             com.k33bz.sanctuary.metrics.KillEventLog.close();

@@ -468,9 +468,6 @@ public class SanctuaryConfig {
         // in-game days per real day, so 0.02 hit the 4x cap in ~2.5 real days — everywhere, spawn
         // included. 0.0005 is a months-scale slow burn (~+1x per month of server uptime).
         public double perDayWeight = 0.0005;
-        // Game time (ticks) the age pressure is measured from. /sanctuary danger reset sets this
-        // to "now", so the world feels young again without touching the actual world clock.
-        public long epochTick = 0L;
         // Per block beyond the nearest safe radius. Default 0: mob attributes (System 7) already
         // scale with distance, and this multiplied ON TOP of them (~24x at 5k instead of 6x).
         // Left as a knob for deliberate double-dipping experiments later.
@@ -497,10 +494,6 @@ public class SanctuaryConfig {
             return maxMultiplier;
         }
 
-        @Override
-        public long epochTick() {
-            return epochTick;
-        }
     }
 
     public static class Anchor {

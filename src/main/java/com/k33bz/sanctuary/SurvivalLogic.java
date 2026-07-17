@@ -12,12 +12,13 @@ public final class SurvivalLogic {
      * System 4 — world-danger multiplier (>= 1.0). Compounds three pressures:
      * world difficulty, time the world has been alive, and distance beyond the nearest safe anchor.
      */
-    public static float worldDangerMultiplier(int difficultyId, long gameTimeTicks,
+    public static float worldDangerMultiplier(int difficultyId, long ageTicks,
                                               double blocksBeyondSafe, DangerParams p) {
         float difficultyTerm = 1.0f + p.difficultyWeight() * Math.max(0, difficultyId);
         // Age is measured from the epoch (a persisted reset point), not from tick 0 — so ops can
-        // reset the pressure without touching the world's actual clock.
-        double days = Math.max(0L, gameTimeTicks - p.epochTick()) / 24000.0;
+        // reset it. Age now counts only OCCUPIED time (see DangerClock): an idle server or a
+        // Chunky pregen never ages the world's danger.
+        double days = Math.max(0L, ageTicks) / 24000.0;
         float timeTerm = 1.0f + (float) (p.perDayWeight() * days);
         float distanceTerm = 1.0f + (float) (p.perBlockWeight() * Math.max(0.0, blocksBeyondSafe));
         float mult = difficultyTerm * timeTerm * distanceTerm;
@@ -268,10 +269,5 @@ public final class SurvivalLogic {
         double perBlockWeight();
 
         float maxMultiplier();
-
-        /** Game time the age pressure is measured from (see {@code /sanctuary danger reset}). */
-        default long epochTick() {
-            return 0L;
-        }
     }
 }

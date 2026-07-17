@@ -308,20 +308,17 @@ public final class SanctuaryCommands {
             dispatcher.register(Commands.literal("sanctuarydanger")
                     .requires(Commands.<CommandSourceStack>hasPermission(Commands.LEVEL_GAMEMASTERS))
                     .then(Commands.literal("status").executes(safe(ctx -> {
-                        long epoch = cfg().danger.epochTick;
-                        long now = ctx.getSource().getServer().overworld().getGameTime();
-                        double days = Math.max(0, now - epoch) / 24000.0;
+                        double days = com.k33bz.sanctuary.DangerClock.ageTicks() / 24000.0;
                         ctx.getSource().sendSuccess(() -> Component.literal(String.format(
                                 java.util.Locale.ROOT,
-                                "World-age pressure: %.1f in-game days since epoch (tick %d).",
-                                days, epoch)), false);
+                                "World-age pressure: %.1f PLAYED days (time with a player online) since reset.",
+                                days)), false);
                         return 1;
                     })))
                     .then(Commands.literal("reset").executes(safe(ctx -> {
-                        cfg().danger.epochTick = ctx.getSource().getServer().overworld().getGameTime();
-                        cfg().save();
+                        com.k33bz.sanctuary.DangerClock.reset();
                         ctx.getSource().sendSuccess(() -> Component.literal(
-                                "Danger epoch re-zeroed and saved."), true);
+                                "Danger age re-zeroed and saved."), true);
                         return 1;
                     }))));
             // Ops: define the graveyard for the sanctuary you stand in.
@@ -1081,12 +1078,12 @@ public final class SanctuaryCommands {
     /** The world-age pressure: days accrued since the epoch and the multiplier it produces. */
     private static int dangerStatus(CommandContext<CommandSourceStack> ctx) {
         CommandSourceStack src = ctx.getSource();
-        long gameTime = src.getServer().overworld().getGameTime();
-        double days = Math.max(0L, gameTime - cfg().danger.epochTick) / 24000.0;
+        long age = com.k33bz.sanctuary.DangerClock.ageTicks();
+        double days = age / 24000.0;
         float atSanctuary = SurvivalLogic.worldDangerMultiplier(
-                src.getServer().overworld().getDifficulty().getId(), gameTime, 0.0, cfg().danger);
+                src.getServer().overworld().getDifficulty().getId(), age, 0.0, cfg().danger);
         String msg = String.format(java.util.Locale.ROOT,
-                "World-age danger: %.1f in-game days since last reset -> x%.2f inside a sanctuary (cap x%.1f)",
+                "World-age danger: %.1f played days since last reset -> x%.2f inside a sanctuary (cap x%.1f)",
                 days, atSanctuary, cfg().danger.maxMultiplier);
         src.sendSuccess(() -> Component.literal(msg), false);
         return 1;
@@ -1095,8 +1092,7 @@ public final class SanctuaryCommands {
     /** Re-zero the age pressure without touching the world clock. Persists immediately. */
     private static int dangerReset(CommandContext<CommandSourceStack> ctx) {
         CommandSourceStack src = ctx.getSource();
-        cfg().danger.epochTick = src.getServer().overworld().getGameTime();
-        cfg().save();
+        com.k33bz.sanctuary.DangerClock.reset();
         src.sendSuccess(() -> Component.literal(
                 "World-age danger reset — the world feels young again (saved to config)."), true);
         return 1;

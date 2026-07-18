@@ -56,20 +56,20 @@ public final class RiftSeal {
 
     private static InteractionResult onUseBlock(Player player, Level level, InteractionHand hand, BlockHitResult hit) {
         // Fires once per hand; check the item in the hand that fired so an off-hand igniter is caught too.
-        if (level.isClientSide() || !sealing(level)) {
+        if (level.isClientSide() || !(player instanceof ServerPlayer sp) || !sealing(level)) {
             return InteractionResult.PASS;
         }
-        ItemStack held = player.getItemInHand(hand);
+        ItemStack held = sp.getItemInHand(hand);
         String frame = id(level.getBlockState(hit.getBlockPos()));
         // Nether portal: refuse to light an obsidian frame.
         if ((held.is(Items.FLINT_AND_STEEL) || held.is(Items.FIRE_CHARGE))
                 && (frame.equals("minecraft:obsidian") || frame.equals("minecraft:crying_obsidian"))) {
-            deny(player, "The gathering world smothers the flame — no gate will light here.");
+            deny(sp, "The gathering world smothers the flame — no gate will light here.");
             return InteractionResult.FAIL;
         }
         // End portal: refuse to seat an eye of ender in a portal frame.
         if (held.is(Items.ENDER_EYE) && frame.equals("minecraft:end_portal_frame")) {
-            deny(player, "The gathering world swallows the eye — no gate will open here.");
+            deny(sp, "The gathering world swallows the eye — no gate will open here.");
             return InteractionResult.FAIL;
         }
         return InteractionResult.PASS;
@@ -102,7 +102,9 @@ public final class RiftSeal {
         return BuiltInRegistries.BLOCK.getKey(s.getBlock()).toString();
     }
 
-    private static void deny(Player player, String msg) {
-        player.displayClientMessage(Component.literal(msg).withStyle(ChatFormatting.LIGHT_PURPLE), true);
+    private static void deny(ServerPlayer player, String msg) {
+        // sendSystemMessage(Component) is the per-player message idiom used across the rift code (Rifts.hint);
+        // Player#displayClientMessage is absent in this mapping.
+        player.sendSystemMessage(Component.literal(msg).withStyle(ChatFormatting.LIGHT_PURPLE));
     }
 }

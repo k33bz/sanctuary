@@ -285,6 +285,10 @@ public class SanctuaryConfig {
 
     public boolean riftsEnabled = true;
     public String riftDimension = "sanctuary:resource_world";
+    // The gathering world is wiped weekly, so vanilla Nether/End portals must NOT work inside it — a working
+    // gate would let a player stash items and progress OUTSIDE the reset. RiftSeal refuses to light an obsidian
+    // frame or seat an eye of ender there, and clears any portal block that slips in. See rift.RiftSeal.
+    public boolean sealResourcePortals = true;
     public int riftTravelCooldownTicks = 60;   // suppress re-teleport for ~3s after a crossing
     public double riftTriggerRadius = 0.6;      // horizontal distance to a point rift that triggers travel
     // Rift portals: a nether-portal frame containing CRYING OBSIDIAN, lit with flint & steel, fills with a

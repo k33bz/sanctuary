@@ -137,6 +137,8 @@ public class Sanctuary implements ModInitializer {
         // Rift access is now via crying-obsidian nether portals (RiftPortals), not the Rift Anchor head.
         // Rifts.tick still drives travel + weekly-reset linking for the registered portals.
         com.k33bz.sanctuary.rift.RiftPortals.register();
+        // Seal the gathering world against vanilla Nether/End portals — they would survive the weekly reset.
+        com.k33bz.sanctuary.rift.RiftSeal.register();
         // Phase-2 rift reset: its own UNTHROTTLED server-tick handler (the state machine self-throttles;
         // it is a modulo-gated no-op while idle) + login-rescue for players offline across a reset.
         // PEACEFUL gathering world: discard hostiles the moment they load in the resource dimension.

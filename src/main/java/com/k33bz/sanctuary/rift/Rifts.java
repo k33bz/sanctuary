@@ -74,6 +74,7 @@ public final class Rifts {
             // which the travel scan below then carries the player across.
             if (player.level() instanceof ServerLevel psl) {
                 RiftPortals.checkRuined(psl, player, cfg);
+                RiftSeal.sweep(psl, player); // clear any Nether/End portal block inside the gathering world
             }
             String dim = player.level().dimension().identifier().toString();
             double px = player.getX();

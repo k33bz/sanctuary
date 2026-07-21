@@ -982,6 +982,26 @@ public final class Graves {
      * Covers both graveyard plots and wild grave markers. Cheap: scans the grave list (small) and
      * only for positions near a grave.
      */
+    /**
+     * Reverse lookup: the grave whose plot occupies {@code pos} (its base {@code gy} or ground
+     * {@code gy-1}), or null. Mirrors the column match in {@link #isProtectedGraveBlock}; used by
+     * {@link GraveRob} to turn a break on a protected grave block into a rob.
+     */
+    public static Grave graveAt(String dim, BlockPos pos) {
+        for (Grave g : store().graves) {
+            if (g.heldByKeeper || g.dim == null || !g.dim.equals(dim)) {
+                continue;
+            }
+            int gx = (int) Math.floor(g.x);
+            int gy = (int) Math.floor(g.y);
+            int gz = (int) Math.floor(g.z);
+            if (pos.getX() == gx && pos.getZ() == gz && (pos.getY() == gy || pos.getY() == gy - 1)) {
+                return g;
+            }
+        }
+        return null;
+    }
+
     public static boolean isProtectedGraveBlock(String dim, BlockPos pos) {
         for (Grave g : store().graves) {
             if (g.heldByKeeper || g.dim == null || !g.dim.equals(dim)) {
@@ -1524,7 +1544,7 @@ public final class Graves {
         return null;
     }
 
-    private static void notifyOwner(MinecraftServer server, Grave grave, String message) {
+    static void notifyOwner(MinecraftServer server, Grave grave, String message) {
         if (grave.owner == null) {
             return;
         }

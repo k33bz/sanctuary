@@ -53,7 +53,7 @@ public final class AnchorDialog {
                     .withStyle(ChatFormatting.GRAY));
         }
         if (anchor.id != null) {
-            status.append(Component.literal("\nid: " + anchor.id.substring(0, 8))
+            status.append(Component.literal("\nid: " + AnchorState.shortId(anchor.id))
                     .withStyle(ChatFormatting.DARK_GRAY));
         }
         body.add(new PlainMessage(status, 250));

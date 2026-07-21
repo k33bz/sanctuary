@@ -1203,7 +1203,7 @@ public final class SanctuaryCommands {
             }
             shown++;
             String owner = a.owner == null ? "server" : a.owner;
-            String id = a.id == null ? "????????" : a.id.substring(0, 8);
+            String id = com.k33bz.sanctuary.anchor.AnchorState.shortId(a.id);
             String named = a.name == null || a.name.isBlank() ? "" : " \"" + a.name + "\"";
             String[] t = com.k33bz.sanctuary.anchor.AnchorUpkeep.remaining(a, now);
             String precise = a.isExempt() ? ""

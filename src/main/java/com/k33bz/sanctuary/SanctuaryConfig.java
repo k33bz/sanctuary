@@ -154,6 +154,13 @@ public class SanctuaryConfig {
     public int keeperLingerTicksMax = 160;   // ~8s max pause
     public double keeperWanderMargin = 2.0;  // blocks kept inside the fence (never path to the edge)
 
+    // Gravekeeper spectral aura (0.8.4, issue #5): a faint soul/sculk shimmer around the keeper that
+    // echoes the smite's surface/underground theming without touching the (Polymer-less) villager skin.
+    // An OPEN-SKY keeper shows the aura AT NIGHT only; an UNDERGROUND (roofed) keeper shows it ALWAYS.
+    // Emitted every keeperAuraIntervalTicks, staggered per keeper so puffs never pulse in lockstep.
+    public boolean keeperAura = true;
+    public int keeperAuraIntervalTicks = 15; // ~0.75s between shimmer puffs
+
     // Gravekeeper mutterings (0.8.5): occasionally the keeper says ONE quiet flavor line to himself as
     // he patrols, delivered ONLY to players within keeperMutterRadius (so it reads as muttering, never
     // global chat). Cadence is a per-keeper jittered interval in

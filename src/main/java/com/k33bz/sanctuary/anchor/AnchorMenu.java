@@ -111,7 +111,7 @@ public class AnchorMenu extends SimpleGui {
         java.util.List<Component> lore = new java.util.ArrayList<>();
         lore.add(Component.literal("Owner: " + who).withStyle(ChatFormatting.GRAY));
         if (anchor.id != null) {
-            lore.add(Component.literal("id: " + anchor.id.substring(0, 8)).withStyle(ChatFormatting.DARK_GRAY));
+            lore.add(Component.literal("id: " + AnchorState.shortId(anchor.id)).withStyle(ChatFormatting.DARK_GRAY));
         }
         if (!anchor.isExempt()) {
             lore.add(Component.literal(countdown(anchor.hoursLeft(now)))

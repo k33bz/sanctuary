@@ -19,6 +19,17 @@ import java.util.List;
  */
 public class AnchorState {
 
+    /**
+     * First 8 chars of an id for display, null/short-safe. Anchor ids are UUIDs (36 chars) so the
+     * short case is only theoretical, but harden at the sink rather than trust the id's shape.
+     */
+    public static String shortId(String id) {
+        if (id == null || id.isEmpty()) {
+            return "????????";
+        }
+        return id.length() >= 8 ? id.substring(0, 8) : id;
+    }
+
     public static class PlacedAnchor {
         public double x;
         public double z;

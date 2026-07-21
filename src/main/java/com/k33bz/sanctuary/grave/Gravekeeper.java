@@ -494,6 +494,14 @@ public final class Gravekeeper {
                 if (cfg.keeperMutter) {
                     tickKeeperMutter(level, keeper, yard, cfg, graveTargets.size());
                 }
+
+                // Spectral aura (0.8.4, issue #5): a faint soul/sculk shimmer. Open-sky keeper only
+                // at night; underground keeper always. Staggered by entity id so puffs don't lockstep.
+                if (cfg.keeperAura && cfg.keeperAuraIntervalTicks > 0
+                        && (t + keeper.getId()) % cfg.keeperAuraIntervalTicks == 0
+                        && (!seesSky(level, keeper) || isNight(level))) {
+                    emitAura(level, keeper.getX(), bobY, keeper.getZ());
+                }
             }
         }
         // Prune patrol + mutter state for keepers no longer present (despawn / chunk unload / self-heal
@@ -807,6 +815,21 @@ public final class Gravekeeper {
     private static void run(ServerLevel level, String command) {
         level.getServer().getCommands().performPrefixedCommand(
                 level.getServer().createCommandSourceStack().withSuppressedOutput(), command);
+    }
+
+    /** Vanilla night window (monster-spawn hours): dusk ~13000 to just before dawn ~23000. */
+    private static boolean isNight(ServerLevel level) {
+        long tod = level.getDayTime() % 24000L;
+        return tod >= 13000L && tod < 23000L;
+    }
+
+    /**
+     * A faint soul/sculk shimmer around a keeper (issue #5 aura). A few soft, low-count particles just
+     * above the keeper — no {@code force}, so it's a subtle near-field effect, not a broadcast burst.
+     */
+    private static void emitAura(ServerLevel level, double x, double y, double z) {
+        run(level, fx("particle minecraft:soul", x, y + 1.0, z, "0.28 0.5 0.28 0.0 2"));
+        run(level, fx("particle minecraft:sculk_soul", x, y + 1.1, z, "0.24 0.5 0.24 0.0 1"));
     }
 
     /** Rotate a NoAI keeper to face a horizontal point (server-side yaw only; no pathfinding/AI). */

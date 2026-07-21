@@ -102,12 +102,13 @@ Dependencies: sgui and fabric-permissions-api are bundled via `include(...)`. Fl
 `compileOnly` and gated at runtime on `isModLoaded` in `FlanIntegration` — keep it optional.
 LuckPerms nodes (`sanctuary.anchor.create/break/admin`) refine permissions when present.
 
-**Vanilla Tweaks is internalized** (0.8.7.0 refactor): the 33-ish external VT datapacks were
-cut, so `recipes`, `dragon`/`bat` drops, and `xp_bottling` are now **native code** rather than
-bundled packs. `vt_packs.txt` is now **empty** and `VanillaTweaksPacks.register()` consequently
-registers nothing — the class + txt are vestigial scaffolding kept only in case a pack is ever
-re-added. The one datapack still bundled is `resourcepacks/crafting_tweaks/`. Don't re-introduce
-`resourcepacks/vt/`.
+**Vanilla Tweaks is (mostly) internalized** (0.8.7.0 refactor): the 33-ish external VT datapacks
+were cut, so `recipes`, `dragon`/`bat` drops are now **native code** rather than bundled packs.
+**Branch gap:** on `main` (26.2) `xp_bottling` is ALSO native (`Sanctuary.registerXpBottling`,
+config `xpBottlingEnabled`) and `vt_packs.txt` is empty; on **this `26.1` line `xp_bottling` is
+still a bundled VT datapack** (`vt_packs.txt` lists it, pack under `resourcepacks/vt/`) — the
+migration was never finished here (issue #6). `VanillaTweaksPacks.register()` reads `vt_packs.txt`.
+The other datapack still bundled on both is `resourcepacks/crafting_tweaks/`.
 
 ## Testing
 

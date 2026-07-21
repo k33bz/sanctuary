@@ -1,3 +1,18 @@
+## 0.8.7.3
+
+**Gravekeeper spectral aura (issue #5, completes 0.8.4).** The keeper's 0.8.4 patrol shipped, but
+the paired soul/sculk aura hadn't — added now. A faint, low-count `soul` + `sculk_soul` shimmer
+rises from the keeper: an open-sky keeper shows it **at night only**, an underground (roofed) keeper
+shows it **always**, echoing the smite's surface/underground theming without needing a villager
+reskin. No `force` on the particles, so it's a subtle near-field effect. Config: `keeperAura`
+(default on), `keeperAuraIntervalTicks` (15 ≈ 0.75s, staggered per keeper).
+
+**Hardening (issue #9).** Short-id display is now null/short-safe: the three `id.substring(0, 8)`
+call sites (`AnchorDialog`, `AnchorMenu`, `/sanctuary list`) route through a shared
+`AnchorState.shortId(...)`. Anchor ids are UUIDs so the short case was only theoretical, but the
+guard lives at the sink now rather than trusting the id's shape. Closes the last of the mod-review
+low findings (the `ALLAY_TYPE.create` null-guard and `Locale.ROOT` formats had already landed).
+
 ## Unreleased
 
 **Rift-world** — a resource-gathering dimension reached by sanctuary-gated Rift Anchors.

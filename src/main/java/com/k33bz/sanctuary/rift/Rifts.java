@@ -1,9 +1,7 @@
 package com.k33bz.sanctuary.rift;
 
-import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -11,13 +9,7 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.InteractionHand;
-import net.minecraft.world.InteractionResult;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.Level;
 import net.minecraft.world.level.levelgen.Heightmap;
-import net.minecraft.world.phys.BlockHitResult;
 import com.k33bz.sanctuary.Sanctuary;
 import com.k33bz.sanctuary.SanctuaryConfig;
 
@@ -28,10 +20,10 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 
 /**
- * The rift mechanic: a {@link RiftAnchor} used on open ground OUTSIDE a sanctuary tears a persistent
- * rift to the {@code sanctuary:resource_world} gathering dimension; stepping onto a rift teleports
- * across, lazily opening a return rift on the far side the first time. Only creation is gated (you
- * must explore into the wild — {@link Sanctuary#blocksBeyondNearestAnchor} &gt; 0); travel is free.
+ * Rift travel + ambience. The gateways themselves are the world's ruined portals, established by
+ * {@link RiftPortals}; this class owns only the crossing: stepping into a registered green portal
+ * teleports to the {@code sanctuary:resource_world} gathering dimension, lazily building a matching
+ * green return portal on the far side the first time.
  *
  * <p>Teleport uses {@code execute in <dim> run tp} rather than a mapping-specific {@code teleportTo}
  * overload, so it survives Minecraft version churn. The player name is interpolated into that
@@ -54,57 +46,16 @@ public final class Rifts {
      */
     private static final Map<UUID, String> ARRIVED_ON = new HashMap<>();
 
-    public static void register() {
-        UseBlockCallback.EVENT.register(Rifts::onUseBlock);
+    /** Drop per-player travel state on disconnect (wired from Sanctuary's DISCONNECT handler) so these
+     *  maps don't accumulate one entry per unique UUID for the server's whole uptime. */
+    public static void forget(UUID id) {
+        COOLDOWN.remove(id);
+        ARRIVED_ON.remove(id);
+        RiftPortals.forget(id);
     }
 
-    // --- creation (Rift Anchor used on a block) ---
-
-    private static InteractionResult onUseBlock(Player player, Level level, InteractionHand hand, BlockHitResult hit) {
-        if (level.isClientSide() || hand != InteractionHand.MAIN_HAND || !(player instanceof ServerPlayer sp)) {
-            return InteractionResult.PASS;
-        }
-        ItemStack held = player.getItemInHand(hand);
-        if (!RiftAnchor.isRiftAnchor(held)) {
-            return InteractionResult.PASS;
-        }
-        SanctuaryConfig cfg = Sanctuary.CONFIG;
-        if (cfg == null || !cfg.riftsEnabled || !(level instanceof ServerLevel world)) {
-            return InteractionResult.PASS;
-        }
-        // From here the player is deliberately using a Rift Anchor on a block: we own this
-        // interaction and always cancel the default (skull placement), succeeding or hinting.
-        BlockPos riftPos = hit.getBlockPos().relative(hit.getDirection());
-        BlockPos floor = riftPos.below();
-        if (!world.getBlockState(riftPos).canBeReplaced()
-                || !world.getBlockState(riftPos.above()).canBeReplaced()
-                || !world.getBlockState(floor).isFaceSturdy(world, floor, Direction.UP)) {
-            sp.sendOverlayMessage(hint("There is no room to open a rift here."));
-            return InteractionResult.SUCCESS;
-        }
-        String dimId = world.dimension().identifier().toString();
-        if (dimId.equals(cfg.riftDimension)) {
-            sp.sendOverlayMessage(hint("You cannot tear a rift from within the gathering world."));
-            return InteractionResult.SUCCESS;
-        }
-        if (Sanctuary.blocksBeyondNearestAnchor(cfg, riftPos.getX() + 0.5, riftPos.getZ() + 0.5) <= 0.0) {
-            sp.sendOverlayMessage(hint("The rift will not open — a sanctuary holds space together here."));
-            return InteractionResult.SUCCESS;
-        }
-        RiftStore store = RiftStore.get();
-        if (store.exists(dimId, riftPos)) {
-            sp.sendOverlayMessage(hint("A rift already stands here."));
-            return InteractionResult.SUCCESS;
-        }
-        store.create(dimId, riftPos, sp.getScoreboardName(), sp.getUUID().toString());
-        if (!sp.isCreative()) {
-            held.shrink(1);
-        }
-        burst(world.getServer(), riftPos);
-        sp.sendOverlayMessage(Component.literal("A rift tears open. Step through to reach the gathering world.")
-                .withStyle(ChatFormatting.LIGHT_PURPLE));
-        return InteractionResult.SUCCESS;
-    }
+    // Rift creation is no longer a player action — the world's ruined portals ARE the gateways
+    // (see RiftPortals.checkRuined, driven from tick() below). This class now owns only travel + ambience.
 
     // --- travel + ambience (throttled tick from Sanctuary's server-tick loop, ~1/s) ---
 
@@ -113,13 +64,17 @@ public final class Rifts {
             return;
         }
         RiftStore store = RiftStore.get();
-        if (store.rifts.isEmpty()) {
-            return;
-        }
         long now = server.overworld().getGameTime();
+        java.util.Set<String> shimmered = new java.util.HashSet<>(); // render each rift's particle plane once/tick
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             if (player.isDeadOrDying()) {
                 continue;
+            }
+            // Ruined portals auto-activate on contact: this may register a fresh green-membrane gateway,
+            // which the travel scan below then carries the player across.
+            if (player.level() instanceof ServerLevel psl) {
+                RiftPortals.checkRuined(psl, player, cfg);
+                RiftSeal.sweep(psl, player); // clear any Nether/End portal block inside the gathering world
             }
             String dim = player.level().dimension().identifier().toString();
             double px = player.getX();
@@ -133,13 +88,14 @@ public final class Rifts {
                 double dx = (r.x + 0.5) - px;
                 double dz = (r.z + 0.5) - pz;
                 double horiz = Math.sqrt(dx * dx + dz * dz);
-                if (horiz < 24.0) {
-                    // gentle ambient shimmer at nearby rifts
-                    run(server, String.format(Locale.ROOT,
-                            "particle minecraft:reverse_portal %.2f %.2f %.2f 0.22 0.55 0.22 0.015 6",
-                            r.x + 0.5, r.y + 0.4, r.z + 0.5));
+                if (horiz < 24.0 && shimmered.add(r.id)) {
+                    shimmer(server, r); // green particle plane across a portal's opening; a puff at a point rift
                 }
-                if (standingOn == null && horiz <= cfg.riftTriggerRadius && Math.abs(py - r.y) < 1.6) {
+                // A ruined-portal rift triggers when you step into its opening (a taller, wider box than a
+                // point rift — you walk into the particle plane from the front rather than stand on a cell).
+                double radius = r.portal ? cfg.riftPortalTriggerRadius : cfg.riftTriggerRadius;
+                double dyLimit = r.portal ? (r.h + 0.5) : 1.6;
+                if (standingOn == null && horiz <= radius && Math.abs(py - r.y) < dyLimit) {
                     standingOn = r;
                 }
             }
@@ -188,34 +144,67 @@ public final class Rifts {
                 player.sendSystemMessage(hint("The rift's far side has faded."));
                 return;
             }
-            tx = from.linkX;
-            ty = from.linkY;
-            tz = from.linkZ;
-            destRift = store.riftAt(destDim, new BlockPos(tx, ty, tz));
+            destRift = store.riftAt(destDim, new BlockPos(from.linkX, from.linkY, from.linkZ));
+            // Land BESIDE the far portal's opening, never dead-centre inside its solid green membrane.
+            BlockPos land = (destRift != null && destRift.portal)
+                    ? RiftPortals.safeLandingNear(dest, from.linkX, from.linkY, from.linkZ, destRift.h)
+                    : new BlockPos(from.linkX, from.linkY, from.linkZ);
+            tx = land.getX();
+            ty = land.getY();
+            tz = land.getZ();
         } else {
-            // First crossing from a fresh overworld anchor: open the return side now.
+            // First crossing from a fresh overworld portal: open + link the return side now.
             destDim = cfg.riftDimension;
             ServerLevel dest = levelOf(server, destDim);
             if (dest == null) {
                 player.sendSystemMessage(hint("The gathering world is unavailable."));
                 return;
             }
-            tx = from.x;
-            tz = from.z;
             // Force-generate the destination column first: a fresh, ungenerated chunk reports its
             // heightmap as the world floor, which would drop the crossing player into the void.
-            dest.getChunkAt(new BlockPos(tx, dest.getMinY() + 1, tz));
-            ty = dest.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, tx, tz);
-            if (ty <= dest.getMinY() + 1) {
-                ty = 128; // void-biome / still-empty guard — never strand the player at the floor
+            dest.getChunkAt(new BlockPos(from.x, dest.getMinY() + 1, from.z));
+            int groundY = dest.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, from.x, from.z);
+            if (groundY <= dest.getMinY() + 1) {
+                groundY = 128; // void-biome / still-empty guard — never strand the player at the floor
             }
-            BlockPos landing = new BlockPos(tx, ty, tz);
-            RiftStore.Rift back = store.riftAt(destDim, landing);
+            // The return rift is registered at the membrane interior; the player lands 2 blocks out on the
+            // standing platform (so arrival doesn't latch onto the rift) and safeLandingNear handles every
+            // later re-entry so nobody materialises inside the glass.
+            int baseZ = from.z;
+            BlockPos anchor = new BlockPos(from.x, groundY + 1, baseZ);
+            RiftStore.Rift back = store.riftAt(destDim, anchor);
+            // Rare: two overworld portals share an x,z (stacked). Nudge the whole return outward so the
+            // second crossing builds its own gateway instead of stealing the first portal's link.
+            int guard = 0;
+            while (back != null && back.linked
+                    && !(back.linkDim.equals(from.dim) && back.linkX == from.x
+                            && back.linkY == from.y && back.linkZ == from.z)
+                    && guard++ < 8) {
+                baseZ += 3;
+                anchor = new BlockPos(from.x, groundY + 1, baseZ);
+                back = store.riftAt(destDim, anchor);
+            }
             if (back == null) {
-                back = store.create(destDim, landing, from.owner, from.ownerId);
+                BlockPos base = new BlockPos(from.x, groundY, baseZ);
+                // Force-load every chunk the return-pad footprint spans so nothing is written into an
+                // ungenerated neighbour chunk mid-crossing.
+                for (int cx = base.getX() - 1; cx <= base.getX() + 2; cx += 3) {
+                    for (int cz = base.getZ(); cz <= base.getZ() + 2; cz += 2) {
+                        dest.getChunkAt(new BlockPos(cx, groundY, cz));
+                    }
+                }
+                int[] cells = RiftPortals.buildReturnPortal(dest, base);
+                back = store.create(destDim, anchor, from.owner, from.ownerId);
+                back.portal = true;
+                back.h = 3;
+                back.membrane = cells;
             }
             store.link(from, back);
             destRift = back;
+            // land on the platform in FRONT of the return membrane (+Z), not inside the glass
+            tx = from.x;
+            ty = groundY + 1;
+            tz = baseZ + 2;
         }
         run(server, String.format(Locale.ROOT, "execute in %s run tp %s %.3f %.3f %.3f",
                 destDim, name, tx + 0.5, (double) ty, tz + 0.5));
@@ -237,17 +226,31 @@ public final class Rifts {
         }
     }
 
-    private static void burst(MinecraftServer server, BlockPos pos) {
-        run(server, String.format(Locale.ROOT,
-                "particle minecraft:reverse_portal %.2f %.2f %.2f 0.3 0.6 0.3 0.05 60",
-                pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5));
-        run(server, String.format(Locale.ROOT,
-                "playsound minecraft:block.beacon.activate block @a %.2f %.2f %.2f 1 0.7",
-                pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5));
-    }
-
     private static Component hint(String text) {
         return Component.literal(text).withStyle(ChatFormatting.LIGHT_PURPLE);
+    }
+
+    /** Ambient shimmer: for a ruined-portal rift, a green particle plane across every opening cell (the
+     *  membrane, rendered by particles — no block is placed); for a point rift, a single reverse-portal puff. */
+    private static void shimmer(MinecraftServer server, RiftStore.Rift r) {
+        // Every particle MUST be dispatched with "execute in <dim>": run() builds a command source from
+        // server.createCommandSourceStack(), whose level is always the overworld, and ParticleCommand
+        // resolves its target level from the source. Without the override, a gathering-world rift's plane
+        // would be spawned in the OVERWORLD at those coordinates — invisible to the player standing at the
+        // portal, and leaking stray green sparks into the overworld column above the source portal.
+        if (r.portal && r.membrane != null && r.membrane.length >= 3) {
+            for (int i = 0; i + 2 < r.membrane.length; i += 3) {
+                run(server, String.format(Locale.ROOT,
+                        "execute in %s run particle minecraft:composter %.2f %.2f %.2f 0.24 0.24 0.24 0.004 3",
+                        r.dim, r.membrane[i] + 0.5, r.membrane[i + 1] + 0.5, r.membrane[i + 2] + 0.5));
+            }
+        } else {
+            run(server, String.format(Locale.ROOT,
+                    r.portal ? "execute in %s run particle minecraft:composter %.2f %.2f %.2f 0.32 %.2f 0.32 0.01 8"
+                             : "execute in %s run particle minecraft:reverse_portal %.2f %.2f %.2f 0.22 0.55 0.22 0.015 6",
+                    r.dim, r.x + 0.5, r.y + (r.portal ? 1.0 : 0.4), r.z + 0.5,
+                    r.portal ? Math.max(0.4, r.h * 0.35) : 0.55));
+        }
     }
 
     private static void run(MinecraftServer server, String command) {

@@ -1,8 +1,11 @@
 {
-  "type": "minecraft:overworld",
+  "type": "sanctuary:resource_world",
   "generator": {
     "type": "minecraft:noise",
-    "settings": "minecraft:overworld",
-    "biome_source": { "type": "minecraft:multi_noise", "preset": "minecraft:overworld" }
+    "settings": "sanctuary:vanilla_overworld",
+    "biome_source": {
+      "type": "minecraft:multi_noise",
+      "preset": "sanctuary:overworld"
+    }
   }
 }

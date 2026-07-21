@@ -3,6 +3,10 @@
 **Rift-world** — a resource-gathering dimension reached by sanctuary-gated Rift Anchors.
 - `sanctuary:resource_world`: an overworld-preset dimension (Terralith terrain, full ores) so
   players gather there instead of strip-mining the home world.
+- **Sealed against escape** (`sealResourcePortals`, default on): Nether portals won't light and
+  stronghold End portals won't open inside the gathering world, and any portal block that slips in
+  is swept away. Because the world is wiped weekly, a working gate would let a player stash items and
+  progress outside the reset. Rift travel (a command teleport) is unaffected. See `rift.RiftSeal`.
 - **Rift Anchor** (craftable player-head marker: 1 ender pearl + 4 obsidian + 4 amethyst shard):
   used on open ground OUTSIDE a sanctuary it tears a persistent rift; refused inside one — so you
   must explore into the wild. Stepping on a rift crosses to the resource world and a return rift

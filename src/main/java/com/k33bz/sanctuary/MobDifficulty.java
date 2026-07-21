@@ -68,6 +68,9 @@ public final class MobDifficulty {
         // Fuzzy zone edges: this individual rolled slightly stronger or weaker than its distance
         // says, so tier boundaries are bands, not lines. All of its stats share the one roll.
         beyond = SurvivalLogic.fuzzedBeyond(beyond, mob.getRandom().nextGaussian(), ms.edgeFuzz);
+        // Blood Moon: amplify the distance term so this wild mob's health/damage/speed/xp/tier all scale up
+        // together (existing caps still clamp). Baked as permanent modifiers -> it stays dangerous after dawn.
+        beyond *= com.k33bz.sanctuary.event.NightEvents.spawnPowerFactorAt(mob.level(), mob.getX(), mob.getY(), mob.getZ());
 
         double healthMult = SurvivalLogic.mobPowerMultiplier(beyond, ms.healthPerBlock, ms.healthMaxMultiplier);
         double damageMult = SurvivalLogic.mobPowerMultiplier(beyond, ms.damagePerBlock, ms.damageMaxMultiplier,
@@ -325,6 +328,27 @@ public final class MobDifficulty {
             mob.goalSelector.addGoal(1, new BreakDoorGoal(mob, difficulty -> true));
             // And when the way through is blocked, smash the frame of a player-placed door.
             mob.goalSelector.addGoal(2, new com.k33bz.sanctuary.siege.SmashDoorFrameGoal(mob));
+        }
+    }
+
+    /** Tag marking a door-breaker recruited by The Hunt, so its temporary goal can be revoked at dawn
+     *  without disturbing the distance-based door-breakers that earned the tag legitimately. */
+    public static final String HUNT_DOOR_TAG = "sanctuary_hunt_door";
+
+    /** The Hunt recruits a wild zombie as a door-breaker for the night (the goal re-attaches on reload). */
+    public static void makeHuntDoorBreaker(Mob mob) {
+        if (mob instanceof Zombie && !mob.entityTags().contains(DOOR_BREAKER_TAG)) {
+            mob.addTag(DOOR_BREAKER_TAG);
+            mob.addTag(HUNT_DOOR_TAG); // remember WE granted it, so cleanup is surgical
+            attachDoorBreakGoalIfMarked(mob);
+        }
+    }
+
+    /** Undo a Hunt-granted door-breaker at dawn; distance-based breakers (no HUNT_DOOR_TAG) are left alone. */
+    public static void clearHuntDoorBreaker(Mob mob) {
+        if (mob.entityTags().contains(HUNT_DOOR_TAG)) {
+            mob.removeTag(HUNT_DOOR_TAG);
+            mob.removeTag(DOOR_BREAKER_TAG); // the BreakDoorGoal goes inert on the next reload
         }
     }
 

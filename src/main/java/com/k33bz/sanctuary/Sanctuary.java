@@ -86,6 +86,11 @@ public class Sanctuary implements ModInitializer {
         // that interrupted a previous reset (partial clears are safe; just clear the phase flag).
         net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STARTED
                 .register(com.k33bz.sanctuary.rift.RiftReset::onServerStarted);
+        net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STARTED
+                .register(com.k33bz.sanctuary.event.NightEvents::onServerStarted);
+        // Keep the default crying-obsidian rift portal lit, if an admin built its frame.
+        net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STARTED
+                .register(com.k33bz.sanctuary.rift.RiftPortals::onServerStarted);
         // System 10 -- right-clicks on headstones (claim/rob) and the Gravekeeper (summon menu).
         net.fabricmc.fabric.api.event.player.UseEntityCallback.EVENT.register(
                 (p, world, hand, entity, hit) -> {
@@ -129,10 +134,35 @@ public class Sanctuary implements ModInitializer {
         registerXpBottling();
         registerSoulRetention();
         com.k33bz.sanctuary.anchor.AnchorUpkeep.register();
-        com.k33bz.sanctuary.rift.Rifts.register();
+        // Rift access is now via crying-obsidian nether portals (RiftPortals), not the Rift Anchor head.
+        // Rifts.tick still drives travel + weekly-reset linking for the registered portals.
+        com.k33bz.sanctuary.rift.RiftPortals.register();
+        // Seal the gathering world against vanilla Nether/End portals — they would survive the weekly reset.
+        com.k33bz.sanctuary.rift.RiftSeal.register();
         // Phase-2 rift reset: its own UNTHROTTLED server-tick handler (the state machine self-throttles;
         // it is a modulo-gated no-op while idle) + login-rescue for players offline across a reset.
+        // PEACEFUL gathering world: discard hostiles the moment they load in the resource dimension.
+        // This can't be done with data alone — dimension_type.monster_spawn_light_level is floored at 0 by
+        // its codec, which still permits spawning in pitch-black caves, and fixed_time only silences the
+        // surface. Discarding on load also covers spawners and structure mobs, not just natural spawns.
+        // Passive/creature mobs are untouched, so the world still has sheep and cows to farm.
+        ServerEntityEvents.ENTITY_LOAD.register((entity, world) -> {
+            SanctuaryConfig c = CONFIG;
+            if (c != null && entity instanceof Monster
+                    && c.riftDimension.equals(world.dimension().identifier().toString())) {
+                entity.discard();
+            }
+        });
         ServerTickEvents.END_SERVER_TICK.register(com.k33bz.sanctuary.rift.RiftReset::tick);
+        ServerTickEvents.END_SERVER_TICK.register(com.k33bz.sanctuary.event.NightEvents::tick);
+        // World-danger age clock: accrue occupied ticks only while players are online.
+        ServerTickEvents.END_SERVER_TICK.register(com.k33bz.sanctuary.DangerClock::tick);
+        net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STARTED
+                .register(com.k33bz.sanctuary.DangerClock::load);
+        // First-join traveller's kit (Middle-earth fare). Registered as its own listener so it is
+        // independent of whatever else greets the player.
+        net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents.JOIN.register(
+                (handler, sender, server) -> StartingKit.onJoin(handler.player));
         net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents.JOIN.register(
                 (handler, sender, server) -> com.k33bz.sanctuary.rift.RiftReset.onPlayerJoin(server, handler.player));
         // Forget zone tracking on disconnect so the next login re-announces the player's zone.
@@ -140,6 +170,7 @@ public class Sanctuary implements ModInitializer {
                 (handler, server) -> {
                     MobDifficulty.clearPlayer(handler.player.getUUID());
                     AfkTracker.forget(handler.player.getUUID());
+                    com.k33bz.sanctuary.rift.Rifts.forget(handler.player.getUUID());
                 });
         SanctuaryCommands.register();
         // Coalesced, off-thread grave-store persistence: mutations only flag the store dirty; this
@@ -148,6 +179,7 @@ public class Sanctuary implements ModInitializer {
                 server -> com.k33bz.sanctuary.grave.Graves.flushIfDue(server.overworld().getGameTime()));
         // Final flush/close of the metrics + grave stores on clean shutdown.
         net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
+            com.k33bz.sanctuary.DangerClock.save();
             com.k33bz.sanctuary.grave.Graves.saveNow();
             com.k33bz.sanctuary.metrics.KillMetrics.flush();
             com.k33bz.sanctuary.metrics.KillEventLog.close();
@@ -430,6 +462,7 @@ public class Sanctuary implements ModInitializer {
                 }
                 MobDifficulty.tickBoundary(player, cfg);
                 AfkTracker.tick(player, cfg);
+                com.k33bz.sanctuary.event.NightEvents.tickPlayer(player, cfg);
             }
             AnchorInteraction.pulseAnchors(server); // focus pulse at active anchors
             com.k33bz.sanctuary.anchor.LavaCauldronCook.sweep(server, cfg); // temper raw membranes

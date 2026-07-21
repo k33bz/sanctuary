@@ -1,3 +1,23 @@
+## 0.8.8.0
+
+**Grave robbing (issue #7).** The "dig up graves" mechanic held back in 0.8.2 is now live. A
+NON-owner who breaks a **wild** grave's plot block **at night**, once it has sat public past
+`graveRobbableAfterHours` (default 24h), **digs it up** instead of being blocked — the grave's
+0.8.2 unbreakable-block gate makes an exception for exactly this path. Robbing is a lossy,
+risky gamble:
+- **Soul XP** — the robber gains a flat `graveRobXpPoints` (30) reward. Graves don't store the
+  victim's XP (soul-retention keeps that on the player), so this is residue drawn up with the goods.
+- **Goods** — each stack has a `graveRobItemYieldFraction` (0.60) chance to transfer; the rest
+  **shatter**. Of those that transfer, `graveRobItemDamageFraction` (0.25) come up **damaged**.
+- **The disturbed dead** — `graveRobWraithChance` (0.35) to raise `graveRobWraithCount` (2)
+  "Restless Wraith" hostiles and curse the robber with Wither + Weakness for `graveRobCurseSeconds`.
+- The headstone **crumbles** (displays + record removed), the owner is notified (chat now; postbox
+  mail is a follow-up), and the rob is recorded as a `"robbed"` grave event.
+
+**Never robbable:** graveyard graves (the keeper's ground stays sacrosanct), fresh graves inside
+the public window, held-by-keeper graves, or your own. All levers are `grave.rob*` config knobs,
+live-tunable via `/sanctuary set`. Disable entirely with `graveRobbingEnabled=false`.
+
 ## 0.8.7.3
 
 **Native xp-bottling on 26.1 (issue #6, VT migration finished).** 26.1 was still shipping

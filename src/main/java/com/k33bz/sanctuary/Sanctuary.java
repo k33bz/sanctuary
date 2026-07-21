@@ -213,6 +213,19 @@ public class Sanctuary implements ModInitializer {
                                 gl.dimension().identifier().toString(), pos)
                         || com.k33bz.sanctuary.grave.Graves.isProtectedYardRegion(
                                 gl.dimension().identifier().toString(), pos))) {
+                // Grave robbing (issue #7): a non-owner digging a WILD grave's plot block at night,
+                // once it has aged past its public window, DIGS IT UP instead of being blocked — the
+                // rob runs and the break is allowed. Graveyard/yard-region blocks and ineligible
+                // graves fall through to the normal protection below (the ground stays consecrated).
+                if (player instanceof ServerPlayer sp && CONFIG.graveRobbingEnabled) {
+                    String dim = gl.dimension().identifier().toString();
+                    com.k33bz.sanctuary.grave.Graves.Grave g =
+                            com.k33bz.sanctuary.grave.Graves.graveAt(dim, pos);
+                    if (g != null && com.k33bz.sanctuary.grave.GraveRob.canRob(sp, g, CONFIG, gl)) {
+                        com.k33bz.sanctuary.grave.GraveRob.rob(sp, g, gl, pos, CONFIG);
+                        return true;
+                    }
+                }
                 if (player instanceof ServerPlayer sp) {
                     sp.sendOverlayMessage(net.minecraft.network.chat.Component
                             .literal("This rests on consecrated ground.")

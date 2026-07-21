@@ -108,6 +108,16 @@ public final class SanctuaryCommands {
         num("grave.claimFee", () -> cfg().graveClaimFeeFraction, v -> cfg().graveClaimFeeFraction = v, 0, 1);
         num("grave.summonFee", () -> cfg().graveSummonFeeFraction, v -> cfg().graveSummonFeeFraction = v, 0, 1);
         num("grave.memorialDecayDays", () -> cfg().graveMemorialDecayDays, v -> cfg().graveMemorialDecayDays = v, 0, 100000);
+        bool("grave.robbing", () -> cfg().graveRobbingEnabled, b -> cfg().graveRobbingEnabled = b);
+        bool("grave.robNightOnly", () -> cfg().graveRobNightOnly, b -> cfg().graveRobNightOnly = b);
+        num("grave.robbableAfterHours", () -> cfg().graveRobbableAfterHours, v -> cfg().graveRobbableAfterHours = v, 0, 100000);
+        num("grave.robXpPoints", () -> (double) cfg().graveRobXpPoints, v -> cfg().graveRobXpPoints = (int) v, 0, 100000);
+        num("grave.robItemYield", () -> cfg().graveRobItemYieldFraction, v -> cfg().graveRobItemYieldFraction = v, 0, 1);
+        num("grave.robItemDamage", () -> cfg().graveRobItemDamageFraction, v -> cfg().graveRobItemDamageFraction = v, 0, 1);
+        num("grave.robWraithChance", () -> cfg().graveRobWraithChance, v -> cfg().graveRobWraithChance = v, 0, 1);
+        num("grave.robWraithCount", () -> (double) cfg().graveRobWraithCount, v -> cfg().graveRobWraithCount = (int) v, 0, 20);
+        num("grave.robCurseSeconds", () -> (double) cfg().graveRobCurseSeconds, v -> cfg().graveRobCurseSeconds = (int) v, 0, 100000);
+        bool("grave.robMailOwner", () -> cfg().graveRobMailOwner, b -> cfg().graveRobMailOwner = b);
         bool("graveyard.smite", () -> cfg().graveyardSmiteEnabled, b -> cfg().graveyardSmiteEnabled = b);
         num("graveyard.smiteMargin", () -> (double) cfg().graveyardSmiteMargin,
                 v -> cfg().graveyardSmiteMargin = (int) Math.round(v), 0, 128);

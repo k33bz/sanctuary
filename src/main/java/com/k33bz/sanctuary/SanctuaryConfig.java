@@ -105,6 +105,22 @@ public class SanctuaryConfig {
     public int graveyardMinSize = 9;   // ritual pen minimum interior span (9x9)
     public int graveyardMaxSize = 81;  // ritual pen maximum span (81x81)
 
+    // Grave robbing (0.8.8.0, issue #7). A NON-owner can dig up a WILD grave at night once it has
+    // sat public a while, taking the buried soul (a flat XP reward) plus a fraction of the goods.
+    // Desecration is lossy and risky: some stacks shatter, some come up damaged, and the disturbed
+    // dead may rise and curse the robber. The headstone crumbles and the owner is notified. Never
+    // robs graveyard graves (the keeper's ground stays sacrosanct), fresh graves, or your own.
+    public boolean graveRobbingEnabled = true;
+    public boolean graveRobNightOnly = true;         // only diggable between dusk (13000) and dawn (23000)
+    public double graveRobbableAfterHours = 24.0;    // real hours since death before a wild grave is robbable
+    public int graveRobXpPoints = 30;                // soul XP the robber gains on a successful rob
+    public double graveRobItemYieldFraction = 0.60;  // per-stack chance an item transfers (else it shatters)
+    public double graveRobItemDamageFraction = 0.25; // per-yielded-stack chance a damageable item is damaged
+    public double graveRobWraithChance = 0.35;       // chance the disturbed dead rise + curse the robber
+    public int graveRobWraithCount = 2;              // hostiles raised when the wraith outcome fires
+    public int graveRobCurseSeconds = 30;            // Wither + Weakness applied to the robber on a wraith
+    public boolean graveRobMailOwner = true;         // mail the owner a rob notice (if postbox is present)
+
     // Headstone epitaph fuzzing (0.8.2): line 2 blurs BOTH cause and time as the grave ages, in
     // REAL days since death. <epitaphExactDays: exact cause + in-game day ("Slain by a skeleton -
     // Day 16"); <epitaphVagueDays: cause + "some weeks past"; <epitaphGenericDays: cause collapses

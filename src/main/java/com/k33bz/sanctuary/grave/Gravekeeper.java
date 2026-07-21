@@ -819,7 +819,7 @@ public final class Gravekeeper {
 
     /** Vanilla night window (monster-spawn hours): dusk ~13000 to just before dawn ~23000, on the
      *  overworld day/night clock (the same source the night-events export reads). */
-    private static boolean isNight(ServerLevel level) {
+    static boolean isNight(ServerLevel level) {
         long tod = Math.floorMod(level.getServer().overworld().getOverworldClockTime(), 24000L);
         return tod >= 13000L && tod < 23000L;
     }

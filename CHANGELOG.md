@@ -1,3 +1,13 @@
+## 0.8.8.2
+
+**Grave-rob owner mail (issue #7, Phase 2 — completes the feature).** When a grave is robbed, the
+owner now also gets a **postbox letter** from "The Gravekeeper" (in addition to the chat line,
+which they miss if offline) — "your grave near (x, y, z) was dug up and robbed by <name>, N stacks
+taken, M lost to ruin." Delivered via a new one-way `PostboxBridge` that drops a request into
+postbox's `config/postbox_outbox/` spool (needs postbox 0.1.1+); no compile-time dependency on
+postbox, atomic write, best-effort (skipped silently if postbox isn't installed). Gated by the
+existing `graveRobMailOwner` knob.
+
 ## 0.8.8.1
 
 **Grave protection no longer locks terrain outside the overworld.** Deaths in the resource world

@@ -1,3 +1,14 @@
+## 0.8.8.1
+
+**Grave protection no longer locks terrain outside the overworld.** Deaths in the resource world
+(`sanctuary:resource_world`) were creating protected grave plots that blocked mining — and with
+bots dying constantly down there, the gathering world filled with "This rests on consecrated
+ground" walls (dozens of graves). Graves still **form** in every dimension (a death always keeps
+your loot, claimable by right-click), but the unbreakable-plot / yard-region **protection** now
+applies only in `graveProtectDimensions` (new config, default `["minecraft:overworld"]`). A
+transient gathering world stays fully mineable. Set the list to add dimensions or empty it to
+protect nowhere.
+
 ## 0.8.8.0
 
 **Grave robbing (issue #7).** The "dig up graves" mechanic held back in 0.8.2 is now live. A

@@ -17,9 +17,14 @@ import net.minecraft.server.dialog.MultiActionDialog;
 import net.minecraft.server.dialog.action.StaticAction;
 import net.minecraft.server.dialog.body.DialogBody;
 import net.minecraft.server.dialog.body.PlainMessage;
+import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.stats.Stats;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
 import com.k33bz.sanctuary.anchor.AnchorState;
 
@@ -162,9 +167,13 @@ public final class RespawnChoice {
         double[] anchor = nearestAnchor(level, offer.deathX, offer.deathZ, cfg);
         if (anchor != null) {
             int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING, (int) anchor[0], (int) anchor[1]);
-            player.teleportTo(anchor[0] + 0.5, y + 1.0, anchor[1] + 0.5);
+            safePlace(level, player, anchor[0] + 0.5, y + 1.0, anchor[1] + 0.5);
         }
         offer.expiresAtTick = level.getGameTime() + cfg.respawnOfferTimeoutSeconds * (long) TICKS_PER_SECOND;
+        // Nothing may kill the player while the respawn dialog is open (suffocation, mobs, lava,
+        // fall) — grant full damage immunity for the offer window. Trimmed to a brief grace once
+        // they choose (see endProtect); expires on its own if they walk away from the menu.
+        protect(player, cfg.respawnOfferTimeoutSeconds * TICKS_PER_SECOND + 2 * TICKS_PER_SECOND);
 
         // Owned active PLACED anchors, nearest-to-death first — a player who holds two or more
         // gets to pick which sanctuary to wake at (free); the nearest is the default selection.
@@ -275,7 +284,8 @@ public final class RespawnChoice {
         // dialog, which fails to encode and disconnects them. See DialogInputs.multiAction.
         Dialog dialog = com.k33bz.sanctuary.DialogInputs.multiAction(common, buttons,
                 new ActionButton(
-                        new CommonButtonData(Component.literal("Rest here (free)"), 120), Optional.empty()),
+                        new CommonButtonData(Component.literal("Rest here (free)"), 120),
+                        Optional.of(new StaticAction(new ClickEvent.RunCommand("sanctuaryrespawn rest")))),
                 1);
         player.openDialog(Holder.direct(dialog));
     }
@@ -315,7 +325,9 @@ public final class RespawnChoice {
             return 0;
         }
         int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING, (int) target.x, (int) target.z);
-        player.teleportTo(target.x, y + 1.0, target.z);
+        safePlace(level, player, target.x, y + 1.0, target.z);
+        endProtect(player);
+        PENDING.remove(player.getUUID());
         String where = (target.name != null && !target.name.isBlank())
                 ? "\"" + target.name + "\"" : "that sanctuary";
         player.sendSystemMessage(Component.literal("Your soul settles at " + where + ".")
@@ -331,6 +343,13 @@ public final class RespawnChoice {
             PENDING.remove(player.getUUID());
             player.sendSystemMessage(Component.literal("That door has closed.").withStyle(ChatFormatting.GRAY));
             return 0;
+        }
+        // "rest" = accept the free default placement (already made safe by onRespawn). Just close
+        // the offer and trim the menu immunity to a short landing grace.
+        if ("rest".equals(choice)) {
+            PENDING.remove(player.getUUID());
+            endProtect(player);
+            return 1;
         }
         boolean back = "back".equals(choice);
         if (back && !offer.deathDim.equals(level.dimension().identifier().toString())) {
@@ -352,17 +371,76 @@ public final class RespawnChoice {
         player.giveExperienceLevels(-cost);
         StatBoards.addScore(player, "sanct_toll", cost);
         if (back) {
-            player.teleportTo(offer.deathX, offer.deathY + 0.25, offer.deathZ);
+            safePlace(level, player, offer.deathX, offer.deathY + 0.25, offer.deathZ);
             player.sendSystemMessage(Component.literal(String.format(Locale.ROOT,
                             "You claw your way back for %d levels.", cost))
                     .withStyle(ChatFormatting.LIGHT_PURPLE));
         } else {
-            player.teleportTo(offer.bedX, offer.bedY, offer.bedZ);
+            safePlace(level, player, offer.bedX, offer.bedY, offer.bedZ);
             player.sendSystemMessage(Component.literal(String.format(Locale.ROOT,
                             "Home, for %d levels.", cost))
                     .withStyle(ChatFormatting.LIGHT_PURPLE));
         }
+        endProtect(player);
         PENDING.remove(player.getUUID());
         return 1;
+    }
+
+    // ---- safe placement + respawn immunity ------------------------------------------------
+
+    /**
+     * Teleport the player to a spot they can actually stand in near {@code (x,y,z)}: two passable
+     * blocks (feet + head) over solid ground, no lava/water. Scans a few blocks around the target,
+     * preferring the closest; if none is found (deep in rock), drops to the surface column and
+     * clears the two occupied blocks. Fixes respawning inside a wall and suffocating instantly.
+     */
+    private static void safePlace(ServerLevel level, ServerPlayer player, double x, double y, double z) {
+        BlockPos origin = BlockPos.containing(x, y, z);
+        BlockPos spot = null;
+        for (int dy : new int[] {0, 1, -1, 2, -2, 3, -3, 4, 5, 6, 7, 8, -4}) {
+            BlockPos p = origin.above(dy);
+            if (standable(level, p)) {
+                spot = p;
+                break;
+            }
+        }
+        if (spot == null) {
+            int top = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, origin.getX(), origin.getZ());
+            spot = new BlockPos(origin.getX(), top + 1, origin.getZ());
+            clearBlock(level, spot);
+            clearBlock(level, spot.above());
+        }
+        player.teleportTo(spot.getX() + 0.5, spot.getY(), spot.getZ() + 0.5);
+    }
+
+    private static boolean standable(ServerLevel level, BlockPos p) {
+        return passable(level, p) && passable(level, p.above())
+                && !level.getBlockState(p.below()).getCollisionShape(level, p.below()).isEmpty();
+    }
+
+    private static boolean passable(ServerLevel level, BlockPos p) {
+        BlockState s = level.getBlockState(p);
+        return s.getCollisionShape(level, p).isEmpty() && s.getFluidState().isEmpty();
+    }
+
+    private static void clearBlock(ServerLevel level, BlockPos p) {
+        BlockState s = level.getBlockState(p);
+        if (!s.getCollisionShape(level, p).isEmpty() || !s.getFluidState().isEmpty()) {
+            level.setBlockAndUpdate(p, Blocks.AIR.defaultBlockState());
+        }
+    }
+
+    /** Full damage immunity (Resistance V + Fire Resistance) for {@code ticks} — the menu window. */
+    private static void protect(ServerPlayer player, int ticks) {
+        player.addEffect(new MobEffectInstance(MobEffects.RESISTANCE, ticks, 4, false, false, false));
+        player.addEffect(new MobEffectInstance(MobEffects.FIRE_RESISTANCE, ticks, 0, false, false, false));
+    }
+
+    /** Once a choice is made, trim the immunity to a 3s landing grace (no minutes of invulnerability). */
+    private static void endProtect(ServerPlayer player) {
+        player.removeEffect(MobEffects.RESISTANCE);
+        player.removeEffect(MobEffects.FIRE_RESISTANCE);
+        player.addEffect(new MobEffectInstance(MobEffects.RESISTANCE, 3 * TICKS_PER_SECOND, 4, false, false, false));
+        player.addEffect(new MobEffectInstance(MobEffects.FIRE_RESISTANCE, 3 * TICKS_PER_SECOND, 0, false, false, false));
     }
 }

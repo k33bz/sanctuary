@@ -133,6 +133,17 @@ public final class GraveRob {
                 .withStyle(ChatFormatting.RED));
         Graves.notifyOwner(level.getServer(), grave,
                 "Your grave was dug up and robbed by " + player.getName().getString() + ".");
+
+        // Durable notice: a postbox letter to the owner (if postbox is installed). The chat line
+        // above is missed if they're offline; the letter waits in their mailbox.
+        if (cfg.graveRobMailOwner) {
+            String body = String.format(Locale.ROOT,
+                    "Grim news. Your grave near (%d, %d, %d) was dug up and robbed by %s"
+                            + " -- %d stacks taken, %d lost to ruin. What the earth keeps now, it keeps.",
+                    (int) grave.x, (int) grave.y, (int) grave.z,
+                    player.getName().getString(), taken, shattered);
+            PostboxBridge.sendMail(grave.owner, grave.ownerName, "The Gravekeeper", body);
+        }
     }
 
     private static String fx(String prefix, double x, double y, double z, String tail) {

@@ -238,6 +238,7 @@ public class SanctuaryConfig {
     // Crystal recipe requires a dragon egg, so this ships in code, not a forgettable opt-in pack.
     public boolean dragonDropsEnabled = true;      // ender dragon drops a dragon egg + elytra each kill
     public boolean batMembranesEnabled = true;     // bats drop a phantom membrane (0-1)
+    public boolean xpBottlingEnabled = true;       // right-click enchant table w/ glass bottle -> bottle 12 XP
     // The lava-cauldron temper (Raw Wild Membrane -> Wild Membrane) empties the lava cauldron back
     // to a plain cauldron, consuming the lava. Set false to keep the lava (temper is then free).
     public boolean beaconLavaConsumed = true;

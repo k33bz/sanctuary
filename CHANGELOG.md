@@ -1,5 +1,11 @@
 ## 0.8.7.3
 
+**Native xp-bottling on 26.1 (issue #6, VT migration finished).** 26.1 was still shipping
+`xp_bottling` as a bundled Vanilla Tweaks datapack while `main` had gone native; ported
+`Sanctuary.registerXpBottling` (+ config `xpBottlingEnabled`) here and removed the datapack, so
+both lines now bottle XP in code (right-click an enchanting table with a glass bottle → 12 XP
+becomes a Bottle o' Enchanting) and `vt_packs.txt` is empty on both.
+
 **Gravekeeper spectral aura (issue #5, completes 0.8.4).** The keeper's 0.8.4 patrol shipped, but
 the paired soul/sculk aura hadn't — added now. A faint, low-count `soul` + `sculk_soul` shimmer
 rises from the keeper: an open-sky keeper shows it **at night only**, an underground (roofed) keeper

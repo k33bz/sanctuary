@@ -1002,7 +1002,21 @@ public final class Graves {
         return null;
     }
 
+    /**
+     * Whether graves/graveyards LOCK terrain in {@code dim} (config {@code graveProtectDimensions},
+     * default overworld only). Graves still form everywhere for loot-safety; this only governs the
+     * unbreakable-plot / yard-region protection, so a transient gathering world stays fully mineable.
+     */
+    public static boolean protectsIn(String dim) {
+        SanctuaryConfig cfg = Sanctuary.CONFIG;
+        return cfg != null && cfg.graveProtectDimensions != null
+                && cfg.graveProtectDimensions.contains(dim);
+    }
+
     public static boolean isProtectedGraveBlock(String dim, BlockPos pos) {
+        if (!protectsIn(dim)) {
+            return false;
+        }
         for (Grave g : store().graves) {
             if (g.heldByKeeper || g.dim == null || !g.dim.equals(dim)) {
                 continue;
@@ -1045,7 +1059,7 @@ public final class Graves {
      */
     public static boolean isProtectedYardRegion(String dim, BlockPos pos) {
         SanctuaryConfig cfg = Sanctuary.CONFIG;
-        if (cfg == null || !cfg.graveyardYardProtect) {
+        if (cfg == null || !cfg.graveyardYardProtect || !protectsIn(dim)) {
             return false;
         }
         int depth = Math.max(0, cfg.graveyardProtectDepth);

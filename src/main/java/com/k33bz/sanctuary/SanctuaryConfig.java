@@ -206,6 +206,13 @@ public class SanctuaryConfig {
     public int graveyardProtectDepth = 4;   // blocks below the floor kept protected (anti-tunnel)
     public int graveyardProtectHeight = 20; // blocks above the floor (fence + headstones + airspace)
 
+    // Dimensions where a grave/graveyard LOCKS terrain (the unbreakable plot ground + yard region).
+    // Graves still FORM everywhere so a death always preserves the loot — but in a transient gathering
+    // dimension (sanctuary:resource_world) that whole world exists to be mined, so a protected plot
+    // there just blocks mining. Default: the home overworld only. Graves outside this list are
+    // claimable by right-click but never lock the ground. Empty list = protect nowhere.
+    public List<String> graveProtectDimensions = new ArrayList<>(List.of("minecraft:overworld"));
+
     // The Restless: once per night, an underground player carrying restlessMinInsomniaDays+
     // of sleep debt is visited by Restless Creakings spawned in the dark nearby (count grows
     // with insomnia, capped). They only move unwatched, dissolve at dawn, and never bother the

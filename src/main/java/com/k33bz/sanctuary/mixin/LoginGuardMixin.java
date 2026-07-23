@@ -1,7 +1,7 @@
 package com.k33bz.sanctuary.mixin;
 
-import com.mojang.authlib.GameProfile;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.players.NameAndId;
 import net.minecraft.server.players.PlayerList;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -29,13 +29,13 @@ import java.net.SocketAddress;
 public class LoginGuardMixin {
 
     @Inject(method = "canPlayerLogin", at = @At("HEAD"), cancellable = true)
-    private void sanctuary$guardReservedNames(SocketAddress socketAddress, GameProfile gameProfile,
+    private void sanctuary$guardReservedNames(SocketAddress socketAddress, NameAndId nameAndId,
                                               CallbackInfoReturnable<Component> cir) {
         LoginGuardConfig cfg = LoginGuardConfig.get();
-        if (!cfg.enabled || gameProfile == null) {
+        if (!cfg.enabled || nameAndId == null) {
             return;
         }
-        String name = gameProfile.name();
+        String name = nameAndId.name();
         if (!cfg.isProtected(name)) {
             return; // not a protected name — leave the open playtest alone
         }

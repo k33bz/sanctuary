@@ -1,3 +1,14 @@
+## 0.8.9.0
+
+**Sleep-progress broadcast.** Vanilla skips the night once enough overworld players are in bed
+(`players_sleeping_percentage`, 50% here) but tells no one how close they are. Now, when the set of
+sleepers changes, the overworld gets a line like `k33bz is resting (1/2) — 1 more sleeper needed to
+pass the night.` (or `k33bz, Doc are resting (2/2) — the night passes.`). The required count `R`
+mirrors vanilla's `max(1, ceil(activePlayers × pct / 100))`, so `N/R` matches when the night
+actually skips. Only the **overworld** is tracked and only its players see it — the resource world
+never darkens, so its sleep can't advance the day. Change-detected (no per-tick spam), spectators
+excluded (as in vanilla's math). Config: `sleepBroadcastEnabled` (default on).
+
 ## 0.8.8.2
 
 **Grave-rob owner mail (issue #7, Phase 2 — completes the feature).** When a grave is robbed, the

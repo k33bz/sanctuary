@@ -145,6 +145,7 @@ public final class SanctuaryCommands {
         bool("creeperTerrainProtection", () -> cfg().creeperTerrainProtection, b -> cfg().creeperTerrainProtection = b);
         bool("endermanClone", () -> cfg().endermanCloneNotSteal, b -> cfg().endermanCloneNotSteal = b);
         bool("afkTag", () -> cfg().afkTagEnabled, b -> cfg().afkTagEnabled = b);
+        bool("sleepBroadcast", () -> cfg().sleepBroadcastEnabled, b -> cfg().sleepBroadcastEnabled = b);
         bool("restless", () -> cfg().restlessEnabled, b -> cfg().restlessEnabled = b);
         bool("graves", () -> cfg().gravesEnabled, b -> cfg().gravesEnabled = b);
         bool("wildEssence", () -> cfg().wildEssenceEnabled, b -> cfg().wildEssenceEnabled = b);

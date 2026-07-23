@@ -35,7 +35,7 @@ public class LoginGuardMixin {
         if (!cfg.enabled || gameProfile == null) {
             return;
         }
-        String name = gameProfile.getName();
+        String name = gameProfile.name();
         if (!cfg.isProtected(name)) {
             return; // not a protected name — leave the open playtest alone
         }

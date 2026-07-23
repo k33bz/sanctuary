@@ -157,6 +157,8 @@ public class Sanctuary implements ModInitializer {
         ServerTickEvents.END_SERVER_TICK.register(com.k33bz.sanctuary.event.NightEvents::tick);
         // World-danger age clock: accrue occupied ticks only while players are online.
         ServerTickEvents.END_SERVER_TICK.register(com.k33bz.sanctuary.DangerClock::tick);
+        // Sleep-progress broadcast: tell the overworld how many more sleepers are needed.
+        ServerTickEvents.END_SERVER_TICK.register(com.k33bz.sanctuary.SleepTracker::tick);
         net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STARTED
                 .register(com.k33bz.sanctuary.DangerClock::load);
         // First-join traveller's kit (Middle-earth fare). Registered as its own listener so it is

@@ -84,6 +84,12 @@ public class SanctuaryConfig {
     public boolean afkTagEnabled = true;
     public double afkMinutes = 5.0;
 
+    // Sleep-progress broadcast: when overworld players get into bed, announce "<names> are resting
+    // (N/R) — X more needed to pass the night" to the overworld so everyone knows how many more
+    // sleepers are required (governed by the vanilla players_sleeping_percentage gamerule). Only the
+    // overworld is tracked — the resource world never darkens, so its sleep can't advance the day.
+    public boolean sleepBroadcastEnabled = true;
+
     // System 10 -- graves & graveyards. Death seals the inventory into a grave (JSON-backed,
     // despawn-proof). After graveDriftHours (real time) it drifts to the nearest sanctuary
     // graveyard (/sanctuarygraveyard set); after gravePublicHours anyone may loot it. Claiming

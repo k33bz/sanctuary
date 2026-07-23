@@ -1,3 +1,23 @@
+## 0.8.10.0
+
+**Login guard — reserved names, allowed IPs (offline-mode identity hardening).** gmc101 runs
+`online-mode=false` so the native bot fleet can connect, but that means a player's identity is only
+its name: anyone joining as `k33bz` derives k33bz's offline UUID and is handed k33bz's inventory,
+ender chest and session (and kicks the real one). With 25565 WAN-exposed for the open playtest and
+the whitelist off, that's anyone on the internet who guesses the name. The new `LoginGuardMixin`
+hooks vanilla's `PlayerList.canPlayerLogin` (the same seam the whitelist/ban checks use) and
+**refuses a protected name unless the connection's source IP is in an allowed network** — verified
+that the server logs the *real* client IP (192.168.11.183 for the bots), not a docker-gateway
+rewrite, so the IP test is meaningful. Unprotected names pass straight through, so the open playtest
+is untouched. Config is a dedicated, **hot-reloaded** file `config/sanctuary_login_guard.json`
+(`enabled`, `protectedNames`, `allowedCidrs`, `kickMessage`) — edit it and the next login picks it
+up, no restart; a broken edit fails safe to the last good config. Defaults: protect `k33bz` + the
+bot roster; allow loopback + the `192.168.11.0/24` LAN (add your WireGuard/WAN for remote owner
+access — deliberately **not** any docker bridge range, which would reopen the hole). Dependency-free
+IPv4/IPv6 CIDR matcher (`guard/Cidr`), 10 pure-logic checks in `LoginGuardTest` covering prefix
+boundaries, v4-vs-v6 isolation, and fail-closed parsing. The real long-term fix remains
+`online-mode=true` with paid accounts; this closes the hole for now at zero playtest friction.
+
 ## 0.8.9.0
 
 **Sleep-progress broadcast.** Vanilla skips the night once enough overworld players are in bed

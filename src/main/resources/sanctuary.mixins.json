@@ -10,7 +10,8 @@
     "CreeperExplosionMixin",
     "EndermanTakeBlockMixin",
     "GravekeeperThunderMixin",
-    "PlayerTabNameMixin"
+    "PlayerTabNameMixin",
+    "LoginGuardMixin"
   ],
   "injectors": {
     "defaultRequire": 1

@@ -1,0 +1,114 @@
+# Forgejo is the source of truth for this mod.
+#
+#   push here -> build -> compat gate (mc-test-harness e2e) -> push to GitHub
+#
+# GitHub is strictly downstream: it receives already-green code and runs its own
+# workflows (release.yml / publish.yml) to ship to Modrinth. Do not commit
+# directly on GitHub - nothing reconciles that back and the two will diverge.
+name: ci
+
+on:
+  push:
+    branches: [main, '26.*']
+  pull_request:
+
+jobs:
+  build:
+    runs-on: debian-op
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: gradle
+
+      # A missing exec bit on gradlew was the first failure on this runner.
+      - name: normalise gradlew
+        run: chmod +x ./gradlew
+
+      - name: gradle build
+        run: ./gradlew build --no-daemon
+
+      - name: collect jars
+        run: |
+          mkdir -p out
+          # -sources/-dev jars are build by-products, not the shippable artifact.
+          find build/libs -name '*.jar' ! -name '*-sources.jar' ! -name '*-dev.jar' -exec cp {} out/ \;
+          ls -la out/
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: sanctuary-jars
+          path: out/
+
+  compat:
+    needs: build
+    runs-on: debian-op
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: check out mc-test-harness
+        uses: actions/checkout@v4
+        with:
+          repository: homelab/mc-test-harness
+          token: ${{ secrets.FORGEJO_READ_TOKEN }}
+          path: harness
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - uses: actions/download-artifact@v3
+        with:
+          name: sanctuary-jars
+          path: jars/
+
+      # gate.js loads the mod under test from this exact path.
+      - name: stage the built jar for the harness
+        run: |
+          mkdir -p harness/ci-artifacts/sanctuary/sanctuary
+          cp jars/*.jar harness/ci-artifacts/sanctuary/sanctuary/
+          ls -la harness/ci-artifacts/sanctuary/sanctuary/
+
+      # --ignore-scripts skips the canvas/gl native builds. Those back
+      # prismarine-viewer, which the gate does not use; building them here
+      # would need a full toolchain for no benefit.
+      - name: install harness deps
+        working-directory: harness
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: run the compat gate
+        working-directory: harness
+        env:
+          JAVA_BIN: java
+        run: npm run gate
+
+      - name: harness logs on failure
+        if: failure()
+        working-directory: harness
+        run: |
+          tail -n 200 server/logs/latest.log 2>/dev/null || echo "no server log"
+          ls -la reports/ 2>/dev/null || true
+
+  push-upstream:
+    needs: [build, compat]
+    # Only mainline, and only when build and compat both passed.
+    if: github.ref == 'refs/heads/main'
+    runs-on: debian-op
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: push to GitHub
+        env:
+          GH_TOKEN: ${{ secrets.GH_PUSH_TOKEN }}
+        run: |
+          test -n "$GH_TOKEN" || { echo "GH_PUSH_TOKEN not set"; exit 1; }
+          echo "::add-mask::$GH_TOKEN"
+          git push "https://x-access-token:${GH_TOKEN}@github.com/k33bz/sanctuary.git" \
+            "HEAD:refs/heads/main"
+          git push --tags "https://x-access-token:${GH_TOKEN}@github.com/k33bz/sanctuary.git"

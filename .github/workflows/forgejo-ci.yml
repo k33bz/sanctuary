@@ -1,5 +1,11 @@
 # Forgejo is the source of truth for this mod.
 #
+# This lives in .github/workflows on purpose. Forgejo evaluates exactly ONE
+# workflow directory and .github wins over .forgejo when both exist, so a
+# .forgejo/workflows file here is silently never run. Every job is therefore
+# guarded on server_url: this file runs only on Forgejo, and build/deps/
+# release/publish.yml run only on GitHub.
+#
 #   push here -> build -> compat gate (mc-test-harness e2e) -> push to GitHub
 #
 # GitHub is strictly downstream: it receives already-green code and runs its own
@@ -14,6 +20,7 @@ on:
 
 jobs:
   build:
+    if: github.server_url != 'https://github.com'
     runs-on: debian-op
     steps:
       - uses: actions/checkout@v4
@@ -44,6 +51,7 @@ jobs:
           path: out/
 
   compat:
+    if: github.server_url != 'https://github.com'
     needs: build
     runs-on: debian-op
     steps:
@@ -94,9 +102,9 @@ jobs:
           ls -la reports/ 2>/dev/null || true
 
   push-upstream:
+    if: github.server_url != 'https://github.com'
     needs: [build, compat]
-    # Only mainline, and only when build and compat both passed.
-    if: github.ref == 'refs/heads/main'
+    if: github.server_url != 'https://github.com' && github.ref == 'refs/heads/main'
     runs-on: debian-op
     steps:
       - uses: actions/checkout@v4

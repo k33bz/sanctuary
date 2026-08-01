@@ -20,7 +20,7 @@ on:
 
 jobs:
   build:
-    if: vars.CI_HOST == 'forgejo'
+    if: github.repository_owner == 'homelab'
     runs-on: debian-op
     steps:
       - uses: actions/checkout@v4
@@ -51,7 +51,7 @@ jobs:
           path: out/
 
   compat:
-    if: vars.CI_HOST == 'forgejo'
+    if: github.repository_owner == 'homelab'
     needs: build
     runs-on: debian-op
     steps:
@@ -102,9 +102,9 @@ jobs:
           ls -la reports/ 2>/dev/null || true
 
   push-upstream:
-    if: vars.CI_HOST == 'forgejo'
+    if: github.repository_owner == 'homelab'
     needs: [build, compat]
-    if: vars.CI_HOST == 'forgejo' && github.ref == 'refs/heads/main'
+    if: github.repository_owner == 'homelab' && github.ref == 'refs/heads/main'
     runs-on: debian-op
     steps:
       - uses: actions/checkout@v4

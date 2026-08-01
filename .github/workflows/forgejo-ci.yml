@@ -102,7 +102,6 @@ jobs:
           ls -la reports/ 2>/dev/null || true
 
   push-upstream:
-    if: github.repository_owner == 'homelab'
     needs: [build, compat]
     if: github.repository_owner == 'homelab' && github.ref == 'refs/heads/main'
     runs-on: debian-op

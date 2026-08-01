@@ -19,10 +19,9 @@ on:
   pull_request:
 
 jobs:
-  # build and compat are one job on purpose. Forgejo's artifact service returns
-  # HTTP 500 on this instance, so upload/download-artifact cannot hand the jar
-  # between jobs - keeping them together means it never has to leave the
-  # workspace, and it is faster besides.
+  # build and compat are one job so the jar never has to round-trip through the
+  # artifact service just to reach the test step. The artifact is still
+  # published at the end - that is the delivery channel for the built jar.
   build-and-compat:
     if: github.repository_owner == 'homelab'
     runs-on: debian-op
@@ -71,6 +70,14 @@ jobs:
         working-directory: harness
         run: |
           tail -n 200 server/logs/latest.log 2>/dev/null || echo "no server log"
+
+      # Delivery. Uploads only after the compat gate has passed, so a published
+      # artifact always means "built and behaviourally verified".
+      - name: publish the verified jar
+        uses: actions/upload-artifact@v3
+        with:
+          name: sanctuary-jars
+          path: harness/ci-artifacts/sanctuary/sanctuary/*.jar
 
   push-upstream:
     needs: build-and-compat

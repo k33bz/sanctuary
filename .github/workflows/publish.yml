@@ -15,7 +15,7 @@ on:
 
 jobs:
   publish:
-    if: github.server_url == 'https://github.com'
+    if: vars.CI_HOST != 'forgejo'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

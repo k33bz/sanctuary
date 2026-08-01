@@ -20,7 +20,7 @@ on:
 
 jobs:
   build:
-    if: github.server_url != 'https://github.com'
+    if: vars.CI_HOST == 'forgejo'
     runs-on: debian-op
     steps:
       - uses: actions/checkout@v4
@@ -51,7 +51,7 @@ jobs:
           path: out/
 
   compat:
-    if: github.server_url != 'https://github.com'
+    if: vars.CI_HOST == 'forgejo'
     needs: build
     runs-on: debian-op
     steps:
@@ -102,9 +102,9 @@ jobs:
           ls -la reports/ 2>/dev/null || true
 
   push-upstream:
-    if: github.server_url != 'https://github.com'
+    if: vars.CI_HOST == 'forgejo'
     needs: [build, compat]
-    if: github.server_url != 'https://github.com' && github.ref == 'refs/heads/main'
+    if: vars.CI_HOST == 'forgejo' && github.ref == 'refs/heads/main'
     runs-on: debian-op
     steps:
       - uses: actions/checkout@v4

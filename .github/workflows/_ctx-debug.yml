@@ -1,0 +1,22 @@
+# TEMPORARY. Dumps the values this host actually reports so the cross-host
+# job guards can be written against something real instead of guessed at.
+# Delete once the discriminator is known. Single job, seconds long - the
+# runner only has capacity 2 and other stacks deploy through it.
+name: _ctx-debug
+on:
+  push:
+    branches: [main]
+jobs:
+  ctx:
+    runs-on: debian-op
+    steps:
+      - name: what does this host report
+        run: |
+          echo "server_url=${{ github.server_url }}"
+          echo "repository=${{ github.repository }}"
+          echo "repository_owner=${{ github.repository_owner }}"
+          echo "GITHUB_SERVER_URL=$GITHUB_SERVER_URL"
+          echo "GITHUB_REPOSITORY_OWNER=$GITHUB_REPOSITORY_OWNER"
+          echo "GITHUB_REPOSITORY=$GITHUB_REPOSITORY"
+          echo "CI_HOST_VAR=[${{ vars.CI_HOST }}]"
+          env | grep -iE '^(FORGEJO|GITEA)' || echo "no FORGEJO/GITEA env vars"

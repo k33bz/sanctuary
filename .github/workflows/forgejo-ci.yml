@@ -19,40 +19,12 @@ on:
   pull_request:
 
 jobs:
-  build:
+  # build and compat are one job on purpose. Forgejo's artifact service returns
+  # HTTP 500 on this instance, so upload/download-artifact cannot hand the jar
+  # between jobs - keeping them together means it never has to leave the
+  # workspace, and it is faster besides.
+  build-and-compat:
     if: github.repository_owner == 'homelab'
-    runs-on: debian-op
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '25'
-          cache: gradle
-
-      # A missing exec bit on gradlew was the first failure on this runner.
-      - name: normalise gradlew
-        run: chmod +x ./gradlew
-
-      - name: gradle build
-        run: ./gradlew build --no-daemon
-
-      - name: collect jars
-        run: |
-          mkdir -p out
-          # -sources/-dev jars are build by-products, not the shippable artifact.
-          find build/libs -name '*.jar' ! -name '*-sources.jar' ! -name '*-dev.jar' -exec cp {} out/ \;
-          ls -la out/
-
-      - uses: actions/upload-artifact@v3
-        with:
-          name: sanctuary-jars
-          path: out/
-
-  compat:
-    if: github.repository_owner == 'homelab'
-    needs: build
     runs-on: debian-op
     steps:
       - uses: actions/checkout@v4
@@ -68,30 +40,30 @@ jobs:
         with:
           distribution: temurin
           java-version: '25'
+          cache: gradle
 
-      - uses: actions/download-artifact@v3
-        with:
-          name: sanctuary-jars
-          path: jars/
+      - name: normalise gradlew
+        run: chmod +x ./gradlew
+
+      - name: gradle build
+        run: ./gradlew build --no-daemon
 
       # gate.js loads the mod under test from this exact path.
       - name: stage the built jar for the harness
         run: |
           mkdir -p harness/ci-artifacts/sanctuary/sanctuary
-          cp jars/*.jar harness/ci-artifacts/sanctuary/sanctuary/
+          find build/libs -name '*.jar' ! -name '*-sources.jar' ! -name '*-dev.jar' \
+            -exec cp {} harness/ci-artifacts/sanctuary/sanctuary/ \;
           ls -la harness/ci-artifacts/sanctuary/sanctuary/
 
       # --ignore-scripts skips the canvas/gl native builds. Those back
-      # prismarine-viewer, which the gate does not use; building them here
-      # would need a full toolchain for no benefit.
+      # prismarine-viewer, which the gate does not use.
       - name: install harness deps
         working-directory: harness
         run: npm ci --ignore-scripts --no-audit --no-fund
 
-      - name: run the compat gate
+      - name: compat gate
         working-directory: harness
-        env:
-          JAVA_BIN: java
         run: npm run gate
 
       - name: harness logs on failure
@@ -99,10 +71,9 @@ jobs:
         working-directory: harness
         run: |
           tail -n 200 server/logs/latest.log 2>/dev/null || echo "no server log"
-          ls -la reports/ 2>/dev/null || true
 
   push-upstream:
-    needs: [build, compat]
+    needs: build-and-compat
     if: github.repository_owner == 'homelab' && github.ref == 'refs/heads/main'
     runs-on: debian-op
     steps:
@@ -116,6 +87,5 @@ jobs:
         run: |
           test -n "$GH_TOKEN" || { echo "GH_PUSH_TOKEN not set"; exit 1; }
           echo "::add-mask::$GH_TOKEN"
-          git push "https://x-access-token:${GH_TOKEN}@github.com/k33bz/sanctuary.git" \
-            "HEAD:refs/heads/main"
+          git push "https://x-access-token:${GH_TOKEN}@github.com/k33bz/sanctuary.git" HEAD:refs/heads/main
           git push --tags "https://x-access-token:${GH_TOKEN}@github.com/k33bz/sanctuary.git"

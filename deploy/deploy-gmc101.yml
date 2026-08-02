@@ -1,0 +1,110 @@
+---
+# Deploy a built Sanctuary jar to the live gmc101 Minecraft server and restart it.
+#
+# THE VERSION GUARD IS THE POINT OF THIS PLAYBOOK. gmc101 runs Minecraft 26.1.2;
+# the repo's main branch builds +26.2. Dropping a 26.2 jar onto a 26.1.2 server
+# breaks it on next start, and Fabric will not tell you politely. The play
+# derives the server's real Minecraft version from the fabric-api jar already
+# installed and refuses to continue unless the new jar matches.
+- name: Deploy Sanctuary to gmc101
+  hosts: gmc
+  become: true
+  vars:
+    instance: gmc101
+    inst_dir: /srv/amp/ampdata/.ampdata/instances/gmc101/Minecraft
+    # absolute path to the jar to deploy, passed with -e jar=...
+    jar: ""
+
+  tasks:
+    - name: require a jar argument
+      ansible.builtin.assert:
+        that: [jar | length > 0]
+        fail_msg: "pass -e jar=/path/to/sanctuary-<ver>+<mc>.jar"
+
+    - name: read the jar name
+      ansible.builtin.set_fact:
+        jar_name: "{{ jar | basename }}"
+
+    - name: derive the Minecraft target from the jar name
+      ansible.builtin.set_fact:
+        jar_mc: "{{ jar_name | regex_search('\\+([0-9.]+)\\.jar$', '\\1') | first }}"
+
+    - name: find the installed fabric-api jar
+      ansible.builtin.find:
+        paths: "{{ inst_dir }}/mods"
+        patterns: "fabric-api-*.jar"
+      register: fapi
+
+    - name: fail if fabric-api is missing
+      ansible.builtin.assert:
+        that: [fapi.files | length > 0]
+        fail_msg: "no fabric-api jar in {{ inst_dir }}/mods - cannot determine the server's Minecraft version"
+
+    - name: derive the server's Minecraft version from fabric-api
+      ansible.builtin.set_fact:
+        server_mc: "{{ (fapi.files | first).path | basename | regex_search('\\+([0-9.]+)\\.jar$', '\\1') | first }}"
+
+    - name: REFUSE to deploy a mismatched Minecraft target
+      ansible.builtin.assert:
+        that: [jar_mc == server_mc]
+        fail_msg: >-
+          REFUSING: {{ jar_name }} targets Minecraft {{ jar_mc }} but gmc101 runs {{ server_mc }}.
+          Deploy from the branch that builds {{ server_mc }}.
+        success_msg: "{{ jar_name }} targets {{ jar_mc }}, matching the server"
+
+    - name: find existing sanctuary jars
+      ansible.builtin.find:
+        paths: "{{ inst_dir }}/mods"
+        patterns: "sanctuary-*.jar"
+      register: existing
+
+    - name: back up the jars being replaced
+      ansible.builtin.copy:
+        src: "{{ item.path }}"
+        dest: "{{ item.path }}.bak-cd"
+        remote_src: true
+        mode: "0664"
+      loop: "{{ existing.files }}"
+      loop_control: {label: "{{ item.path | basename }}"}
+
+    - name: install the new jar
+      ansible.builtin.copy:
+        src: "{{ jar }}"
+        dest: "{{ inst_dir }}/mods/{{ jar_name }}"
+        owner: k33bz
+        group: k33bz
+        mode: "0664"
+      register: installed
+
+    - name: remove superseded sanctuary jars
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: absent
+      loop: "{{ existing.files }}"
+      when: (item.path | basename) != jar_name
+      loop_control: {label: "{{ item.path | basename }}"}
+
+    # AMP owns the process. ampinstmgr MUST run as the amp user - as root it
+    # reports "No instances to show" and then "No such instance".
+    - name: restart the instance
+      ansible.builtin.command:
+        cmd: docker exec -u amp amp ampinstmgr restart {{ instance }}
+      when: installed.changed
+      register: restarted
+      changed_when: installed.changed
+
+    - name: give it time to come up
+      ansible.builtin.pause: {seconds: 25}
+      when: installed.changed
+
+    - name: confirm the instance is running
+      ansible.builtin.command:
+        cmd: docker exec -u amp amp ampinstmgr status {{ instance }}
+      register: status
+      changed_when: false
+
+    - name: report
+      ansible.builtin.debug:
+        msg: >-
+          {{ jar_name }} deployed to {{ instance }} (MC {{ server_mc }});
+          running={{ 'yes' if instance in status.stdout else 'CHECK MANUALLY' }}

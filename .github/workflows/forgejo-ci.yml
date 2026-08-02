@@ -96,3 +96,39 @@ jobs:
           echo "::add-mask::$GH_TOKEN"
           git push "https://x-access-token:${GH_TOKEN}@github.com/k33bz/sanctuary.git" HEAD:refs/heads/main
           git push --tags "https://x-access-token:${GH_TOKEN}@github.com/k33bz/sanctuary.git"
+
+  # Deploy to the live server. Branch-gated because gmc101 runs Minecraft
+  # 26.1.2 while main builds +26.2 - and the playbook independently refuses a
+  # mismatched target, so this is belt and braces rather than a single check.
+  deploy-gmc101:
+    needs: build-and-compat
+    if: github.repository_owner == 'homelab' && github.ref == 'refs/heads/26.1'
+    runs-on: debian-op
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: gradle
+
+      - name: build the jar to deploy
+        run: |
+          chmod +x ./gradlew
+          ./gradlew build --no-daemon
+          ls -la build/libs/
+
+      - name: deploy via ansible
+        env:
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+          OP_REF: ${{ vars.OP_REF_CD_LS2087 }}
+          ANSIBLE_HOST_KEY_CHECKING: "False"
+        run: |
+          eval "$(ssh-agent -s)"
+          trap 'ssh-agent -k' EXIT
+          op read "$OP_REF" </dev/null | ssh-add -
+          JAR=$(find build/libs -name '*.jar' ! -name '*-sources.jar' ! -name '*-dev.jar' | head -1)
+          test -n "$JAR" || { echo "no jar built"; exit 1; }
+          echo "deploying $JAR"
+          ansible-playbook -i deploy/inventory.ini deploy/deploy-gmc101.yml -e "jar=$PWD/$JAR"

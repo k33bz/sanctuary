@@ -141,17 +141,39 @@ public class Sanctuary implements ModInitializer {
         com.k33bz.sanctuary.rift.RiftSeal.register();
         // Phase-2 rift reset: its own UNTHROTTLED server-tick handler (the state machine self-throttles;
         // it is a modulo-gated no-op while idle) + login-rescue for players offline across a reset.
-        // PEACEFUL gathering world: discard hostiles the moment they load in the resource dimension.
+        // PEACEFUL gathering world: hostiles are refused at the gate in the resource dimension.
         // This can't be done with data alone — dimension_type.monster_spawn_light_level is floored at 0 by
         // its codec, which still permits spawning in pitch-black caves, and fixed_time only silences the
-        // surface. Discarding on load also covers spawners and structure mobs, not just natural spawns.
+        // surface. Refusing the load covers spawners and structure mobs too, not just natural spawns,
+        // because every spawn path funnels through PersistentEntitySectionManager.addEntity.
         // Passive/creature mobs are untouched, so the world still has sheep and cows to farm.
-        ServerEntityEvents.ENTITY_LOAD.register((entity, world) -> {
+        // Refuse the spawn at the gate; do NOT let it be registered and then discard it.
+        //
+        // WHY NOT ENTITY_LOAD + discard() (this leaked ~27 entities/second on gmc101):
+        // fabric-api fires ENTITY_LOAD from the TAIL of ServerLevel$EntityCallbacks
+        // .onTrackingStart, and vanilla calls that from PersistentEntitySectionManager
+        // .addEntity BETWEEN startTracking() and startTicking():
+        //
+        //     if (status.isAccessible()) this.startTracking(entity);  // ENTITY_LOAD fires here
+        //     if (status.isTicking())    this.startTicking(entity);   // STILL RUNS on a dead entity
+        //
+        // discard() there completes the entire removal synchronously -- the entity is pulled
+        // from its EntitySection, from byId and byUuid, and its levelCallback is set to
+        // EntityInLevelCallback.NULL. Control then returns to addEntity, which calls
+        // startTicking, whose ServerLevel callback does an UNCONDITIONAL
+        // entityTickList.add(entity). Because the callback is now NULL, no later onRemove or
+        // onMove can ever take it out again, so every monster that spawned in the rift
+        // dimension left one permanent entry in ServerLevel.entityTickList. Measured on
+        // gmc101: 368,859 stranded entries in an 8.7 GB heap dump, 100% removalReason
+        // DISCARDED, 100% levelCallback NULL, 100% Monster subclasses, and only ever in
+        // sanctuary:resource_world.
+        //
+        // ALLOW_LOAD is injected at addEntity HEAD and cancels before any registration
+        // happens, so the entity is never added to a section, to byId, or to the tick list.
+        ServerEntityEvents.ALLOW_LOAD.register((entity, world, spawnReason, loadedFromDisk) -> {
             SanctuaryConfig c = CONFIG;
-            if (c != null && entity instanceof Monster
-                    && c.riftDimension.equals(world.dimension().identifier().toString())) {
-                entity.discard();
-            }
+            return !(c != null && entity instanceof Monster
+                    && c.riftDimension.equals(world.dimension().identifier().toString()));
         });
         ServerTickEvents.END_SERVER_TICK.register(com.k33bz.sanctuary.rift.RiftReset::tick);
         ServerTickEvents.END_SERVER_TICK.register(com.k33bz.sanctuary.event.NightEvents::tick);

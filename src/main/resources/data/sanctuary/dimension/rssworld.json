@@ -1,5 +1,5 @@
 {
-  "type": "sanctuary:resource_world",
+  "type": "sanctuary:rssworld",
   "generator": {
     "type": "minecraft:noise",
     "settings": "sanctuary:vanilla_overworld",

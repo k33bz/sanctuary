@@ -55,6 +55,10 @@ public class Sanctuary implements ModInitializer {
     @Override
     public void onInitialize() {
         CONFIG = SanctuaryConfig.load();
+        // Before ANY world is opened: if the gathering world was renamed, move its save folder onto the
+        // new id. Minecraft derives that folder from the dimension id, so doing this later would mean
+        // generating an empty world and stranding the old one (bases in reset pads included).
+        com.k33bz.sanctuary.rift.RiftWorldgen.migrateLegacyWorldFolder(CONFIG);
         VanillaTweaksPacks.register();
         // The crafted-sanctuary chain: two component-aware special recipes (Raw Wild Membrane;
         // Sanctuary Crystal) whose serializers must be registered before datapacks load.

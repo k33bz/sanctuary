@@ -31,8 +31,13 @@ Port a change across the two lines with `git checkout <otherbranch> -- <paths>` 
 python3 scripts/check_deps.py   # bump dependency pins in-place (CI runs this weekly)
 ```
 
-- **Never point a dev server at another branch's run dir** — `run/` holds a 26.1.2 world that a
-  26.2 server would irreversibly upgrade. Loom uses `run262/` on `main` and `run/` on `26.1`.
+- **Never point a dev server at another branch's run dir.** A 26.2 server silently upgrades a
+  26.1.2 world the moment it opens one, and that upgrade is irreversible. The run dir comes from
+  `devRunDir` at the top of `build.gradle`: `run262/` on `main`, `run/` on `26.1`. That line is
+  deliberately branch-specific, so a cross-branch `git checkout <otherbranch> -- build.gradle`
+  clobbers it; both lines silently shared `run262/` that way until 2026-08-19. Re-check
+  `devRunDir` after every port. As a backstop, `runServer` refuses to boot when the run dir's
+  `.sanctuary-mcversion` marker disagrees with `minecraft_version`.
 - Local gradle often can't build (the toolchain can't see the portable JDK 25) — **rely on CI**
   and verify the artifact by `headSha` before downloading a CI jar.
 - MC 26.x ships **un-obfuscated**: there is no mappings dependency and no mixin refmap; use

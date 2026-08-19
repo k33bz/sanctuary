@@ -1,3 +1,44 @@
+## 0.8.11.0
+
+**The gathering world is now a true dead end: renamed to `sanctuary:rssworld`, no Nether gates, no
+structures, no dungeons.** Three separate leaks, all from the same root cause: the resource dimension was
+built as "the overworld preset, elsewhere", so it inherited the overworld's entire content set even though
+it is wiped weekly and nothing inside it is meant to persist.
+
+*Renamed `sanctuary:resource_world` to `sanctuary:rssworld`* to sit alongside `minecraft:overworld` rather
+than reading like an internal variable. Minecraft derives a dimension's save folder from its id, so a naive
+rename would abandon the generated world and silently start an empty one, taking every base that survives
+inside a weekly-reset pad with it. `RiftWorldgen.migrateLegacyWorldFolder` therefore runs at **mod init**,
+before any world is opened, and moves `dimensions/sanctuary/resource_world` onto the new id; `RiftStore`
+rewrites stored rift ends to match on load. Both are driven by the new `riftDimensionLegacyIds` list, so
+this stays a one-line change the next time the id moves. Every step is conditional: an existing target
+folder, a missing source, or an unreadable save directory all leave the disk untouched and log loudly
+rather than guessing. The save directory is read from `server.properties` (`level-name`) because no
+`MinecraftServer` exists that early, which is sound here since the mod is server-side only.
+
+*Nether portals no longer light.* `RiftSeal` only refused the flint-and-steel and fire-charge **interactions**,
+which left every other ignition path open: a dispenser, fire spreading off lava, a ghast fireball. A working
+gate to the persistent Nether is a full progression leak out of a world that gets deleted weekly. The new
+`PortalIgnitionMixin` refuses the portal shape itself at `PortalShape.findEmptyPortalShape`, verified against
+the 26.2 jar to be the sole chokepoint (`BaseFireBlock` is its only caller), so **no** ignition path forms a
+gate. The frame can still be built; it stays inert. `RiftSeal` remains as the player-facing explanation (the
+mixin alone would fail silently), the eye-of-ender refusal, and the stray-portal-block sweep.
+
+*No structures, no monster rooms.* Ruined portals were the sharpest edge, since a crying-obsidian cluster is
+exactly what `RiftPortals` reads as a rift gateway, but strongholds (an End portal), villages, swamp huts,
+trail ruins and trial chambers are all either loot leaks or generation spent on content nobody explores.
+`StructureSuppressMixin` hooks `ChunkGenerator.tryGenerateStructure`, which is handed both the candidate
+structure and the dimension key, so suppression is exact and strictly per-dimension: the home world
+generates precisely what it always did, and datapack structures (Terralith) are covered without naming them.
+Monster rooms are a placed **feature**, not a structure, so they get their own hook at
+`ConfiguredFeature.place` (`FeatureSuppressMixin`), matched on feature-type id so one entry retires both the
+shallow and deep dungeon placements. Ore, cave and terrain generation are untouched.
+
+Config: `riftDimensionLegacyIds`, `riftSuppressStructures` (default on), `riftAllowedStructures` (ids or
+`#tags`, default empty), `riftSuppressedFeatures` (default `minecraft:monster_room`). Policy lives in the new
+`rift/RiftWorldgen` so the three mixins stay a few lines each. Already-generated chunks keep what they have;
+the weekly reset regenerates them clean.
+
 ## 0.8.10.0
 
 **Login guard — reserved names, allowed IPs (offline-mode identity hardening).** gmc101 runs

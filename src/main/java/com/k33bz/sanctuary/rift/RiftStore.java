@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.core.BlockPos;
 import com.k33bz.sanctuary.Sanctuary;
+import com.k33bz.sanctuary.SanctuaryConfig;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -130,6 +131,7 @@ public final class RiftStore {
                     if (s.resetPhase == null) {
                         s.resetPhase = "IDLE";
                     }
+                    s.migrateDimensionIds();
                     return s;
                 }
             }
@@ -137,6 +139,37 @@ public final class RiftStore {
             Sanctuary.LOGGER.warn("[sanctuary] Failed to load rifts; starting empty", e);
         }
         return new RiftStore();
+    }
+
+    /**
+     * Rewrite any rift end that still names a legacy gathering-world id (see
+     * {@link com.k33bz.sanctuary.SanctuaryConfig#riftDimensionLegacyIds}) to the current
+     * {@code riftDimension}. Pairs with the save-folder move in
+     * {@link RiftWorldgen#migrateLegacyWorldFolder}: the folder carries the blocks across a rename and
+     * this carries the rifts, so a rename costs nothing. Overworld ends are never touched.
+     */
+    private void migrateDimensionIds() {
+        SanctuaryConfig cfg = Sanctuary.CONFIG;
+        if (cfg == null || cfg.riftDimension == null
+                || cfg.riftDimensionLegacyIds == null || cfg.riftDimensionLegacyIds.isEmpty()) {
+            return;
+        }
+        int moved = 0;
+        for (Rift r : rifts) {
+            if (cfg.riftDimensionLegacyIds.contains(r.dim)) {
+                r.dim = cfg.riftDimension;
+                moved++;
+            }
+            if (cfg.riftDimensionLegacyIds.contains(r.linkDim)) {
+                r.linkDim = cfg.riftDimension;
+                moved++;
+            }
+        }
+        if (moved > 0) {
+            Sanctuary.LOGGER.warn("[sanctuary] rewrote {} rift end(s) onto the renamed gathering world {}",
+                    moved, cfg.riftDimension);
+            save();
+        }
     }
 
     public void save() {

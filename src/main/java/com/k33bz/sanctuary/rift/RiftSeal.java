@@ -20,16 +20,19 @@ import com.k33bz.sanctuary.Sanctuary;
 import com.k33bz.sanctuary.SanctuaryConfig;
 
 /**
- * Seals the gathering world ({@code sanctuary:resource_world}) against vanilla Nether / End portals.
+ * Seals the gathering world against vanilla Nether / End portals.
  *
  * <p>The gathering world is a TEMPORARY dimension that is wiped on the weekly reset. A working Nether portal
  * (→ the persistent Nether) or a stronghold End portal (→ the End) would let a player carry items and progress
  * OUT of the world that is meant to be discarded — defeating the whole point of a reset resource dimension.
  * This closes both, defence-in-depth:
  * <ul>
- *   <li><b>Prevention (primary):</b> a synchronous {@link UseBlockCallback} refuses to light an obsidian frame
- *       with flint &amp; steel / a fire charge, and refuses to seat an eye of ender in an end-portal frame,
- *       while the interaction happens inside the gathering world. The portal simply never forms.</li>
+ *   <li><b>Prevention (primary):</b> {@link com.k33bz.sanctuary.mixin.PortalIgnitionMixin} refuses the portal
+ *       shape itself, so no Nether gate forms here by ANY route: hand, dispenser, fire charge, spreading
+ *       lava or ghast fireball. The frame can still be built; it stays inert.</li>
+ *   <li><b>Explanation + End portals:</b> a synchronous {@link UseBlockCallback} tells the player WHY their
+ *       flint &amp; steel did nothing (the mixin alone would fail silently), and refuses to seat an eye of
+ *       ender in an end-portal frame, a path the portal-shape hook does not cover.</li>
  *   <li><b>Sink hardening (backstop):</b> driven from {@link Rifts#tick}, any {@code nether_portal} /
  *       {@code end_portal} block that still materialises near a player in the gathering world (dispenser fire,
  *       flowing lava, an operator build, a portal left over from before this shipped) is cleared to air.</li>

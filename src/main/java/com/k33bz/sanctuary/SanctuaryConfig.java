@@ -321,11 +321,28 @@ public class SanctuaryConfig {
     public boolean startingKitEnabled = true;
 
     public boolean riftsEnabled = true;
-    public String riftDimension = "sanctuary:resource_world";
+    public String riftDimension = "sanctuary:rssworld";
+    // Dimension ids this world has been known by before. On boot, RiftWorldgen moves the matching save
+    // folder to the current id and RiftStore rewrites stored rift records, so renaming riftDimension is
+    // lossless rather than stranding the generated world. Keep old ids here forever; they cost nothing
+    // once migrated, and dropping one turns a later rename into silent data loss.
+    public List<String> riftDimensionLegacyIds = new ArrayList<>(List.of("sanctuary:resource_world"));
     // The gathering world is wiped weekly, so vanilla Nether/End portals must NOT work inside it — a working
-    // gate would let a player stash items and progress OUTSIDE the reset. RiftSeal refuses to light an obsidian
-    // frame or seat an eye of ender there, and clears any portal block that slips in. See rift.RiftSeal.
+    // gate would let a player stash items and progress OUTSIDE the reset. A frame can still be BUILT; it just
+    // never lights (PortalIgnitionMixin refuses the portal shape at its single chokepoint, so hand-lighting,
+    // dispensers, fire charges, lava spread and ghast fireballs are all covered). RiftSeal adds the
+    // player-facing refusal, the eye-of-ender block, and a sweep for stray portal blocks.
     public boolean sealResourcePortals = true;
+    // Structures in the gathering world. It is mined out and discarded weekly, so loot structures are a
+    // progression leak and explorable ones are wasted generation: nothing generates by default. Exceptions
+    // go in riftAllowedStructures as either a plain id ("minecraft:mineshaft") or a #tag ("#minecraft:village").
+    // Strictly per-dimension: the home world is untouched. See rift.RiftWorldgen + mixin.StructureSuppressMixin.
+    public boolean riftSuppressStructures = true;
+    public List<String> riftAllowedStructures = new ArrayList<>();
+    // Worldgen FEATURES suppressed in the gathering world, by feature-type id. Monster rooms are a feature
+    // rather than a structure, so they need this list instead of riftSuppressStructures; the one entry covers
+    // both the shallow and deep dungeon placements. Ores/caves/vegetation are deliberately not listed.
+    public List<String> riftSuppressedFeatures = new ArrayList<>(List.of("minecraft:monster_room"));
     public int riftTravelCooldownTicks = 60;   // suppress re-teleport for ~3s after a crossing
     public double riftTriggerRadius = 0.6;      // horizontal distance to a point rift that triggers travel
     // Rift portals: a nether-portal frame containing CRYING OBSIDIAN, lit with flint & steel, fills with a

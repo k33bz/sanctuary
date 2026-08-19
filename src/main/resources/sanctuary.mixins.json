@@ -11,7 +11,10 @@
     "EndermanTakeBlockMixin",
     "GravekeeperThunderMixin",
     "PlayerTabNameMixin",
-    "LoginGuardMixin"
+    "LoginGuardMixin",
+    "PortalIgnitionMixin",
+    "StructureSuppressMixin",
+    "FeatureSuppressMixin"
   ],
   "injectors": {
     "defaultRequire": 1

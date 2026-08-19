@@ -8,7 +8,7 @@ Sanctuary is a **server-side-only Fabric mod** for Minecraft 26.2 (Java 25). Two
 economies: XP is a life force (heals, armors, shields, buys back your life) and distance is
 danger (mobs scale with distance from the nearest sanctuary anchor).
 
-Two version lines are kept at feature parity (currently both 0.8.7.2):
+Two version lines are kept at feature parity (currently both 0.8.11.0):
 
 - **`main`** targets **MC 26.2** (run dir `run262/`).
 - **`26.1`** targets **MC 26.1.2** — this is the line the **live gmc101 server actually runs**,

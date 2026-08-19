@@ -3,8 +3,10 @@ package com.k33bz.sanctuary.rift;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.HolderSet;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.Level;
@@ -135,6 +137,35 @@ public final class RiftWorldgen {
             }
         }
         return false;
+    }
+
+    /**
+     * True when a structure SEARCH here can only scan fruitlessly and must be refused outright.
+     *
+     * <p>Suppressing generation alone is not enough. {@code findNearestMapStructure} runs on the SERVER
+     * THREAD and walks outward chunk by chunk, blocking on storage reads; when nothing can ever generate
+     * it never finds a hit and never exits early, so it burns the full search radius and trips the 60s
+     * watchdog. That path is reachable from {@code /locate}, an eye of ender, an explorer map, and the
+     * dolphin treasure goal, which makes it a server hang any player (or any dolphin) can trigger.
+     *
+     * <p>Returning "not found" immediately is both faster and truthful: there is genuinely nothing there.
+     * The search is only refused when EVERY requested structure is suppressed, so an allowlisted structure
+     * is still locatable.
+     */
+    public static boolean suppressStructureSearch(SanctuaryConfig cfg, ServerLevel level,
+                                                  HolderSet<Structure> targets) {
+        if (cfg == null || !cfg.riftsEnabled || !cfg.riftSuppressStructures || targets == null) {
+            return false;
+        }
+        if (!isGathering(cfg, level.dimension())) {
+            return false;
+        }
+        for (Holder<Structure> target : targets) {
+            if (isAllowedStructure(cfg, target)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     // ---- features -----------------------------------------------------------------------------

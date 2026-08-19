@@ -60,6 +60,7 @@ and nothing generates that is meant to be explored rather than mined.
 | End portals | `sealResourcePortals` | eyes of ender refuse to seat; stray portal blocks swept |
 | Structures | `riftSuppressStructures` | none generate: ruined portals, strongholds, villages, swamp huts, trail ruins, trial chambers, ancient cities, datapack structures |
 | Monster rooms | `riftSuppressedFeatures` | dungeon feature suppressed (shallow and deep) |
+| Structure search | `riftSuppressStructures` | `/locate`, eyes of ender, explorer maps and dolphins answer "not found" instantly instead of scanning |
 
 Ore, caves and terrain are untouched. To let a structure back in, add its id or a `#tag` to
 `riftAllowedStructures` (`#minecraft:mineshaft`, `minecraft:shipwreck`); the change applies to

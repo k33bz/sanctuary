@@ -34,10 +34,28 @@ Monster rooms are a placed **feature**, not a structure, so they get their own h
 `ConfiguredFeature.place` (`FeatureSuppressMixin`), matched on feature-type id so one entry retires both the
 shallow and deep dungeon placements. Ore, cave and terrain generation are untouched.
 
+*Suppressing generation alone hung the server.* Caught by the dev-server verification, where a single
+`/locate` inside the gathering world killed the process: `findNearestMapStructure` runs on the SERVER
+THREAD and walks outward chunk by chunk, blocking on storage reads, and when nothing can ever generate
+it never finds a hit and never exits early, so it burned the full search radius and tripped the
+60-second watchdog. `/locate` is the least of it, since the same path backs an eye of ender, explorer
+maps and the dolphin treasure goal, meaning any player (or any passive dolphin spawning near water)
+could have crashed the server. `StructureSuppressMixin` now also answers `findNearestMapStructure` with
+vanilla's own not-found signal when EVERY requested structure is suppressed, which is instant and also
+truthful; an allowlisted structure stays locatable.
+
 Config: `riftDimensionLegacyIds`, `riftSuppressStructures` (default on), `riftAllowedStructures` (ids or
 `#tags`, default empty), `riftSuppressedFeatures` (default `minecraft:monster_room`). Policy lives in the new
 `rift/RiftWorldgen` so the three mixins stay a few lines each. Already-generated chunks keep what they have;
 the weekly reset regenerates them clean.
+
+Verified on a 26.1.2 dev server, each check differential against the overworld so over-blocking would
+show up too: an obsidian frame still lights in the overworld and refuses in the gathering world while
+remaining buildable; `/locate` returns instantly there instead of hanging; and force-generating the same
+192x192 region in both dimensions (same seed, same preset) leaves the overworld with mineshafts, trial
+chambers and a plains village and the gathering world with none across 337 chunks, terrain and ore intact.
+The rename was exercised by staging a world under the old id: the folder, its seven region files and a
+marker file all survived the move, and the stored rift end was rewritten.
 
 ## 0.8.10.0
 

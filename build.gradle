@@ -11,13 +11,47 @@ base {
     archivesName = project.archives_base_name
 }
 
+// Dev-server run dir. BRANCH-SPECIFIC: main (26.2) uses run262/, the 26.1 line uses run/.
+// A 26.2 server silently upgrades a 26.1.2 world the moment it opens one, and that upgrade is
+// irreversible, so the two lines must never share a run dir. A cross-branch
+// `git checkout <otherbranch> -- build.gradle` clobbers this line (that is exactly how both
+// lines ended up on run262/), so re-check it after porting. The runServer guard is the backstop.
+def devRunDir = "run"
+
 loom {
     accessWidenerPath = file("src/main/resources/sanctuary.accesswidener")
-    // 26.2 branch: isolated run dir — never let a 26.2 server touch (and upgrade!) the
-    // 26.1.2 dev world that lives in run/.
     runs {
         server {
-            runDir "run262"
+            runDir devRunDir
+        }
+    }
+}
+
+// Refuse to boot a dev server against a world that another version line created. The marker is
+// written on the first boot of an empty run dir; a world that predates the marker has an unknown
+// version and is refused rather than gambled on. This guards runServer only, so `./gradlew build`
+// (all CI runs) is untouched.
+tasks.matching { it.name == "runServer" }.configureEach {
+    def guardedDir = devRunDir
+    def expectedVersion = project.minecraft_version
+    doFirst {
+        def dir = file(guardedDir)
+        def marker = new File(dir, ".sanctuary-mcversion")
+        if (!new File(dir, "world").exists()) {
+            dir.mkdirs()
+            marker.text = expectedVersion + "\n"
+        } else if (!marker.exists()) {
+            throw new GradleException(
+                "Run dir '" + guardedDir + "' holds a world of unknown Minecraft version, and " +
+                "this branch targets " + expectedVersion + ". Opening a world with the wrong " +
+                "version upgrades it irreversibly. Check " + guardedDir + "/logs/latest.log for " +
+                "the version that made it, then either move the world aside or write that " +
+                "version into " + marker + " to unblock.")
+        } else if (marker.text.trim() != expectedVersion) {
+            throw new GradleException(
+                "Run dir '" + guardedDir + "' holds a Minecraft " + marker.text.trim() + " world " +
+                "but this branch targets " + expectedVersion + ". Booting would upgrade it " +
+                "irreversibly. Point this branch at its own run dir (devRunDir in build.gradle).")
         }
     }
 }

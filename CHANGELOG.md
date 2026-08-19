@@ -1,3 +1,48 @@
+## 0.8.11.1
+
+**MC 26.2 retired the `minecraft:weird_scaled_sampler` density function, and the gathering world ships
+namespaced copies of the vanilla worldgen tree that still used it, so `main` could not boot at all.**
+Registry loading died with `Unbound values in registry [minecraft:worldgen/density_function]:
+[sanctuary:overworld/caves/entrances, sanctuary:overworld/caves/spaghetti_2d]`, caused by
+`Unknown registry key in [minecraft:worldgen/density_function_type]: minecraft:weird_scaled_sampler`.
+26.1.2 still ships that type, so the live 26.1 line was never affected and this was a 26.2-only blocker.
+26.2 replaced the type with `minecraft:interval_select`, wrapped in `minecraft:abs`.
+
+*Why the copies exist at all*, because "just point `rssworld` at `minecraft:overworld` and delete the
+duplicated tree" is the obvious fix and it is wrong. Minecraft seeds every noise field from the **id
+string** of its noise parameters (`Noises` hands `ResourceKey.identifier()` to
+`PositionalRandomFactory.fromHashOf`), so `sanctuary:cave_entrance` and `minecraft:cave_entrance` are
+different noise. Every dimension shares one world seed, so a gathering world generated from
+`minecraft:overworld` noise settings would be a terrain-identical, biome-identical mirror of the home
+overworld: scout one, you have scouted the other. The `sanctuary:` namespace **is** the de-correlation,
+and that is the whole reason commit 430e258 copied the tree. Confirmed on a dev server at one seed:
+nearest plains sits at `[288, 67, 0]` in the overworld and `[608, 67, 128]` in `rssworld`. The copies stay.
+
+*Six files were stale, not the two that crashed.* Diffing all 99 copies against the 26.2 jar found four
+more that had silently drifted since 26.1.2, none of which announced themselves: the three
+`sloped_cheese` variants (overworld, amplified, large biomes) were missing a `minecraft:flat_cache`
+around the jaggedness term, and `vanilla_overworld.json` was missing an `interpolated` wrapper on the
+final density, `cache_once` on three `sloped_cheese` references, a surface-rule schema change
+(`biome_is` went from a list to a string), and **the entire `minecraft:sulfur_caves` surface rule**, so
+26.2's new sulfur caves were generating in the gathering world without their surface blocks. All six are
+now refreshed from the 26.2 jar and the full tree matches vanilla exactly, modulo the namespace.
+
+*A seventh problem only real chunk generation could find.* Booting clean is not the same as generating,
+and the refreshed surface rule referenced `sanctuary:sulfur_cave_gradient`, a noise 26.2 added and the
+26.1.2-era copies therefore never had. That is not a boot failure. It throws per chunk, on a worker
+thread, as `Missing element ResourceKey[minecraft:worldgen/noise / sanctuary:sulfur_cave_gradient]`
+during `buildSurface`, and it took the server down only once terrain was actually requested. The missing
+noise is now copied in. Verification is 256 force-loaded chunks in `rssworld` with a clean log, not just
+a successful boot.
+
+*`scripts/check_worldgen.py` turns the next game bump into a one-command check.* It diffs every copy
+against the vanilla files inside the loom-cached Minecraft jar (structurally, since key order is not
+meaningful to Minecraft) and separately verifies that every `sanctuary:` id the tree references actually
+resolves to a file in the tree, which is the check that catches the `sulfur_cave_gradient` class
+statically instead of on a worker thread five minutes into a world. `--write` refreshes the drifted
+files in place, preserving existing key order so the diff stays reviewable. Both failure modes were
+tested by reintroducing them.
+
 ## 0.8.11.0
 
 **The gathering world is now a true dead end: renamed to `sanctuary:rssworld`, no Nether gates, no

@@ -6,17 +6,20 @@
         "argument1": {
           "argument1": "sanctuary:overworld/depth",
           "argument2": {
-            "argument1": "sanctuary:overworld/jaggedness",
-            "argument2": {
-              "argument": {
-                "noise": "sanctuary:jagged",
-                "xz_scale": 1500.0,
-                "y_scale": 0.0,
-                "type": "minecraft:noise"
+            "argument": {
+              "argument1": "sanctuary:overworld/jaggedness",
+              "argument2": {
+                "argument": {
+                  "noise": "sanctuary:jagged",
+                  "xz_scale": 1500.0,
+                  "y_scale": 0.0,
+                  "type": "minecraft:noise"
+                },
+                "type": "minecraft:half_negative"
               },
-              "type": "minecraft:half_negative"
+              "type": "minecraft:mul"
             },
-            "type": "minecraft:mul"
+            "type": "minecraft:flat_cache"
           },
           "type": "minecraft:add"
         },

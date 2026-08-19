@@ -29,6 +29,7 @@ Port a change across the two lines with `git checkout <otherbranch> -- <paths>` 
 ./gradlew test --tests "com.k33bz.sanctuary.grave.GraveLifecycleTest.someMethod"  # one method
 ./gradlew runServer    # dev server on :25565 (run dir: run262/ on main, run/ on 26.1)
 python3 scripts/check_deps.py   # bump dependency pins in-place (CI runs this weekly)
+python3 scripts/check_worldgen.py   # sanctuary worldgen copies vs the MC jar (--write to refresh)
 ```
 
 - **Never point a dev server at another branch's run dir** — `run/` holds a 26.1.2 world that a
@@ -87,6 +88,14 @@ Packages under `com.k33bz.sanctuary`:
   `RiftSeal` blocks vanilla Nether/End portals inside the gathering world so it stays a
   dead-end resource dim. Weekly preserved-chunk reset lives in `RiftReset` / `RiftSnapshot` /
   `RiftStore` (reset is OFF by default); `Rifts` is the wiring.
+  The dimension generates from `sanctuary:vanilla_overworld`, backed by ~100 namespaced copies of
+  the vanilla worldgen tree under `data/sanctuary/worldgen/`. **Do not "simplify" these away by
+  pointing at `minecraft:overworld`.** MC seeds each noise from its *id string*
+  (`Noises` → `PositionalRandomFactory.fromHashOf`), and all dimensions share one world seed, so
+  the `sanctuary:` prefix is the only thing stopping the gathering world from being a
+  terrain-identical mirror of the home overworld. The cost is drift: a game bump that retires a
+  density-function type is a boot crash (0.8.11.1). Run `python3 scripts/check_worldgen.py` on
+  every MC bump, and verify by **generating chunks**, not just booting.
 - **event/** — themed **night events** on a deterministic sha256-seeded schedule (~1-in-8
   nights): `NightEvents`, `EventDrivers`, `EventSchedule`, `NightEvent`, `NightEventStore`.
   `EventExport` writes a JSON the mcweb site reads to show the schedule.

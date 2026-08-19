@@ -17,6 +17,8 @@ jobs:
           cache: gradle
       - name: Build + tests
         run: ./gradlew build
+      - name: Worldgen copies match the Minecraft jar
+        run: python3 scripts/check_worldgen.py
       - name: Diagnose mappings (only on failure)
         if: failure()
         run: |

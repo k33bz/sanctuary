@@ -1,0 +1,211 @@
+# Forgejo is the source of truth for this mod.
+#
+# This lives in .github/workflows on purpose. Forgejo evaluates exactly ONE
+# workflow directory and .github wins over .forgejo when both exist, so a
+# .forgejo/workflows file here is silently never run. Every job is therefore
+# guarded on the repository owner: this file runs only on Forgejo, and build/
+# deps/release/publish.yml run only on GitHub.
+#
+#   push here -> build -> compat gate (mc-test-harness e2e) -> push to GitHub
+#
+# GitHub is strictly downstream: it receives already-green code and runs its own
+# workflows (release.yml / publish.yml) to ship to Modrinth. Do not commit
+# directly on GitHub - nothing reconciles that back and the two will diverge.
+#
+# main and 26.* are PARALLEL RELEASE LINES for different Minecraft versions and
+# are never merged into each other. This file is maintained on each branch
+# separately; a change here needs applying to the others by hand.
+name: ci
+
+on:
+  push:
+    branches: [main, '26.*']
+  pull_request:
+
+jobs:
+  # build and compat are one job so the jar never has to round-trip through the
+  # artifact service just to reach the test step. The artifact is still
+  # published at the end - that is the delivery channel for the built jar.
+  build-and-compat:
+    if: github.repository_owner == 'homelab'
+    runs-on: debian-op
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: check out mc-test-harness
+        uses: actions/checkout@v4
+        with:
+          repository: homelab/mc-test-harness
+          token: ${{ secrets.FORGEJO_READ_TOKEN }}
+          path: harness
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: gradle
+
+      # The runner image ships node 20, but the suite runs as
+      # `node --test "test/**/*.test.js"` and glob expansion in --test landed in
+      # node 21. On 20 the glob is taken literally, nothing matches, and the gate
+      # reports zero tests instead of failing.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: normalise gradlew
+        run: chmod +x ./gradlew
+
+      - name: gradle build
+        run: ./gradlew build --no-daemon
+
+      # gate.js loads the mod under test from this exact path.
+      - name: stage the built jar for the harness
+        run: |
+          dir=harness/ci-artifacts/sanctuary/sanctuary
+          mkdir -p "$dir"
+          # The harness commits older sanctuary jars here for its own
+          # red-on-old regression runs. Drop them so both the gate and the
+          # published artifact can only ever be THIS build.
+          rm -f "$dir"/*.jar
+          find build/libs -name '*.jar' ! -name '*-sources.jar' ! -name '*-dev.jar' \
+            -exec cp {} "$dir/" \;
+          jar=$(ls "$dir"/*.jar 2>/dev/null | head -1)
+          test -n "$jar" || { echo "no jar was built"; exit 1; }
+          echo "GATE_JAR=ci-artifacts/sanctuary/sanctuary/$(basename "$jar")" >> "$GITHUB_ENV"
+          echo "JAR_MC=$(basename "$jar" .jar | sed 's/.*+//')" >> "$GITHUB_ENV"
+          ls -la "$dir"
+
+      # The bot speaks 1.21.x and the server is 26.x, so every test crosses the
+      # ViaProxy bridge. It is a 45 MB jar fetched from a pinned ViaVersion CI
+      # build - cached, because that download is the slowest thing here and the
+      # pin only moves when someone edits scripts/fetch-viaproxy.js.
+      - name: cache the ViaProxy bridge
+        uses: actions/cache@v4
+        with:
+          path: harness/ci-artifacts/viaproxy
+          key: viaproxy-3.4.13-build901
+
+      - name: fetch the ViaProxy bridge
+        working-directory: harness
+        run: npm run viaproxy
+
+      # --ignore-scripts skips the canvas/gl native builds. Those back
+      # prismarine-viewer, which the gate does not use.
+      - name: install harness deps
+        working-directory: harness
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      # The harness provisions a server at ITS OWN Minecraft version and loads a
+      # dependency stack (fabric-api, postbox, LuckPerms, Flan) built for that
+      # version. A jar for a different target cannot be behaviourally verified
+      # against it, so say so loudly rather than reporting a green that was never
+      # earned. Today that means 26.1 is gated and main (26.2) is not.
+      - name: compat gate
+        working-directory: harness
+        run: |
+          set -o pipefail
+          # An empty JAR_MC would compare unequal and silently take the skip
+          # path below, turning a staging bug into a green that verified
+          # nothing. Fail instead.
+          test -n "${JAR_MC:-}" || { echo "JAR_MC is empty - the staging step did not export it"; exit 1; }
+          harness_mc=$(node -e "import('./config.js').then(m => console.log(m.default.server.mcVersion))")
+          {
+            echo "jar under test : $GATE_JAR"
+            echo "jar targets    : Minecraft $JAR_MC"
+            echo "harness server : Minecraft $harness_mc"
+            echo
+          } > gate-report.txt
+          if [ "$harness_mc" != "$JAR_MC" ]; then
+            {
+              echo "=================================================================="
+              echo "  COMPAT GATE SKIPPED - NOT VERIFIED"
+              echo "  Nothing behavioural ran for this jar. To gate it, the harness"
+              echo "  needs a $JAR_MC dependency stack in ci-artifacts/."
+              echo "=================================================================="
+            } >> gate-report.txt
+            cat gate-report.txt
+            exit 0
+          fi
+          npm run gate -- "$GATE_JAR" 2>&1 | tee -a gate-report.txt
+
+      - name: harness logs on failure
+        if: failure()
+        working-directory: harness
+        run: |
+          tail -n 200 server/logs/latest.log 2>/dev/null || echo "no server log"
+
+      # Always published, including on a red gate: this is the durable record of
+      # what the gate actually said. Job logs have gone missing on this instance,
+      # and "the job was green" does not distinguish a gate that passed from one
+      # that was skipped.
+      - name: publish the gate report
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: gate-report
+          path: harness/gate-report.txt
+
+      # Delivery. Runs only after the gate step succeeded - which on a branch the
+      # harness can verify means a green gate, and on one it cannot (26.2) means
+      # the gate was skipped. gate-report.txt above says which; do not read the
+      # presence of this artifact as proof the jar was behaviourally verified.
+      - name: publish the built jar
+        uses: actions/upload-artifact@v3
+        with:
+          name: sanctuary-jars
+          path: harness/ci-artifacts/sanctuary/sanctuary/*.jar
+
+  push-upstream:
+    needs: build-and-compat
+    if: github.repository_owner == 'homelab' && github.ref == 'refs/heads/main'
+    runs-on: debian-op
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: push to GitHub
+        env:
+          GH_TOKEN: ${{ secrets.GH_PUSH_TOKEN }}
+        run: |
+          test -n "$GH_TOKEN" || { echo "GH_PUSH_TOKEN not set"; exit 1; }
+          echo "::add-mask::$GH_TOKEN"
+          git push "https://x-access-token:${GH_TOKEN}@github.com/k33bz/sanctuary.git" HEAD:refs/heads/main
+          git push --tags "https://x-access-token:${GH_TOKEN}@github.com/k33bz/sanctuary.git"
+
+  # Deploy to the live server. Branch-gated because gmc101 runs Minecraft
+  # 26.1.2 while main builds +26.2 - and the playbook independently refuses a
+  # mismatched target, so this is belt and braces rather than a single check.
+  deploy-gmc101:
+    needs: build-and-compat
+    if: github.repository_owner == 'homelab' && github.ref == 'refs/heads/26.1'
+    runs-on: debian-op
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: gradle
+
+      - name: build the jar to deploy
+        run: |
+          chmod +x ./gradlew
+          ./gradlew build --no-daemon
+          ls -la build/libs/
+
+      - name: deploy via ansible
+        env:
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+          OP_REF: ${{ vars.OP_REF_CD_LS2087 }}
+          ANSIBLE_HOST_KEY_CHECKING: "False"
+        run: |
+          eval "$(ssh-agent -s)"
+          trap 'ssh-agent -k' EXIT
+          op read "$OP_REF" </dev/null | ssh-add -
+          JAR=$(find build/libs -name '*.jar' ! -name '*-sources.jar' ! -name '*-dev.jar' | head -1)
+          test -n "$JAR" || { echo "no jar built"; exit 1; }
+          echo "deploying $JAR"
+          ansible-playbook -i deploy/inventory.ini deploy/deploy-gmc101.yml -e "jar=$PWD/$JAR"

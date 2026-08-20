@@ -11,6 +11,7 @@ permissions:
 
 jobs:
   check:
+    if: github.repository_owner == 'k33bz'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

@@ -8,7 +8,8 @@ Sanctuary is a **server-side-only Fabric mod** for Minecraft 26.2 (Java 25). Two
 economies: XP is a life force (heals, armors, shields, buys back your life) and distance is
 danger (mobs scale with distance from the nearest sanctuary anchor).
 
-Two version lines are kept at feature parity (currently both 0.8.11.0):
+Two version lines are kept at FEATURE parity (currently 0.8.11.1 on `main`, 0.8.11.0 on `26.1`).
+Version numbers are allowed to diverge when a fix only applies to one Minecraft version:
 
 - **`main`** targets **MC 26.2** (run dir `run262/`).
 - **`26.1`** targets **MC 26.1.2** — this is the line the **live gmc101 server actually runs**,
@@ -19,6 +20,16 @@ Port a change across the two lines with `git checkout <otherbranch> -- <paths>` 
 `git diff --cached HEAD` to catch API-delta clobbers. Three known 26.1↔26.2 deltas:
 `GRAY_STAINED_GLASS_PANE` ↔ `STAINED_GLASS_PANE.gray()`, `getBottomCenter()` ↔
 `Vec3.atBottomCenterOf()`, and team color `ChatFormatting` ↔ `Optional<TeamColor>`.
+
+**Parity does NOT extend to `data/sanctuary/worldgen/`.** Those files are namespaced copies of
+vanilla worldgen, and vanilla worldgen types are version-specific, so the two lines must diverge
+there and porting either way breaks the other. Known delta: the density-function type
+`minecraft:weird_scaled_sampler` exists in 26.1.2 and was REMOVED in 26.2, replaced by
+`minecraft:interval_select`. Copying 26.2 worldgen onto `26.1` (or the reverse) makes registry
+loading fail, which is a hard boot crash: the server cannot start with the mod installed at all.
+That is exactly how 26.2 was broken between 0.8.7.x and 0.8.11.1. Run `python3
+scripts/check_worldgen.py` after touching anything under that directory, and refresh from the
+vanilla JSONs inside the matching Minecraft jar rather than from the other branch.
 
 ## Commands
 

@@ -76,7 +76,7 @@ dependencies {
     // activates when the Flan mod is actually installed (FlanIntegration guards on isModLoaded).
     // NOTE: no Flan build for 26.2 yet — compiling against the 26.1.2 API jar is fine
     // (compileOnly needs signatures only; runtime is gated on isModLoaded). Re-pin when it ports.
-    compileOnly "io.github.flemmli97:flan:26.1.2-1.12.7-fabric"
+    compileOnly "io.github.flemmli97:flan:26.2-1.12.8-fabric"
 
     // Pure-logic unit tests (SurvivalLogic) — no game runtime required.
     testImplementation platform('org.junit:junit-bom:5.11.3')

@@ -63,11 +63,21 @@ public final class FlanIntegration {
                 }
                 if (ours) {
                     assignOwner(storage, existing, anchor);
+                } else {
+                    // Someone else's claim already covers the crystal: leave it alone (its own
+                    // protection applies), but say so — the bot harness (B15) found this silent.
+                    Sanctuary.LOGGER.info("[sanctuary] Anchor at {},{} sits in an existing Flan claim ({}, owner={});"
+                                    + " no anchor claim created", pos.getX(), pos.getZ(), existing.getClaimID(),
+                            existing.isAdminClaim() ? "admin" : existing.getOwner());
                 }
-                return ours; // someone else's claim: leave it alone (their protection applies)
+                return ours;
             }
+            // Floor at the bottom of the world, not Flan's defaultClaimDepth below the crystal: the
+            // bot harness (B13) drained a claimed chest with a hopper and a hopper minecart parked
+            // one block under the old claim floor. Flan clamps minY to the world's min height.
             io.github.flemmli97.flan.claim.Claim claim = storage.createAdminClaim(
-                    pos.offset(-radius, 0, -radius), pos.offset(radius, 0, radius), level, false);
+                    new BlockPos(pos.getX() - radius, level.getMinY(), pos.getZ() - radius),
+                    pos.offset(radius, 0, radius), level, false);
             if (claim == null) {
                 // Flan refuses any claim that overlaps another. Say so: the core is NOT protected.
                 Sanctuary.LOGGER.warn("[sanctuary] Flan refused the anchor claim at {},{} (r={}): it overlaps"

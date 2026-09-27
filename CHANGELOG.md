@@ -39,6 +39,23 @@ speed, backlog and claim instead. Rebuilds need the chunk loaded; overdue ones l
 near. The journal persists in `config/sanctuary_repairs.json`. Rules are Minecraft-free in
 `BaseRepairRules` with 18 tests in `BaseRepairRulesTest`.
 
+**Fixed — a drowned door-breaker crashed the server (gmc101 went down 2026-09-03 19:07 and 2026-09-06
+11:36).** Both outages were `Exception ticking world` ← `IllegalArgumentException: Unsupported mob type for
+DoorInteractGoal` at `MobDifficulty.attachDoorBreakGoalIfMarked` ← `onSpawn` ← the entity-load event.
+Vanilla's `DoorInteractGoal` constructor throws unless the mob has ground navigation. A Drowned *is* a
+`Zombie` (so it passed our `instanceof Zombie` check), swaps to water navigation while swimming, and a
+tagged wildlands door-breaker that drowns converts to a Drowned carrying its tags along. Reloading that
+chunk with the Drowned in water re-attached the goals on load, threw, and the exception escaped the world
+tick. The attach now checks `GoalUtils.hasGroundPathNavigation` first and skips (the next load on dry
+ground attaches as usual), and any `IllegalArgumentException` from goal construction is logged instead
+of propagated. **This fix matters most on `26.1`, the line gmc101 runs.**
+
+**Fixed — hoppers could drain a claimed core from below.** The anchor claim was a 2D Flan claim whose
+floor sat `defaultClaimDepth` below the crystal, and the bot harness (B13) emptied a chest on the claim
+floor with a hopper and a hopper minecart parked one block beneath it. The claim now reaches the bottom
+of the world. A crystal that sits inside someone else's claim (so no anchor claim is made) is now logged
+too; that case was silent (B15).
+
 **Flan: three claim bugs, found by reading Flan's `Claim.canInteract`.** (1) The anchor's claim was an
 ownerless *admin* claim. Flan lets only the owner, trusted group members and ops act inside a claim, and an
 admin claim has no owner, so a non-op player who paid for a sanctuary could not build, break or open a

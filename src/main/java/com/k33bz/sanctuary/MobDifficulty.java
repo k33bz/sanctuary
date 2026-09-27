@@ -323,11 +323,26 @@ public final class MobDifficulty {
     /** Attach the any-difficulty door-break goal to a mob carrying the door-breaker tag. */
     private static void attachDoorBreakGoalIfMarked(Mob mob) {
         if (mob instanceof Zombie && mob.entityTags().contains(DOOR_BREAKER_TAG)) {
-            // Vanilla gates door-breaking behind Hard difficulty; wildlands hunters ignore that.
-            // Still respects the mobGriefing gamerule (checked inside the goal).
-            mob.goalSelector.addGoal(1, new BreakDoorGoal(mob, difficulty -> true));
-            // And when the way through is blocked, smash the frame of a player-placed door.
-            mob.goalSelector.addGoal(2, new com.k33bz.sanctuary.siege.SmashDoorFrameGoal(mob));
+            // 0.8.12.0 crash fix: DoorInteractGoal's constructor THROWS ("Unsupported mob type for
+            // DoorInteractGoal") unless the mob has ground navigation. A Drowned is a Zombie that
+            // swaps to water navigation while swimming, and a tagged door-breaker that drowns
+            // converts to a Drowned keeping its tags — so reloading it in water threw from the
+            // entity-load event and took gmc101 down twice (2026-09-03, 2026-09-06). Skip instead;
+            // the next load on dry ground attaches the goal as usual.
+            if (!net.minecraft.world.entity.ai.util.GoalUtils.hasGroundPathNavigation(mob)) {
+                return;
+            }
+            try {
+                // Vanilla gates door-breaking behind Hard difficulty; wildlands hunters ignore that.
+                // Still respects the mobGriefing gamerule (checked inside the goal).
+                mob.goalSelector.addGoal(1, new BreakDoorGoal(mob, difficulty -> true));
+                // And when the way through is blocked, smash the frame of a player-placed door.
+                mob.goalSelector.addGoal(2, new com.k33bz.sanctuary.siege.SmashDoorFrameGoal(mob));
+            } catch (IllegalArgumentException e) {
+                // Backstop: a goal is a nicety, a crashed world tick is an outage. Never propagate.
+                Sanctuary.LOGGER.warn("[sanctuary] Skipped door-breaker goals for {}: {}",
+                        mob.getType().getDescriptionId(), e.getMessage());
+            }
         }
     }
 

@@ -43,23 +43,6 @@ jobs:
           echo "== Objective/ScoreAccess"
           javap -cp "$J" net.minecraft.world.scores.ScoreAccess 2>/dev/null
           javap -cp "$J" net.minecraft.world.scores.PlayerScoreEntry 2>/dev/null
-      # TEMPORARY (System 12 PR): mixin targets are only checked at boot, not at compile time, so
-      # print the real signatures of everything the new mixins hook. Remove before merging.
-      - name: Mixin target signatures (System 12)
-        if: always()
-        run: |
-          J=$(find ~/.gradle/caches/fabric-loom -name "*minecraft*.jar" 2>/dev/null | grep -viE "sources|javadoc|intermediary" | head -1)
-          echo "== $J"
-          javap -p -cp "$J" net.minecraft.world.level.ServerExplosion | grep -iE "interactWithBlocks|calculateExplodedPositions|explode|createFire" || true
-          javap -p -cp "$J" net.minecraft.world.level.Level | grep -iE "destroyBlock|removeBlock" || true
-          javap -p -cp "$J" net.minecraft.world.entity.ai.goal.BreakDoorGoal | grep -iE "tick" || true
-          javap -p -c -cp "$J" net.minecraft.world.entity.ai.goal.BreakDoorGoal | grep -iE "removeBlock" || true
-          javap -p -cp "$J" net.minecraft.world.entity.ai.goal.DoorInteractGoal | grep -iE " mob" || true
-          unzip -l "$J" | grep -iE "block/Farm" || true
-          javap -p -cp "$J" net.minecraft.world.level.block.FarmlandBlock | grep -iE "turnToDirt" || true
-          javap -p -cp "$J" net.minecraft.world.level.block.FireBlock | grep -iE "checkBurnOut|tick" || true
-          javap -p -cp "$J" net.minecraft.world.level.Explosion | grep -iE "SourceEntity" || true
-          javap -p -cp "$J" net.minecraft.world.level.gamerules.GameRules | grep -iE "FIRE|TNT|GRIEF|EXPLO|DROPS" || true
       - name: Upload jar
         uses: actions/upload-artifact@v4
         with:

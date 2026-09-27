@@ -100,6 +100,8 @@ public final class BaseRepair {
     private static Store store;
     private static final Map<Long, Entry> BY_POS = new HashMap<>();
     private static boolean dirty = false;
+    /** An entry still waiting on missing support this long after it fell due is dropped (7 days). */
+    private static final long STALE_TICKS = 7L * 24L * 72000L;
     private static int saveCounter = 0;
 
     public static void register() {
@@ -344,8 +346,21 @@ public final class BaseRepair {
                 continue; // overdue repairs land as soon as someone is near enough to load it
             }
             BlockState current = level.getBlockState(pos);
+            BlockState original = BlockState.CODEC.parse(JsonOps.INSTANCE, e.state).result().orElse(null);
             double cost = BaseRepairRules.costHours(e.tier, mode, cfg.baseRepairTierCostHours);
-            boolean blocked = !level.getEntitiesOfClass(LivingEntity.class, new AABB(pos)).isEmpty();
+            // A torch or ladder waits for the wall it hangs on (a cheaper tier comes back first):
+            // placed early it would pop off as an item on the next neighbour update — a dupe.
+            // One whose support never returns stops waiting after STALE_TICKS.
+            boolean unsupported = original != null && !original.canSurvive(level, pos);
+            if (unsupported && now - e.dueAt > STALE_TICKS) {
+                it.remove();
+                BY_POS.remove(e.key());
+                dirty = true;
+                restoredPer.computeIfAbsent(a.id, k -> new int[2])[1]++;
+                continue;
+            }
+            boolean blocked = unsupported
+                    || !level.getEntitiesOfClass(LivingEntity.class, new AABB(pos)).isEmpty();
             boolean affordable = BaseRepairRules.canAfford(a.expiry, now, cost, cfg.baseRepairFuelReserveHours);
             BaseRepairRules.Outcome outcome = BaseRepairRules.decide(blockId(current), e.leftBehind, e.original,
                     current.canBeReplaced(), blocked, affordable);
@@ -360,7 +375,6 @@ public final class BaseRepair {
                 tally[1]++;
                 continue;
             }
-            BlockState original = BlockState.CODEC.parse(JsonOps.INSTANCE, e.state).result().orElse(null);
             if (original == null) {
                 tally[1]++; // block no longer exists (mod removed / renamed): nothing to rebuild
                 continue;

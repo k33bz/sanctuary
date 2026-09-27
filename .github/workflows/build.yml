@@ -55,7 +55,8 @@ jobs:
           javap -p -cp "$J" net.minecraft.world.entity.ai.goal.BreakDoorGoal | grep -iE "tick" || true
           javap -p -c -cp "$J" net.minecraft.world.entity.ai.goal.BreakDoorGoal | grep -iE "removeBlock" || true
           javap -p -cp "$J" net.minecraft.world.entity.ai.goal.DoorInteractGoal | grep -iE " mob" || true
-          javap -p -cp "$J" net.minecraft.world.level.block.FarmBlock | grep -iE "turnToDirt" || true
+          unzip -l "$J" | grep -iE "block/Farm" || true
+          javap -p -cp "$J" net.minecraft.world.level.block.FarmlandBlock | grep -iE "turnToDirt" || true
           javap -p -cp "$J" net.minecraft.world.level.block.FireBlock | grep -iE "checkBurnOut|tick" || true
           javap -p -cp "$J" net.minecraft.world.level.Explosion | grep -iE "SourceEntity" || true
           javap -p -cp "$J" net.minecraft.world.level.gamerules.GameRules | grep -iE "FIRE|TNT|GRIEF|EXPLO|DROPS" || true

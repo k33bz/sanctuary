@@ -4,7 +4,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.FarmBlock;
+import net.minecraft.world.level.block.FarmlandBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -17,7 +17,7 @@ import com.k33bz.sanctuary.anchor.BaseRepair;
  * re-tilled later. Farmland drying out on its own (no entity) is NOT damage and is left alone,
  * otherwise an unwatered field would loop dry → re-till → dry forever on the owner's fuel.
  */
-@Mixin(FarmBlock.class)
+@Mixin(FarmlandBlock.class)
 public class FarmlandTrampleMixin {
 
     @Inject(method = "turnToDirt", at = @At("HEAD"))

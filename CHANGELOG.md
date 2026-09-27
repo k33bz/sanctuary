@@ -1,3 +1,57 @@
+## 0.8.12.0
+
+**Sanctuaries repair themselves (System 12).** A base raided by mobs while its owner is away used to
+stay raided: a creeper-breached door, a ravager's path through the wall, trampled farmland and burned
+roofs all waited for someone to notice. Now an ACTIVE sanctuary journals damage that isn't its owner's
+doing and rebuilds it later, paying for every block out of its fuel bank. Covered: explosions (unless the
+owner lit them), mobs breaking blocks through `Level.destroyBlock` (withers, ravagers, our own siege
+frame-smashers), zombies breaking doors, farmland trampled by anything but the owner, fire, and enderman
+theft when `endermanCloneNotSteal` is off. Cheap blocks come back fast and nearly free, precious ones
+slowly and dearly: four tiers by hardness (`baseRepairTierHardness`), with `baseRepairPreciousBlocks`
+(diamond/netherite/iron/gold blocks, beacons...) forced to the top. At the default Normal speed a stone
+wall is back in 5 minutes for 0.005 h of fuel per block; a netherite block waits 4 hours and costs half an
+hour. The owner picks **Off / Slow / Normal / Fast / Turbo**, trading fuel for speed, from a dialog button,
+a click on the furnace-menu clock, or `/sanctuaryrepair`. Repairs never spend a sanctuary below
+`baseRepairFuelReserveHours`, so they can't tip it into dormancy on their own.
+
+*The dupe it had to avoid.* "Build a netherite wall, let a creeper blow it up, pocket the drops, let the
+base rebuild it" is a free-netherite machine. A journaled block therefore drops **nothing**: it is removed
+without loot and only the rebuild brings it back. Blast removals skip neighbour updates, so a torch on a
+blasted wall doesn't pop off as an item and then get rebuilt too. Blocks with block entities (chests,
+shulkers, signs, beds, heads) are never journaled at all: they break exactly as vanilla, contents
+included, because suppressing a shulker's drop would delete its contents and rebuilding a chest would
+duplicate them. TNT is never journaled (a rebuilt TNT beside lingering fire is a bomb loop). Blocks
+broken by *other players* are not rebuilt, since the raider keeps the drop; each one is written to
+`config/sanctuary_repair_logs/` (`player_break`: who, whose base, what, where) so raids and owner-plus-alt
+dupe attempts are visible. The same log records every journaled burst, rebuild pass (with fuel spent)
+and superseded entry.
+
+*Where it hooks, and why there.* The explosion hook sits at the HEAD of `ServerExplosion.interactWithBlocks`,
+not in `calculateExplodedPositions` where the creeper-mercy filter lives: Flan filters the blast list in
+between (a `@ModifyVariable` before `hurtEntities`), so hooking earlier would have journaled and removed
+blocks Flan was about to protect. A rebuild only lands if the spot still holds what the damage left (air,
+dirt, or anything replaceable such as water); if someone built over it or already fixed it by hand, the
+entry is dropped, because the newest choice always wins. Leaf decay and ice melt are deliberately not
+repaired: player-placed leaves never decay, so restoring decayed leaves would regrow chopped trees in
+mid-air, and ice beside a torch would melt, rebuild and melt forever on the owner's fuel. `/sanctuary heal
+report` (ops) lists the damage-related gamerules, Flan's global protection flags and each anchor's repair
+speed, backlog and claim instead. Rebuilds need the chunk loaded; overdue ones land when someone comes
+near. The journal persists in `config/sanctuary_repairs.json`. Rules are Minecraft-free in
+`BaseRepairRules` with 18 tests in `BaseRepairRulesTest`.
+
+**Flan: three claim bugs, found by reading Flan's `Claim.canInteract`.** (1) The anchor's claim was an
+ownerless *admin* claim. Flan lets only the owner, trusted group members and ops act inside a claim, and an
+admin claim has no owner, so a non-op player who paid for a sanctuary could not build, break or open a
+chest in its core. Ops were unaffected, which is why it went unnoticed. The claim is now transferred to the
+anchor's owner, which also gives them Flan's per-claim trust groups (build, doors, containers, redstone...)
+for granular access. `flanClaimOwnedByAnchorOwner=false` restores the old behaviour; server/admin anchors
+stay admin claims. (2) Flan refuses any claim that overlaps another and returns null, but we logged "Flan
+admin claim raised" regardless, so an unprotected base looked protected in the log. It now warns that the
+core is NOT protected. (3) Going dormant deleted *whatever* admin claim covered the crystal, so an anchor
+placed inside a spawn claim would delete the spawn claim when its fuel ran out. The id of the claim an
+anchor creates is now stored on it (`flanClaimId`) and removal deletes only that id. Pre-0.8.12 claims of
+exactly the anchor's footprint are adopted on the next boot and handed to their owner.
+
 ## 0.8.11.1
 
 **MC 26.2 retired the `minecraft:weird_scaled_sampler` density function, and the gathering world ships

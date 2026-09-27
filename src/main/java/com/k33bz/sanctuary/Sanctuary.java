@@ -138,6 +138,8 @@ public class Sanctuary implements ModInitializer {
         registerXpBottling();
         registerSoulRetention();
         com.k33bz.sanctuary.anchor.AnchorUpkeep.register();
+        // System 12: base auto-repair (journal persistence, raid log, shutdown save).
+        com.k33bz.sanctuary.anchor.BaseRepair.register();
         // Rift access is now via crying-obsidian nether portals (RiftPortals), not the Rift Anchor head.
         // Rifts.tick still drives travel + weekly-reset linking for the registered portals.
         com.k33bz.sanctuary.rift.RiftPortals.register();
@@ -279,6 +281,7 @@ public class Sanctuary implements ModInitializer {
         PlayerBlockBreakEvents.AFTER.register((world, player, pos, state, blockEntity) -> {
             boolean isAnchorBlock = state.is(Blocks.BEACON) || state.getBlock() instanceof net.minecraft.world.level.block.AbstractSkullBlock;
             if (isAnchorBlock && AnchorState.get().isAnchor(pos)) {
+                AnchorState.PlacedAnchor broken = AnchorState.get().anchorAt(pos); // before unregistering
                 AnchorState.get().ensureUnregistered(pos);
                 MinecraftServer server = world.getServer();
                 if (server != null) {
@@ -286,7 +289,7 @@ public class Sanctuary implements ModInitializer {
                 }
                 if (CONFIG != null && CONFIG.flanIntegration && world instanceof ServerLevel sl
                         && com.k33bz.sanctuary.anchor.FlanIntegration.available()) {
-                    com.k33bz.sanctuary.anchor.FlanIntegration.removeClaim(sl, pos);
+                    com.k33bz.sanctuary.anchor.FlanIntegration.removeClaim(sl, pos, CONFIG.flanClaimRadius, broken);
                 }
                 if (state.is(Blocks.BEACON)) {
                     Block.popResource(world, pos, new ItemStack(Items.DRAGON_EGG)); // legacy anchors
@@ -508,6 +511,7 @@ public class Sanctuary implements ModInitializer {
             AnchorInteraction.pulseAnchors(server); // focus pulse at active anchors
             com.k33bz.sanctuary.anchor.LavaCauldronCook.sweep(server, cfg); // temper raw membranes
             com.k33bz.sanctuary.anchor.AnchorUpkeep.tick(server, cfg);
+            com.k33bz.sanctuary.anchor.BaseRepair.tick(server, cfg); // System 12: rebuild due damage
             com.k33bz.sanctuary.rift.Rifts.tick(server, cfg);
             com.k33bz.sanctuary.grave.Graves.sweep(server, cfg);
             com.k33bz.sanctuary.metrics.KillMetrics.flush(); // no-op unless new kills landed

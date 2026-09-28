@@ -103,11 +103,11 @@ jobs:
         working-directory: harness
         run: npm ci --ignore-scripts --no-audit --no-fund
 
-      # The harness provisions a server at ITS OWN Minecraft version and loads a
-      # dependency stack (fabric-api, postbox, LuckPerms, Flan) built for that
-      # version. A jar for a different target cannot be behaviourally verified
-      # against it, so say so loudly rather than reporting a green that was never
-      # earned. Today that means 26.1 is gated and main (26.2) is not.
+      # The harness keeps one dependency stack (fabric-api, LuckPerms, Flan, ...)
+      # per Minecraft version and provisions its server from the one HARNESS_MC
+      # selects. When it has a stack for the jar's target, the gate runs on that
+      # version. When it has none, a jar for that target cannot be behaviourally
+      # verified, so say so loudly rather than report a green that was never earned.
       - name: compat gate
         working-directory: harness
         run: |
@@ -116,6 +116,11 @@ jobs:
           # path below, turning a staging bug into a green that verified
           # nothing. Fail instead.
           test -n "${JAR_MC:-}" || { echo "JAR_MC is empty - the staging step did not export it"; exit 1; }
+          # config.js throws for a version it has no stack for; older harness
+          # checkouts ignore HARNESS_MC and report their only version.
+          if HARNESS_MC="$JAR_MC" node -e "import('./config.js')" >/dev/null 2>&1; then
+            export HARNESS_MC="$JAR_MC"
+          fi
           harness_mc=$(node -e "import('./config.js').then(m => console.log(m.default.server.mcVersion))")
           {
             echo "jar under test : $GATE_JAR"

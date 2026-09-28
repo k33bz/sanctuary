@@ -234,6 +234,17 @@ def wall(s, x0, z, block="minecraft:stone_bricks"):
     s.send(f"fill {x0} -60 {z} {x0 + 4} -58 {z} {block}")
 
 
+def holes(s, x0, z):
+    """Wall blocks (see wall()) that are air right now. TNT rays are randomized, so a blast does
+    not reliably take any one fixed block; the repair checks follow the blocks it really took."""
+    return [(x, y) for x in range(x0, x0 + 5) for y in (-60, -59, -58)
+            if s.test(f"execute if block {x} {y} {z} minecraft:air")]
+
+
+def all_are(s, spots, z, block):
+    return bool(spots) and all(s.test(f"execute if block {x} {y} {z} {block}") for x, y in spots)
+
+
 def blast(s, x, z):
     s.send(f"summon minecraft:tnt {x} -59 {z} {{fuse:0}}")
 
@@ -295,9 +306,13 @@ def repair_scenarios(s, check):
     time.sleep(1)
     blast(s, 22, 18)
     time.sleep(2)
-    check("repair: blast removed the wall", s.test("execute if block 22 -59 20 minecraft:air"))
+    gone = holes(s, 20, 20)
+    check("repair: blast removed the wall", gone, f"({len(gone)} block(s))")
     check("repair: blast inside a sanctuary drops no items", s.test(items_near(22, 20)) is False)
-    check("repair: wall rebuilt", s.poll("execute if block 22 -59 20 minecraft:stone_bricks", True, 30))
+    end = time.time() + 30
+    while not all_are(s, gone, 20, "minecraft:stone_bricks") and time.time() < end:
+        time.sleep(1)
+    check("repair: wall rebuilt", all_are(s, gone, 20, "minecraft:stone_bricks"))
 
     # 2. A chest is never journaled: it and its contents drop as vanilla, and it stays gone.
     s.send("kill @e[type=minecraft:item]")
@@ -328,9 +343,10 @@ def repair_scenarios(s, check):
     time.sleep(1)
     blast(s, 1030, 18)
     time.sleep(2)
+    gone = holes(s, 1028, 20)
     check("repair OFF: no drops", s.test(items_near(1030, 20)) is False)
     time.sleep(10)
-    check("repair OFF: nothing rebuilt", s.test("execute if block 1030 -59 20 minecraft:air"))
+    check("repair OFF: nothing rebuilt", all_are(s, gone, 20, "minecraft:air"), f"({len(gone)} hole(s))")
 
     # 5. Outside every sanctuary nothing changes from vanilla: drops, no rebuild.
     s.send("kill @e[type=minecraft:item]")
@@ -338,9 +354,10 @@ def repair_scenarios(s, check):
     time.sleep(1)
     blast(s, 302, 18)
     time.sleep(2)
+    gone = holes(s, 300, 20)
     check("outside: vanilla drops", s.test(items_near(302, 20)))
     time.sleep(10)
-    check("outside: not rebuilt", s.test("execute if block 302 -59 20 minecraft:air"))
+    check("outside: not rebuilt", all_are(s, gone, 20, "minecraft:air"), f"({len(gone)} hole(s))")
 
 
 

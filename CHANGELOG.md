@@ -17,6 +17,12 @@ flat badges (build, sanctuary, loader, fabric-api, flan, server test), with the 
 instead of repeated in every badge label. The two identical "build passing" badges are folded into their
 lines, and the Minecraft version moved into the heading.
 
+**Server test: no more flaky wall checks.** A TNT blast's rays are randomized, so the one fixed wall
+block the repair checks looked at (the middle one) sometimes survived. "Outside: not rebuilt" then failed
+on a block that had never been removed (seen once on a README-only commit). The checks now record which
+wall blocks the blast actually took (`holes()`) and assert on exactly those: rebuilt inside a sanctuary,
+still missing with repairs OFF or outside every sanctuary. A blast that takes nothing still fails.
+
 **gmc101 badge fix.** The first deploy after landing this (26.1 @ 6987e11) published no gmc101 badge:
 GitHub reads a `deployment_status` workflow from the *deployed commit*, not the default branch, and
 `badges-deploy.yml` only existed on `main`. It now lives on both `main` and `26.1` (identical copies)

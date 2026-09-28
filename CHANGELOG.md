@@ -1,3 +1,16 @@
+## Unreleased (CI only, no mod change)
+
+**Version badges.** The README shows, per release line (`main` = 26.2, `26.1` = 26.1.2), the mod and
+Minecraft versions, the Fabric loader, fabric-api (the version the real-server CI test booted with,
+next to the one we compile against when they differ), the Flan it booted with, and the server-test
+pass count, plus the mod version currently live on gmc101. Shields.io can't read `gradle.properties`,
+so `build.yml` has `scripts/server_test.py` write `versions.json`, `scripts/publish_badges.py` turn it
+into shields "endpoint" JSON, and `scripts/commit_badges.sh` commit that to an orphan `badges` branch
+on GitHub (pushes to `main`/`26.1` only, never from PRs, retried if two lines finish at once; it never
+touches the mirrored branches). The gmc101 badge comes from `badges-deploy.yml`, which reacts to the
+deployment Forgejo records on each deploy and reads the deployed commit's own `gradle.properties`.
+CI artifacts are now named `sanctuary-<mod>+<minecraft>` and each run summary starts with that version.
+
 ## 0.8.12.1
 
 **Anchor claims no longer eat the owner's claim blocks.** 0.8.12.0 fixed owners being locked out of their

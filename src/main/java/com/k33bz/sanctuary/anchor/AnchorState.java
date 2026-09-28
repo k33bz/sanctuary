@@ -48,6 +48,17 @@ public class AnchorState {
          * grandfathered legacy entries). Dormant anchors keep their entry but grant no safety.
          */
         public long expiry;
+        /**
+         * System 12: the owner's chosen repair speed (a {@link BaseRepairRules.Mode} name). Null =
+         * the server default ({@code baseRepairDefaultMode}), so legacy entries need no migration.
+         */
+        public String repairMode;
+        /**
+         * Id of the Flan claim THIS anchor created (0.8.12.0). Removal only ever deletes the claim
+         * with this id, so a dormant anchor can no longer delete an unrelated admin claim it sat in.
+         * Null on legacy entries (removal then falls back to an exact-footprint match).
+         */
+        public String flanClaimId;
 
         public PlacedAnchor() {
         }
@@ -203,6 +214,42 @@ public class AnchorState {
 
     private static boolean near(PlacedAnchor a, double px, double pz) {
         return Math.abs(a.x - px) < 0.51 && Math.abs(a.z - pz) < 0.51;
+    }
+
+    /**
+     * System 12: the ACTIVE placed anchor whose radius covers this XZ position (nearest wins when
+     * radii overlap), or {@code null}. Dormant anchors cover nothing — they can't pay for repairs.
+     */
+    public PlacedAnchor activeAnchorCovering(double x, double z) {
+        PlacedAnchor best = null;
+        double bestSq = Double.MAX_VALUE;
+        long now = NOW;
+        for (PlacedAnchor a : anchors) {
+            if (!a.isActive(now) || !BaseRepairRules.covers(a.x, a.z, a.radius, x, z)) {
+                continue;
+            }
+            double dx = x - a.x;
+            double dz = z - a.z;
+            double sq = dx * dx + dz * dz;
+            if (sq < bestSq) {
+                bestSq = sq;
+                best = a;
+            }
+        }
+        return best;
+    }
+
+    /** The placed anchor with this exact id, or {@code null}. */
+    public PlacedAnchor byId(String id) {
+        if (id == null) {
+            return null;
+        }
+        for (PlacedAnchor a : anchors) {
+            if (id.equals(a.id)) {
+                return a;
+            }
+        }
+        return null;
     }
 
     /** Blocks beyond the nearest ACTIVE placed anchor's safe radius; {@code Double.MAX_VALUE} if none. */

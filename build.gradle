@@ -74,9 +74,8 @@ dependencies {
     include(implementation("me.lucko:fabric-permissions-api:0.7.0"))
     // Flan (soft dependency): compile against its claim API; at runtime the integration only
     // activates when the Flan mod is actually installed (FlanIntegration guards on isModLoaded).
-    // NOTE: no Flan build for 26.2 yet — compiling against the 26.1.2 API jar is fine
-    // (compileOnly needs signatures only; runtime is gated on isModLoaded). Re-pin when it ports.
-    compileOnly "io.github.flemmli97:flan:26.1.2-1.12.7-fabric"
+    // Pinned to the Flan build the server runs. 1.12.8 needs fabric-api >= 0.158 on 26.2.
+    compileOnly "io.github.flemmli97:flan:26.2-1.12.8-fabric"
 
     // Pure-logic unit tests (SurvivalLogic) — no game runtime required.
     testImplementation platform('org.junit:junit-bom:5.11.3')

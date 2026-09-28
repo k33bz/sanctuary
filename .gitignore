@@ -27,3 +27,4 @@ logs/
 
 # Vanilla Tweaks authoring metadata (unused at runtime; per-version churn)
 **/Selected Packs.txt
+__pycache__/

@@ -14,7 +14,13 @@
     "LoginGuardMixin",
     "PortalIgnitionMixin",
     "StructureSuppressMixin",
-    "FeatureSuppressMixin"
+    "FeatureSuppressMixin",
+    "ExplosionRepairMixin",
+    "MobDestroyBlockMixin",
+    "BreakDoorGoalMixin",
+    "DoorInteractGoalAccessor",
+    "FarmlandTrampleMixin",
+    "FireBurnMixin"
   ],
   "injectors": {
     "defaultRequire": 1

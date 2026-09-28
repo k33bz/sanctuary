@@ -354,6 +354,11 @@ def main():
     with open(os.path.join(a.workdir, "console.log"), "w") as f:
         f.write("\n".join(s.log))
     failed = [r for r in results if not r[1]]
+    if failed:
+        # The job log is the first place anyone looks; don't make them download an artifact.
+        print("---- last 80 console lines ----")
+        print("\n".join(s.log[-80:]))
+        print("---- end ----", flush=True)
     md = [f"### Server test: Minecraft {p['minecraft_version']}, Sanctuary {p['mod_version']}", ""]
     md += [f"- {n}" for n in notes] + ["", "| Check | Result |", "|---|---|"]
     md += [f"| {n} | {'✅' if ok else '❌ ' + d.replace('|', '/')[:200]} |" for n, ok, d in results]

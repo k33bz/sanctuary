@@ -17,7 +17,7 @@ you carve out of the wilds — and defend, fuel, and one day get buried in.
 
 | Minecraft | Branch | Fabric API | Notes |
 |---|---|---|---|
-| 26.2 | [`main`](../../tree/main) | 0.154.0+26.2 | active development; Flan integration inert until Flan ships a 26.2 build |
+| 26.2 | [`main`](../../tree/main) | 0.161.0+26.2 | active development; Flan 1.12.8 (needs fabric-api >= 0.158) |
 | 26.1.x | [`26.1`](../../tree/26.1) | 0.154.0+26.1.2 | maintenance — backports only |
 
 Downloads: [GitHub Releases](../../releases) · [Modrinth](https://modrinth.com/project/y5hXc8My).

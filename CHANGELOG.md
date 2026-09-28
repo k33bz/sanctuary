@@ -1,3 +1,15 @@
+## 0.8.12.1
+
+**Anchor claims no longer eat the owner's claim blocks.** 0.8.12.0 fixed owners being locked out of their
+own sanctuary core by transferring the anchor's Flan claim to them, but Flan charges every owned claim
+against its owner's claim-block budget. An r=16 anchor claim is 33x33 = 1089 blocks, so one anchor used
+up a new player's whole allowance and two put the bot-harness owner at -1667 blocks, unable to claim any
+land of their own. The claim now stays an admin claim, which costs nobody blocks, and the owner is added
+to its Co-Owner group (`flanAnchorOwnerGroup`). Co-Owner can build, open containers and edit permissions,
+so the owner can still trust friends with `/flan group players add Co-Owner <player>`. Ops keep access
+to anchor claims without `/flan bypass`, as before 0.8.12.0. Claims 0.8.12.0 already transferred stay
+owned; 0.8.12.0 was never released, so only test servers have any.
+
 ## 0.8.12.0
 
 Port of 0.8.12.0 from `main` (MC 26.2) to the 26.1.2 line. Code is identical between the lines.

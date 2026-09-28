@@ -6,6 +6,10 @@ it as shields.io endpoint badges to the orphan `badges` branch on GitHub (`scrip
 `scripts/commit_badges.sh`). The README badges live on `main`.
 CI artifacts are now named `sanctuary-<mod>+<minecraft>` and each run summary starts with that version.
 
+**Server test: no more flaky wall checks.** Same fix as `main`: a TNT blast's rays are randomized, so
+the one fixed wall block the repair checks looked at sometimes survived and "outside: not rebuilt" failed
+on a block that was never removed. The checks now follow the blocks the blast actually took (`holes()`).
+
 **gmc101 badge fix.** The first deploy after landing this (26.1 @ 6987e11) published no gmc101 badge:
 GitHub reads a `deployment_status` workflow from the *deployed commit*, not the default branch, and
 `badges-deploy.yml` only existed on `main`. It now lives on `26.1` too (identical to `main`'s copy)

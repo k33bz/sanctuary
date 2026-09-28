@@ -33,6 +33,7 @@ import threading
 import time
 import urllib.parse
 import urllib.request
+import zipfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 UA = {"User-Agent": "k33bz/sanctuary server-test (github actions)"}
@@ -238,11 +239,41 @@ def items_near(x, z, item=None):
     return f"execute if entity @e[{sel}]"
 
 
-def run(s, results):
+def run(s, results, has_repair):
     def check(name, ok, detail=""):
         results.append((name, bool(ok), detail))
         print(f"[{'PASS' if ok else 'FAIL'}] {name} {detail}", flush=True)
 
+    if not has_repair:
+        # A pre-0.8.12 jar (e.g. the 0.8.11.2 hotfix) has no System 12: skip those checks and
+        # say so, rather than failing them or quietly passing.
+        results.append(("repair checks", None, "skipped: this jar has no System 12 (BaseRepair)"))
+        print("[SKIP] repair checks: this jar has no System 12", flush=True)
+
+    s.send("forceload add -316 -16 -284 16")
+    if has_repair:
+        repair_scenarios(s, check)
+
+    # 6. 0.8.11.2 crash: a tagged door-breaker Drowned loaded in water. Its wild_health modifier
+    #    sends onSpawn down the "already baked, re-attach goals" path that used to throw.
+    s.send("fill -310 -61 -6 -290 -58 6 minecraft:water")
+    time.sleep(1)
+    mod = ('{Tags:["sanctuary_door_breaker"],attributes:[{id:"minecraft:max_health",base:20,'
+           'modifiers:[{id:"sanctuary:wild_health",amount:1.0,operation:"add_value"}]}]}')
+    s.send(f"summon minecraft:drowned -300 -59 0 {mod}")
+    s.send(f"summon minecraft:zombie -300 -57 10 {mod}")   # land zombie: goals DO attach
+    s.send("summon minecraft:enderman 10 -60 40")            # loads the enderman mixin target
+    time.sleep(5)
+    check("crash fix: server survives a door-breaker Drowned in water", s.alive())
+
+    # 7. The admin report command (System 12).
+    if has_repair:
+        s.drain()
+        s.send("sanctuary heal report")
+        check("report: /sanctuary heal report", s.wait_for(r"Base repair: ON", 10) is not None)
+
+
+def repair_scenarios(s, check):
     # Keep the test areas loaded without a player, and make repairs quick.
     for area in ("-16 -16 80 32", "1012 -16 1048 32", "288 -16 320 32", "-316 -16 -284 16"):
         s.send(f"forceload add {area}")
@@ -305,22 +336,6 @@ def run(s, results):
     time.sleep(10)
     check("outside: not rebuilt", s.test("execute if block 302 -59 20 minecraft:air"))
 
-    # 6. 0.8.11.2 crash: a tagged door-breaker Drowned loaded in water. Its wild_health modifier
-    #    sends onSpawn down the "already baked, re-attach goals" path that used to throw.
-    s.send("fill -310 -61 -6 -290 -58 6 minecraft:water")
-    time.sleep(1)
-    mod = ('{Tags:["sanctuary_door_breaker"],attributes:[{id:"minecraft:max_health",base:20,'
-           'modifiers:[{id:"sanctuary:wild_health",amount:1.0,operation:"add_value"}]}]}')
-    s.send(f"summon minecraft:drowned -300 -59 0 {mod}")
-    s.send(f"summon minecraft:zombie -300 -57 10 {mod}")   # land zombie: goals DO attach
-    s.send("summon minecraft:enderman 10 -60 40")            # loads the enderman mixin target
-    time.sleep(5)
-    check("crash fix: server survives a door-breaker Drowned in water", s.alive())
-
-    # 7. The admin report command.
-    s.drain()
-    s.send("sanctuary heal report")
-    check("report: /sanctuary heal report", s.wait_for(r"Base repair: ON", 10) is not None)
 
 
 def main():
@@ -339,6 +354,10 @@ def main():
     for n in notes:
         print("  " + n, flush=True)
 
+    with zipfile.ZipFile(jar) as z:
+        has_repair = "com/k33bz/sanctuary/anchor/BaseRepair.class" in z.namelist()
+    notes.append("System 12 base repair: " + ("present, tested" if has_repair else "not in this jar, skipped"))
+
     s = Server(a.workdir)
     results = []
     s.start()
@@ -348,15 +367,15 @@ def main():
         done = s.wait_for(r"Done \(\d", a.boot_timeout) if init else None
         results.append(("boot: server reached Done", done is not None, done or ""))
         if done:
-            run(s, results)
+            run(s, results, has_repair)
     finally:
         s.stop()
-    results.append(("no mixin / tick / entrypoint errors in the log", not s.fatal,
+    results.append(("no mixin / tick / entrypoint errors in the log", len(s.fatal) == 0,
                     "; ".join(s.fatal[:3])))
 
     with open(os.path.join(a.workdir, "console.log"), "w") as f:
         f.write("\n".join(s.log))
-    failed = [r for r in results if not r[1]]
+    failed = [r for r in results if r[1] is False]
     if failed:
         # The job log is the first place anyone looks; don't make them download an artifact.
         print("---- last 80 console lines ----")
@@ -364,8 +383,11 @@ def main():
         print("---- end ----", flush=True)
     md = [f"### Server test: Minecraft {p['minecraft_version']}, Sanctuary {p['mod_version']}", ""]
     md += [f"- {n}" for n in notes] + ["", "| Check | Result |", "|---|---|"]
-    md += [f"| {n} | {'✅' if ok else '❌ ' + d.replace('|', '/')[:200]} |" for n, ok, d in results]
-    md += ["", f"**{len(results) - len(failed)}/{len(results)} passed**"]
+    md += [f"| {n} | {'⏭️ ' + d if ok is None else '✅' if ok else '❌ ' + d.replace('|', '/')[:200]} |"
+           for n, ok, d in results]
+    ran = [r for r in results if r[1] is not None]
+    md += ["", f"**{len(ran) - len(failed)}/{len(ran)} passed**"
+           + (f", {len(results) - len(ran)} skipped" if len(ran) < len(results) else "")]
     print("\n".join(md))
     if os.environ.get("GITHUB_STEP_SUMMARY"):
         with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as f:

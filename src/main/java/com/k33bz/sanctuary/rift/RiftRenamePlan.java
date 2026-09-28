@@ -50,6 +50,21 @@ public final class RiftRenamePlan {
      * @param targetExists whether the destination folder is already on disk
      * @param sourceExists whether a given legacy id has a folder on disk
      */
+    /**
+     * The gathering-world id a loaded config should use. An existing sanctuary.json keeps whatever id it
+     * was written with, so a server upgrading across the rename still says {@code resource_world}: the
+     * folder move then has nothing to do, the game registers the new id, and the first boot writes an
+     * empty stub under it that blocks every later move. That is what happened on gmc101 at 0.8.11.0.
+     * An id the config itself lists as legacy is by definition not current, so it becomes the default.
+     */
+    public static String upgradeConfiguredId(String configured, List<String> legacyIds, String currentDefault) {
+        if (configured == null || legacyIds == null || currentDefault == null
+                || configured.equals(currentDefault) || !legacyIds.contains(configured)) {
+            return configured;
+        }
+        return currentDefault;
+    }
+
     public static String chooseSource(String currentId, List<String> legacyIds,
                                       boolean targetExists, Predicate<String> sourceExists) {
         if (targetExists || legacyIds == null || legacyIds.isEmpty() || split(currentId) == null) {

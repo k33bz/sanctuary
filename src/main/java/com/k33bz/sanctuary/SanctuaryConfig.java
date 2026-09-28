@@ -671,6 +671,13 @@ public class SanctuaryConfig {
             if (Files.exists(path)) {
                 SanctuaryConfig cfg = GSON.fromJson(Files.readString(path), SanctuaryConfig.class);
                 if (cfg != null) {
+                    String rift = com.k33bz.sanctuary.rift.RiftRenamePlan.upgradeConfiguredId(
+                            cfg.riftDimension, cfg.riftDimensionLegacyIds, new SanctuaryConfig().riftDimension);
+                    if (rift != null && !rift.equals(cfg.riftDimension)) {
+                        Sanctuary.LOGGER.warn("[sanctuary] riftDimension {} is a legacy id; using {} so the"
+                                + " gathering world's folder migrates", cfg.riftDimension, rift);
+                        cfg.riftDimension = rift;
+                    }
                     cfg.save(path); // re-write so newly added keys appear with defaults
                     return cfg;
                 }

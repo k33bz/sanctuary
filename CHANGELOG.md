@@ -10,6 +10,16 @@ so the owner can still trust friends with `/flan group players add Co-Owner <pla
 to anchor claims without `/flan bypass`, as before 0.8.12.0. Claims 0.8.12.0 already transferred stay
 owned; 0.8.12.0 was never released, so only test servers have any.
 
+**The gathering-world rename now migrates on upgrade.** 0.8.11.0 renamed `sanctuary:resource_world` to
+`sanctuary:rssworld` and moves the save folder at boot, but an existing `sanctuary.json` keeps the id it
+was written with. On gmc101 the config still said `resource_world`, so nothing moved: the game registered
+`rssworld` as a new empty world, rifts pointed at a dimension that no longer existed, and the empty stub
+that first boot created then blocked every later move (the migration never overwrites an existing
+folder). A configured id that the config itself lists in `riftDimensionLegacyIds` is now upgraded to the
+current default when the config loads, before any world opens. A server that already booted 0.8.11.0
+this way needs a one-time fix: stop it, delete the stub `world/dimensions/sanctuary/rssworld` (it holds
+only a `data/` folder), and start it.
+
 ## 0.8.12.0
 
 **Sanctuaries repair themselves (System 12).** A base raided by mobs while its owner is away used to

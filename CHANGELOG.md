@@ -1,3 +1,11 @@
+## Unreleased (CI only, no mod change)
+
+**Version badges.** Same CI change as `main`: `build.yml` records what the real-server test compiled
+against and booted with (`scripts/server_test.py` → `versions.json`), and on pushes to `26.1` publishes
+it as shields.io endpoint badges to the orphan `badges` branch on GitHub (`scripts/publish_badges.py`,
+`scripts/commit_badges.sh`). The README badges and the gmc101 live-version badge live on `main`.
+CI artifacts are now named `sanctuary-<mod>+<minecraft>` and each run summary starts with that version.
+
 ## 0.8.12.1
 
 **Anchor claims no longer eat the owner's claim blocks.** 0.8.12.0 fixed owners being locked out of their

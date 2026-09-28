@@ -9,8 +9,17 @@ jobs:
   build:
     if: github.repository_owner == 'k33bz'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # only used to push version badges to the `badges` branch (pushes to main/26.1)
     steps:
       - uses: actions/checkout@v4
+      # The version this build produces, for the artifact name and the run summary.
+      - name: Version
+        id: version
+        run: |
+          v="$(grep '^mod_version=' gradle.properties | cut -d= -f2)+$(grep '^minecraft_version=' gradle.properties | cut -d= -f2)"
+          echo "v=$v" >> "$GITHUB_OUTPUT"
+          echo "## Sanctuary $v (\`${GITHUB_REF_NAME}\` @ \`${GITHUB_SHA::7}\`)" >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -57,8 +66,18 @@ jobs:
             build/server-test/logs/
             build/server-test/crash-reports/
           if-no-files-found: ignore
+      # Live version badges for the README (see scripts/publish_badges.py). Release lines only:
+      # a PR or feature branch must never overwrite what main/26.1 report.
+      - name: Publish version badges
+        if: always() && github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == '26.1') && hashFiles('build/server-test/versions.json') != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          python3 scripts/publish_badges.py build --branch "$GITHUB_REF_NAME" --out build/badges
+          scripts/commit_badges.sh build/badges "$GITHUB_REF_NAME: ${{ steps.version.outputs.v }} @ ${GITHUB_SHA::7}"
       - name: Upload jar
         uses: actions/upload-artifact@v4
         with:
-          name: sanctuary
+          name: sanctuary-${{ steps.version.outputs.v }}
           path: build/libs/*.jar

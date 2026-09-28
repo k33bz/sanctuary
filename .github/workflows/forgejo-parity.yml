@@ -1,0 +1,59 @@
+name: forgejo-parity
+
+# Forgejo is the source of truth; GitHub is a mirror (see forgejo-ci.yml). Every commit Forgejo
+# verifies and mirrors carries a "forgejo/compat-gate" commit status, posted by
+# scripts/github_report.py. A main/26.1 head WITHOUT that status either was committed directly
+# on GitHub (nothing reconciles it back, so the two diverge) or Forgejo hasn't reported yet.
+# This badge goes red for the first and says which branch and commit.
+#
+# Scheduled rather than on push: Forgejo posts the status seconds to minutes after the mirror
+# push, and checking on push would race it. Feature and PR branches are never checked; living
+# on GitHub for a while is fine for those.
+
+on:
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  statuses: read
+  contents: read
+
+jobs:
+  parity:
+    if: github.repository_owner == 'k33bz'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Mirrored branches carry Forgejo's verification
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          python3 - <<'EOF'
+          import json, os, sys, urllib.request
+          repo, token = os.environ["REPO"], os.environ["GH_TOKEN"]
+          def get(path):
+              req = urllib.request.Request("https://api.github.com" + path, headers={
+                  "Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"})
+              with urllib.request.urlopen(req, timeout=30) as r:
+                  return json.load(r)
+          bad = []
+          out = ["| Branch | Head | Forgejo |", "|---|---|---|"]
+          for branch in ("main", "26.1"):
+              sha = get(f"/repos/{repo}/commits/{branch}")["sha"]
+              statuses = get(f"/repos/{repo}/commits/{sha}/status")["statuses"]
+              s = next((x for x in statuses if x["context"] == "forgejo/compat-gate"), None)
+              if s is None:
+                  verdict = "❌ never reported by Forgejo: committed on GitHub directly, or not mirrored yet"
+                  bad.append(branch)
+              elif s["state"] != "success":
+                  verdict = f"❌ {s['state']}: {s['description']}"
+                  bad.append(branch)
+              else:
+                  verdict = f"✅ {s['description']}"
+              out.append(f"| `{branch}` | `{sha[:10]}` | {verdict} |")
+          print("\n".join(out))
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as f:
+              f.write("### GitHub mirror vs Forgejo\n\n" + "\n".join(out) + "\n")
+          sys.exit(1 if bad else 0)
+          EOF

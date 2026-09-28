@@ -12,6 +12,11 @@
 # workflows (release.yml / publish.yml) to ship to Modrinth. Do not commit
 # directly on GitHub - nothing reconciles that back and the two will diverge.
 #
+# GitHub is told what Forgejo verified (scripts/github_report.py): the gate result
+# lands on the GitHub commit as the "forgejo/compat-gate" status, and a gmc101
+# deploy is recorded as a GitHub deployment. forgejo-parity.yml on GitHub flags a
+# main/26.1 head that never got that status, i.e. one that bypassed Forgejo.
+#
 # main and 26.* are PARALLEL RELEASE LINES for different Minecraft versions and
 # are never merged into each other. This file is maintained on each branch
 # separately; a change here needs applying to the others by hand.
@@ -29,6 +34,8 @@ jobs:
   build-and-compat:
     if: github.repository_owner == 'homelab'
     runs-on: debian-op
+    outputs:
+      gate_desc: ${{ steps.gate_summary.outputs.desc }}
     steps:
       - uses: actions/checkout@v4
 
@@ -146,6 +153,38 @@ jobs:
           name: gate-report
           path: harness/gate-report.txt
 
+      # One line for GitHub: what the gate actually verified. A skipped gate (no
+      # harness for this Minecraft version) says so instead of passing as green.
+      - name: summarise the gate for GitHub
+        id: gate_summary
+        if: always()
+        run: |
+          if [ "${{ job.status }}" != "success" ]; then
+            desc="Forgejo build/compat gate FAILED"
+          elif grep -q "COMPAT GATE SKIPPED" harness/gate-report.txt 2>/dev/null; then
+            desc="Built on Forgejo; compat gate SKIPPED (no MC ${JAR_MC:-?} harness), not verified in game"
+          else
+            desc="Built + compat gate passed on Forgejo (MC ${JAR_MC:-?})"
+          fi
+          echo "desc=$desc" >> "$GITHUB_OUTPUT"
+          echo "$desc"
+
+      # PR branches that also live on GitHub get the result straight away. main and
+      # 26.1 are reported by push-upstream AFTER the mirror push, because until then
+      # GitHub does not have the commit. One attempt: a Forgejo-only branch simply
+      # has no GitHub twin, and that is fine.
+      - name: report the gate to GitHub (pull requests)
+        if: always() && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GH_PUSH_TOKEN }}
+        run: |
+          python3 scripts/github_report.py status --attempts 1 \
+            --sha "${{ github.event.pull_request.head.sha }}" \
+            --state "${{ job.status == 'success' && 'success' || 'failure' }}" \
+            --context forgejo/compat-gate \
+            --description "${{ steps.gate_summary.outputs.desc }}" \
+            --url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
       # Delivery. Runs only after the gate step succeeded - which on a branch the
       # harness can verify means a green gate, and on one it cannot (26.2) means
       # the gate was skipped. gate-report.txt above says which; do not read the
@@ -156,9 +195,11 @@ jobs:
           name: sanctuary-jars
           path: harness/ci-artifacts/sanctuary/sanctuary/*.jar
 
+  # Mirror main AND 26.1. 26.1 used to stay Forgejo-only, so GitHub's 26.1 went
+  # stale (it lacked this very file) while gmc101 deployed from Forgejo's.
   push-upstream:
     needs: build-and-compat
-    if: github.repository_owner == 'homelab' && github.ref == 'refs/heads/main'
+    if: github.repository_owner == 'homelab' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/26.1')
     runs-on: debian-op
     steps:
       - uses: actions/checkout@v4
@@ -171,8 +212,17 @@ jobs:
         run: |
           test -n "$GH_TOKEN" || { echo "GH_PUSH_TOKEN not set"; exit 1; }
           echo "::add-mask::$GH_TOKEN"
-          git push "https://x-access-token:${GH_TOKEN}@github.com/k33bz/sanctuary.git" HEAD:refs/heads/main
+          git push "https://x-access-token:${GH_TOKEN}@github.com/k33bz/sanctuary.git" "HEAD:refs/heads/${{ github.ref_name }}"
           git push --tags "https://x-access-token:${GH_TOKEN}@github.com/k33bz/sanctuary.git"
+
+      - name: report the gate to GitHub
+        env:
+          GH_TOKEN: ${{ secrets.GH_PUSH_TOKEN }}
+        run: |
+          python3 scripts/github_report.py status \
+            --sha "${{ github.sha }}" --state success --context forgejo/compat-gate \
+            --description "${{ needs.build-and-compat.outputs.gate_desc }}" \
+            --url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
   # Deploy to the live server. Branch-gated because gmc101 runs Minecraft
   # 26.1.2 while main builds +26.2 - and the playbook independently refuses a
@@ -209,3 +259,16 @@ jobs:
           test -n "$JAR" || { echo "no jar built"; exit 1; }
           echo "deploying $JAR"
           ansible-playbook -i deploy/inventory.ini deploy/deploy-gmc101.yml -e "jar=$PWD/$JAR"
+
+      # Record the deploy on GitHub (Environments sidebar: which commit is live).
+      # Never blocks: github_report.py always exits 0.
+      - name: record the deployment on GitHub
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GH_PUSH_TOKEN }}
+        run: |
+          python3 scripts/github_report.py deployment \
+            --sha "${{ github.sha }}" --environment gmc101 \
+            --state "${{ job.status == 'success' && 'success' || 'failure' }}" \
+            --description "Forgejo deploy to gmc101 (MC 26.1.2)" \
+            --url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

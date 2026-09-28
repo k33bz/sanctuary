@@ -13,7 +13,7 @@ you carve out of the wilds — and defend, fuel, and one day get buried in.
 | Minecraft | Branch | Fabric API | Notes |
 |---|---|---|---|
 | 26.2 | [`main`](../../tree/main) | 0.154.0+26.2 | active development; Flan integration inert until Flan ships a 26.2 build |
-| 26.1.x | [`26.1`](../../tree/26.1) | 0.154.0+26.1.2 | maintenance — backports only |
+| 26.1.x | [`26.1`](../../tree/26.1) | 0.155.3+26.1.2 | maintenance — backports only |
 
 Downloads: [GitHub Releases](../../releases) · [Modrinth](https://modrinth.com/project/y5hXc8My).
 Jars are `sanctuary-<modver>+<mcversion>.jar` — grab the one matching your server.

@@ -1,3 +1,103 @@
+## 0.8.12.1
+
+**Anchor claims no longer eat the owner's claim blocks.** 0.8.12.0 fixed owners being locked out of their
+own sanctuary core by transferring the anchor's Flan claim to them, but Flan charges every owned claim
+against its owner's claim-block budget. An r=16 anchor claim is 33x33 = 1089 blocks, so one anchor used
+up a new player's whole allowance and two put the bot-harness owner at -1667 blocks, unable to claim any
+land of their own. The claim now stays an admin claim, which costs nobody blocks, and the owner is added
+to its Co-Owner group (`flanAnchorOwnerGroup`). Co-Owner can build, open containers and edit permissions,
+so the owner can still trust friends with `/flan group players add Co-Owner <player>`. Ops keep access
+to anchor claims without `/flan bypass`, as before 0.8.12.0. Claims 0.8.12.0 already transferred stay
+owned; 0.8.12.0 was never released, so only test servers have any.
+
+**The gathering-world rename now migrates on upgrade.** 0.8.11.0 renamed `sanctuary:resource_world` to
+`sanctuary:rssworld` and moves the save folder at boot, but an existing `sanctuary.json` keeps the id it
+was written with. On gmc101 the config still said `resource_world`, so nothing moved: the game registered
+`rssworld` as a new empty world, rifts pointed at a dimension that no longer existed, and the empty stub
+that first boot created then blocked every later move (the migration never overwrites an existing
+folder). A configured id that the config itself lists in `riftDimensionLegacyIds` is now upgraded to the
+current default when the config loads, before any world opens. A server that already booted 0.8.11.0
+this way needs a one-time fix: stop it, delete the stub `world/dimensions/sanctuary/rssworld` (it holds
+only a `data/` folder), and start it.
+
+## 0.8.12.0
+
+Port of 0.8.12.0 from `main` (MC 26.2) to the 26.1.2 line. Code is identical between the lines.
+
+**Sanctuaries repair themselves (System 12).** A base raided by mobs while its owner is away used to
+stay raided: a creeper-breached door, a ravager's path through the wall, trampled farmland and burned
+roofs all waited for someone to notice. Now an ACTIVE sanctuary journals damage that isn't its owner's
+doing and rebuilds it later, paying for every block out of its fuel bank. Covered: explosions (unless the
+owner lit them), mobs breaking blocks through `Level.destroyBlock` (withers, ravagers, our own siege
+frame-smashers), zombies breaking doors, farmland trampled by anything but the owner, fire, and enderman
+theft when `endermanCloneNotSteal` is off. Cheap blocks come back fast and nearly free, precious ones
+slowly and dearly: four tiers by hardness (`baseRepairTierHardness`), with `baseRepairPreciousBlocks`
+(diamond/netherite/iron/gold blocks, beacons...) forced to the top. At the default Normal speed a stone
+wall is back in 5 minutes for 0.005 h of fuel per block; a netherite block waits 4 hours and costs half an
+hour. The owner picks **Off / Slow / Normal / Fast / Turbo**, trading fuel for speed, from a dialog button,
+a click on the furnace-menu clock, or `/sanctuaryrepair`. Repairs never spend a sanctuary below
+`baseRepairFuelReserveHours`, so they can't tip it into dormancy on their own.
+
+*The dupe it had to avoid.* "Build a netherite wall, let a creeper blow it up, pocket the drops, let the
+base rebuild it" is a free-netherite machine. A journaled block therefore drops **nothing**: it is removed
+without loot and only the rebuild brings it back. Blast removals skip neighbour updates, so a torch on a
+blasted wall doesn't pop off as an item and then get rebuilt too. Blocks with block entities (chests,
+shulkers, signs, beds, heads) are never journaled at all: they break exactly as vanilla, contents
+included, because suppressing a shulker's drop would delete its contents and rebuilding a chest would
+duplicate them. TNT is never journaled (a rebuilt TNT beside lingering fire is a bomb loop). Blocks
+broken by *other players* are not rebuilt, since the raider keeps the drop; each one is written to
+`config/sanctuary_repair_logs/` (`player_break`: who, whose base, what, where) so raids and owner-plus-alt
+dupe attempts are visible. The same log records every journaled burst, rebuild pass (with fuel spent)
+and superseded entry.
+
+*Where it hooks, and why there.* The explosion hook sits at the HEAD of `ServerExplosion.interactWithBlocks`,
+not in `calculateExplodedPositions` where the creeper-mercy filter lives: Flan filters the blast list in
+between (a `@ModifyVariable` before `hurtEntities`), so hooking earlier would have journaled and removed
+blocks Flan was about to protect. A rebuild only lands if the spot still holds what the damage left (air,
+dirt, or anything replaceable such as water); if someone built over it or already fixed it by hand, the
+entry is dropped, because the newest choice always wins. Leaf decay and ice melt are deliberately not
+repaired: player-placed leaves never decay, so restoring decayed leaves would regrow chopped trees in
+mid-air, and ice beside a torch would melt, rebuild and melt forever on the owner's fuel. `/sanctuary heal
+report` (ops) lists the damage-related gamerules, Flan's global protection flags and each anchor's repair
+speed, backlog and claim instead. Rebuilds need the chunk loaded; overdue ones land when someone comes
+near. The journal persists in `config/sanctuary_repairs.json`. Rules are Minecraft-free in
+`BaseRepairRules` with 18 tests in `BaseRepairRulesTest`.
+
+**Includes the 0.8.11.2 crash hotfix** (a drowned door-breaker crashed the server; see 0.8.11.2 below).
+
+**Fixed — hoppers could drain a claimed core from below.** The anchor claim was a 2D Flan claim whose
+floor sat `defaultClaimDepth` below the crystal, and the bot harness (B13) emptied a chest on the claim
+floor with a hopper and a hopper minecart parked one block beneath it. The claim now reaches the bottom
+of the world. A crystal that sits inside someone else's claim (so no anchor claim is made) is now logged
+too; that case was silent (B15).
+
+**Flan: three claim bugs, found by reading Flan's `Claim.canInteract`.** (1) The anchor's claim was an
+ownerless *admin* claim. Flan lets only the owner, trusted group members and ops act inside a claim, and an
+admin claim has no owner, so a non-op player who paid for a sanctuary could not build, break or open a
+chest in its core. Ops were unaffected, which is why it went unnoticed. The claim is now transferred to the
+anchor's owner, which also gives them Flan's per-claim trust groups (build, doors, containers, redstone...)
+for granular access. `flanClaimOwnedByAnchorOwner=false` restores the old behaviour; server/admin anchors
+stay admin claims. (2) Flan refuses any claim that overlaps another and returns null, but we logged "Flan
+admin claim raised" regardless, so an unprotected base looked protected in the log. It now warns that the
+core is NOT protected. (3) Going dormant deleted *whatever* admin claim covered the crystal, so an anchor
+placed inside a spawn claim would delete the spawn claim when its fuel ran out. The id of the claim an
+anchor creates is now stored on it (`flanClaimId`) and removal deletes only that id. Pre-0.8.12 claims of
+exactly the anchor's footprint are adopted on the next boot and handed to their owner.
+
+## 0.8.11.2
+
+**Hotfix (26.1 line) — a drowned door-breaker crashed the server (gmc101 went down 2026-09-03 19:07 and
+2026-09-06 11:36).** Both outages were `Exception ticking world` ← `IllegalArgumentException: Unsupported
+mob type for DoorInteractGoal` at `MobDifficulty.attachDoorBreakGoalIfMarked(MobDifficulty.java:328)` ←
+`onSpawn` ← the entity-load event, each followed by the watchdog's forced shutdown. Vanilla's
+`DoorInteractGoal` constructor throws unless the mob has ground navigation. A Drowned *is* a `Zombie` (so
+it passed our `instanceof Zombie` check), swaps to water navigation while swimming, and a tagged wildlands
+door-breaker that drowns converts to a Drowned carrying its tags along. Loading that chunk with the Drowned
+in water re-attached the goals, threw, and the exception escaped the world tick. The attach now checks
+`GoalUtils.hasGroundPathNavigation` first and skips (the next load on dry ground attaches as usual), and any
+`IllegalArgumentException` from goal construction is logged instead of propagated. Found by a log sweep of
+gmc101 (2026-08-30..09-14). The same fix ships on `main` in 0.8.12.0. This release contains nothing else.
+
 ## 0.8.11.0
 
 **The gathering world is now a true dead end: renamed to `sanctuary:rssworld`, no Nether gates, no

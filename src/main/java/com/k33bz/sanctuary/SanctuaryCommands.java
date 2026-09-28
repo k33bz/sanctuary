@@ -43,6 +43,19 @@ public final class SanctuaryCommands {
         return Sanctuary.CONFIG;
     }
 
+    /** Read one per-tier value (System 12 lists); 0 past the end. */
+    private static double tierGet(java.util.List<Double> list, int tier) {
+        return list != null && tier < list.size() ? list.get(tier) : 0.0;
+    }
+
+    /** Write one per-tier value, growing the list with the last value if it is short. */
+    private static void tierSet(java.util.List<Double> list, int tier, double v) {
+        while (list.size() <= tier) {
+            list.add(list.isEmpty() ? 0.0 : list.get(list.size() - 1));
+        }
+        list.set(tier, v);
+    }
+
     private static void num(String key, DoubleSupplier g, DoubleConsumer s, double min, double max) {
         NUM.put(key, new NumKnob(g, s, min, max));
     }
@@ -83,6 +96,20 @@ public final class SanctuaryCommands {
         num("anchor.maxFuelHours", () -> cfg().anchorMaxFuelHours, v -> cfg().anchorMaxFuelHours = v, 1, 1000000);
         num("anchor.flanClaimRadius", () -> cfg().flanClaimRadius, v -> cfg().flanClaimRadius = (int) Math.round(v), 1, 128);
         num("anchor.minSpacing", () -> cfg().anchorMinSpacing, v -> cfg().anchorMinSpacing = v, 0, 100000);
+        // System 12 — base auto-repair.
+        bool("repair", () -> cfg().baseRepairEnabled, b -> cfg().baseRepairEnabled = b);
+        bool("repair.logPlayerBreaks", () -> cfg().baseRepairLogPlayerBreaks, b -> cfg().baseRepairLogPlayerBreaks = b);
+        bool("anchor.flanClaimOwned", () -> cfg().flanClaimOwnedByAnchorOwner, b -> cfg().flanClaimOwnedByAnchorOwner = b);
+        num("repair.fuelReserveHours", () -> cfg().baseRepairFuelReserveHours, v -> cfg().baseRepairFuelReserveHours = v, 0, 100000);
+        num("repair.maxPerTick", () -> cfg().baseRepairMaxPerTick, v -> cfg().baseRepairMaxPerTick = (int) Math.round(v), 1, 1000);
+        num("repair.maxQueue", () -> cfg().baseRepairMaxQueue, v -> cfg().baseRepairMaxQueue = (int) Math.round(v), 1, 1_000_000);
+        for (int i = 0; i < 4; i++) {
+            final int t = i;
+            num("repair.tier" + t + ".delaySeconds", () -> tierGet(cfg().baseRepairTierDelaySeconds, t),
+                    v -> tierSet(cfg().baseRepairTierDelaySeconds, t, v), 0, 10_000_000);
+            num("repair.tier" + t + ".costHours", () -> tierGet(cfg().baseRepairTierCostHours, t),
+                    v -> tierSet(cfg().baseRepairTierCostHours, t, v), 0, 100000);
+        }
         num("anchor.capBase", () -> cfg().anchorCapBase, v -> cfg().anchorCapBase = (int) Math.round(v), 1, 100);
         num("anchor.capMax", () -> cfg().anchorCapMax, v -> cfg().anchorCapMax = (int) Math.round(v), 1, 100);
         num("deathKeep.base", () -> cfg().deathKeepBase, v -> cfg().deathKeepBase = v, 0, 1);
@@ -212,6 +239,14 @@ public final class SanctuaryCommands {
                             .then(Commands.argument("name", StringArgumentType.greedyString())
                                     .executes(safe(ctx -> anchorRename(ctx,
                                             StringArgumentType.getString(ctx, "name")))))));
+            // Player-level (permission 0): System 12 repair speed for the nearest OWNED anchor within
+            // 6 blocks (or creative). Bare = status; "next" = cycle (the dialog button); or a mode name.
+            dispatcher.register(Commands.literal("sanctuaryrepair")
+                    .executes(safe(ctx -> anchorRepair(ctx, null)))
+                    .then(Commands.argument("mode", StringArgumentType.word())
+                            .suggests((c, b) -> SharedSuggestionProvider.suggest(
+                                    java.util.List.of("off", "slow", "normal", "fast", "turbo", "next"), b))
+                            .executes(safe(ctx -> anchorRepair(ctx, StringArgumentType.getString(ctx, "mode"))))));
             // Ops: wall-mounted holographic leaderboards for any scoreboard objective.
             dispatcher.register(Commands.literal("sanctuaryboard")
                     .requires(Commands.<CommandSourceStack>hasPermission(Commands.LEVEL_GAMEMASTERS))
@@ -818,6 +853,106 @@ public final class SanctuaryCommands {
         return 1;
     }
 
+    /**
+     * System 12 owner control: show or change the repair speed of the nearest owned sanctuary. The
+     * owner-or-creative check is enforced here, server-side, not just by hiding the dialog button.
+     */
+    private static int anchorRepair(CommandContext<CommandSourceStack> ctx, String mode)
+            throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        net.minecraft.server.level.ServerPlayer player = ctx.getSource().getPlayerOrException();
+        com.k33bz.sanctuary.anchor.AnchorState.PlacedAnchor best = nearestAnchorWithin(player, 6 * 6,
+                a -> com.k33bz.sanctuary.anchor.AnchorDialog.canRename(player, a));
+        if (best == null) {
+            player.sendOverlayMessage(Component.literal("No sanctuary of yours within reach.")
+                    .withStyle(net.minecraft.ChatFormatting.YELLOW));
+            return 0;
+        }
+        com.k33bz.sanctuary.anchor.BaseRepairRules.Mode current = com.k33bz.sanctuary.anchor.BaseRepair.modeOf(best);
+        if (mode != null) {
+            com.k33bz.sanctuary.anchor.BaseRepairRules.Mode chosen = mode.equalsIgnoreCase("next")
+                    ? current.next() : com.k33bz.sanctuary.anchor.BaseRepairRules.Mode.parse(mode, null);
+            if (chosen == null) {
+                ctx.getSource().sendFailure(Component.literal("Repair speed is one of: off, slow, normal, fast, turbo."));
+                return 0;
+            }
+            best.repairMode = chosen.name();
+            com.k33bz.sanctuary.anchor.AnchorState.get().save();
+            current = chosen;
+        }
+        player.sendOverlayMessage(Component.literal("Repairs: " + current.label() + " — "
+                        + com.k33bz.sanctuary.anchor.BaseRepair.queued(best) + " block(s) waiting")
+                .withStyle(net.minecraft.ChatFormatting.LIGHT_PURPLE));
+        if (mode != null && mode.equalsIgnoreCase("next") && cfg().anchorDialogMenu) {
+            net.minecraft.core.BlockPos pos = net.minecraft.core.BlockPos.containing(best.x, best.y, best.z);
+            com.k33bz.sanctuary.anchor.AnchorDialog.open(player, pos, best); // reopen with the new label
+        }
+        return 1;
+    }
+
+    /**
+     * System 12 admin report: the gamerules and settings that decide what can damage a base, and
+     * the repair state of every anchor. Leaf decay and ice melt have no gamerule and are never
+     * repaired (they loop); they're listed so an admin knows that's deliberate.
+     */
+    private static int healReport(CommandContext<CommandSourceStack> ctx) {
+        CommandSourceStack src = ctx.getSource();
+        net.minecraft.server.level.ServerLevel level = src.getServer().overworld();
+        java.util.List<String> lines = new java.util.ArrayList<>();
+        lines.add("Base repair: " + (cfg().baseRepairEnabled ? "ON" : "OFF")
+                + " (default speed " + cfg().baseRepairDefaultMode + ", " + com.k33bz.sanctuary.anchor.BaseRepair.queuedTotal()
+                + " block(s) journaled)");
+        lines.add("Gamerules (overworld):");
+        // Reflective on purpose: gamerule constants get renamed between MC versions (26.x went
+        // snake_case), and a report must never be the reason the mod fails to compile or boot.
+        java.util.regex.Pattern wanted = java.util.regex.Pattern.compile(
+                "MOB_GRIEFING|.*FIRE.*|.*TNT.*|.*EXPLOSION.*|.*BLOCK_DROPS.*|.*DECAY.*");
+        for (java.lang.reflect.Field f : net.minecraft.world.level.gamerules.GameRules.class.getFields()) {
+            if (!java.lang.reflect.Modifier.isStatic(f.getModifiers()) || !wanted.matcher(f.getName()).matches()) {
+                continue;
+            }
+            try {
+                Object rule = f.get(null);
+                Object value = null;
+                for (java.lang.reflect.Method m : level.getGameRules().getClass().getMethods()) {
+                    if (m.getName().equals("get") && m.getParameterCount() == 1
+                            && m.getParameterTypes()[0].isInstance(rule)) {
+                        value = m.invoke(level.getGameRules(), rule);
+                        break;
+                    }
+                }
+                if (value != null) {
+                    lines.add("  " + f.getName().toLowerCase(java.util.Locale.ROOT) + " = " + value);
+                }
+            } catch (ReflectiveOperationException | RuntimeException ignored) {
+                // a rule we can't read is simply not listed
+            }
+        }
+        lines.add("Sanctuary: creeperTerrainProtection=" + cfg().creeperTerrainProtection
+                + ", endermanCloneNotSteal=" + cfg().endermanCloneNotSteal);
+        lines.add("Not repaired by design: leaf decay, ice/snow melt (no gamerule; restoring them loops).");
+        if (cfg().flanIntegration && com.k33bz.sanctuary.anchor.FlanIntegration.available()) {
+            String flags = com.k33bz.sanctuary.anchor.FlanIntegration.globalFlagsSummary(level);
+            lines.add("Flan globals: " + (flags == null ? "(unreadable)" : flags));
+        } else {
+            lines.add("Flan: not installed/disabled — anchor cores have NO claim protection.");
+        }
+        long now = level.getGameTime();
+        for (var a : com.k33bz.sanctuary.anchor.AnchorState.get().anchors) {
+            lines.add(String.format(java.util.Locale.ROOT, "  %s %s (%s): %s, repairs %s, %d waiting, claim %s",
+                    com.k33bz.sanctuary.anchor.AnchorState.shortId(a.id),
+                    a.name == null ? "" : "\"" + a.name + "\"",
+                    a.owner == null ? "server" : a.owner,
+                    a.isActive(now) ? "active" : "DORMANT",
+                    com.k33bz.sanctuary.anchor.BaseRepair.modeOf(a).label(),
+                    com.k33bz.sanctuary.anchor.BaseRepair.queued(a),
+                    a.flanClaimId == null ? "none recorded" : com.k33bz.sanctuary.anchor.AnchorState.shortId(a.flanClaimId)));
+        }
+        for (String line : lines) {
+            src.sendSuccess(() -> Component.literal(line), false);
+        }
+        return 1;
+    }
+
     private static LiteralArgumentBuilder<CommandSourceStack> build() {
         return Commands.literal("sanctuary")
                 .requires(Commands.<CommandSourceStack>hasPermission(Commands.LEVEL_GAMEMASTERS))
@@ -835,6 +970,8 @@ public final class SanctuaryCommands {
                         .then(Commands.argument("system", StringArgumentType.word())
                                 .suggests((c, b) -> SharedSuggestionProvider.suggest(BOOL.keySet(), b))
                                 .executes(safe(SanctuaryCommands::toggle))))
+                .then(Commands.literal("heal")
+                        .then(Commands.literal("report").executes(safe(SanctuaryCommands::healReport))))
                 .then(Commands.literal("save").executes(safe(SanctuaryCommands::save)))
                 .then(Commands.literal("reload").executes(safe(SanctuaryCommands::reload)))
                 .then(Commands.literal("cap")

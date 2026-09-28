@@ -68,9 +68,29 @@ When you die owning **two or more active sanctuaries**, the respawn dialog offer
 choose which one to wake at (free); the nearest to where you fell is the default. See
 [DEATH-AND-GRAVES.md](DEATH-AND-GRAVES.md).
 
+## Self-repair — the sanctuary mends itself
+
+An active sanctuary rebuilds damage you didn't cause: creeper and TNT blasts, withers, ravagers
+and siege mobs breaking blocks, zombies breaking doors, trampled farmland, fire. The broken blocks
+**drop nothing** (so nobody can farm your walls) and come back on their own, cheapest first: dirt
+and stone in minutes, iron and diamond blocks in hours. Every rebuilt block costs a sliver of
+fuel.
+
+The **owner** picks the speed: **Off, Slow, Normal, Fast, Turbo**. Use the *Repair speed* button in
+the dialog menu, click the clock in the furnace menu, or run `/sanctuaryrepair <speed>` next to the
+crystal. Faster burns more fuel per block. Repairs never spend the last hour of fuel, and a dormant
+sanctuary repairs nothing.
+
+Not repaired: chests and other blocks that hold things (they break normally, contents and all),
+blocks other players break (logged for admins), and leaf decay or melting ice. Full formulas:
+[MECHANICS.md §12](MECHANICS.md).
+
 ## Integrations
 
-- **Flan**: active anchors auto-carry an admin grief-protection claim; released on dormancy.
+- **Flan**: active anchors auto-carry a grief-protection claim over the core (`flanClaimRadius`,
+  16 by default). It is a server (admin) claim, so it costs you no claim blocks, and you are made
+  a **Co-Owner** of it, so you can build there and trust friends with Flan's own groups
+  (`/flan group players add Co-Owner <player>`). Released on dormancy. If the core overlaps another claim, Flan refuses it and the server log says so.
 - **Permissions**: `sanctuary.anchor.create / .break / .admin` via fabric-permissions-api —
   LuckPerms-ready, safe defaults without it.
 - **Renewable dragon eggs**: enable the bundled `dragon drops` VT pack

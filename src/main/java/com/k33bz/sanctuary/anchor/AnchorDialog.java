@@ -52,6 +52,11 @@ public final class AnchorDialog {
                     "\n%.1f h banked (cap %.0f h)", anchor.hoursLeft(now), cap))
                     .withStyle(ChatFormatting.GRAY));
         }
+        // System 12: repair speed + backlog, so the owner can see the sanctuary mending itself.
+        if (cfg != null && cfg.baseRepairEnabled) {
+            status.append(Component.literal("\nRepairs: " + BaseRepair.modeOf(anchor).label()
+                    + " (" + BaseRepair.queued(anchor) + " waiting)").withStyle(ChatFormatting.GRAY));
+        }
         if (anchor.id != null) {
             status.append(Component.literal("\nid: " + AnchorState.shortId(anchor.id))
                     .withStyle(ChatFormatting.DARK_GRAY));
@@ -72,6 +77,14 @@ public final class AnchorDialog {
             buttons.add(feedButton("Feed dragon egg (+" + hrs(cfg == null ? 168 : cfg.anchorHoursPerEgg) + ")",
                     "egg", 1));
             buttons.add(feedButton("Refresh", "status", 0));
+        }
+        // System 12: the owner (or a creative admin) steps the repair speed Off → Slow → ... → Turbo.
+        // Faster repairs burn more fuel per block; the command re-opens this dialog with the new label.
+        if (cfg != null && cfg.baseRepairEnabled && canRename(player, anchor)) {
+            BaseRepairRules.Mode mode = BaseRepair.modeOf(anchor);
+            buttons.add(new ActionButton(
+                    new CommonButtonData(Component.literal("Repair speed: " + mode.label() + " → " + mode.next().label()), 160),
+                    Optional.of(new StaticAction(new ClickEvent.RunCommand("sanctuaryrepair next")))));
         }
         // The owner (or a creative admin) may name the sanctuary — opens a text-input dialog.
         if (canRename(player, anchor)) {

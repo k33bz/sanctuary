@@ -454,6 +454,12 @@ state silently. The glyph is `☠` (U+2620); emoji are not in Minecraft's font.
 | `anchorUpkeepEnabled` / `anchorStartHours` | true / 24 | §1 |
 | `anchorHoursPerEmerald` / `anchorHoursPerEmeraldBlock` / `anchorHoursPerEgg` / `anchorMaxFuelHours` | 2.5 / 24 / 168 / 1536 | §1 |
 | `flanIntegration` / `flanClaimRadius` | true / 16 | §1 |
+| `flanClaimOwnedByAnchorOwner` | true | §12 — the anchor owner gets rights in the anchor claim (false = none, legacy) |
+| `flanAnchorOwnerGroup` | Co-Owner | §12 — Flan group the anchor owner joins in the (admin) anchor claim |
+| `baseRepairEnabled` / `baseRepairDefaultMode` | true / NORMAL | §12 |
+| `baseRepairTierHardness` / `baseRepairPreciousBlocks` | [0.6, 2, 5] / diamond, emerald, netherite, gold, iron, lapis blocks, ancient debris, beacon, conduit, crying obsidian, respawn anchor, lodestone | §12 |
+| `baseRepairTierDelaySeconds` / `baseRepairTierCostHours` | [60, 300, 1800, 14400] / [0.001, 0.005, 0.05, 0.5] | §12 |
+| `baseRepairFuelReserveHours` / `baseRepairMaxPerTick` / `baseRepairMaxQueue` / `baseRepairLogPlayerBreaks` | 1.0 / 8 / 20000 / true | §12 |
 | `mobScaling.enabled` | true | §2 |
 | `mobScaling.{health,damage,speed,xp,follow}PerBlock` + `…MaxMultiplier` | see §2 table | §2 |
 | `mobScaling.damageCurveExponent` | 1.0 | §2.2 |
@@ -483,3 +489,65 @@ state silently. The glyph is `☠` (U+2620); emoji are not in Minecraft's font.
 - 26.x API notes: `ResourceKey#identifier()`, `Player#sendOverlayMessage`, `Entity#entityTags()`,
   `GameRules` at `world.level.gamerules` read via `level.getGameRules().get(GameRules.MOB_GRIEFING)`,
   `Zombie` at `entity.monster.zombie`.
+
+---
+
+## 12. Base auto-repair (System 12)
+
+Inside an **active** sanctuary (overworld), damage that is not the anchor owner's own doing is
+*journaled* instead of dropped, and the sanctuary rebuilds it later, paying out of its fuel bank.
+Pure rules: `BaseRepairRules` (tested in `BaseRepairRulesTest`); plumbing: `BaseRepair`.
+
+**Journaled causes:** explosions (unless the owner lit them), mobs breaking blocks through
+`Level.destroyBlock` (withers, ravagers, siege frame-smashers), zombies breaking doors, farmland
+trampled by anything but the owner, blocks burned by fire, enderman theft when
+`endermanCloneNotSteal` is off.
+
+**Never journaled:** blocks with block entities (chests, shulkers, signs, beds, heads) break
+exactly as vanilla, contents and all. Also never: TNT, fluids, fire, the anchor itself, farmland
+drying out on its own, leaf decay, ice/snow melt (restoring those loops). Blocks broken by
+*other players* are **logged, not rebuilt** (`player_break` in `config/sanctuary_repair_logs/`).
+
+**Anti-dupe.** A journaled block drops **nothing**: it is removed without loot and only the
+rebuild brings it back, so "creeper my netherite wall, keep the drops, let the base rebuild it"
+yields zero netherite. Blast removals skip neighbour updates, so attached torches don't pop off as
+items either.
+
+**Tier** (value class) = first `baseRepairTierHardness` ceiling the block's hardness fits under
+(0.6 → tier 0, 2.0 → tier 1, 5.0 → tier 2, else tier 3); `baseRepairPreciousBlocks` and
+unbreakables are always tier 3.
+
+**Owner speed** (`/sanctuaryrepair`, the dialog button, or clicking the menu clock):
+
+| Mode | Delay × | Fuel × |
+|---|---|---|
+| Off | — (journal kept, nothing rebuilt) | — |
+| Slow | 2.0 | 0.75 |
+| Normal | 1.0 | 1.0 |
+| Fast | 0.5 | 1.5 |
+| Turbo | 0.1 | 3.0 |
+
+```
+delay(tier, mode) = max(1 s, baseRepairTierDelaySeconds[tier] × mode.delay)
+cost(tier, mode)  = baseRepairTierCostHours[tier] × mode.fuel          (hours of anchor fuel)
+rebuild iff  due ∧ chunk loaded ∧ anchor active ∧ mode ≠ Off
+            ∧ fuelLeft − cost ≥ baseRepairFuelReserveHours   (eternal anchors: always, free)
+            ∧ no living entity in the block
+            ∧ spot still holds what the damage left (air, dirt, or anything replaceable)
+```
+
+If something else was built in the spot, or it was already fixed by hand, the entry is dropped
+(`superseded`): the newest choice always wins. Damaged again before the rebuild, the newer block
+replaces the older journal entry.
+
+**Worked example (Normal).** A creeper breaches a door (2 blocks, oak door hardness 3 → tier 2) and
+a ravager tramples through 30 stone bricks (1.5 → tier 1) and 10 planks (2.0 → tier 1). The
+bricks and planks come back after 5 min for 40 × 0.005 = 0.2 h; the door after 30 min for
+2 × 0.05 = 0.1 h. Total 0.3 h of a 24 h emerald-block day. On Turbo the same repair lands in
+30 s / 3 min and costs 0.9 h.
+
+Rebuilds happen only where the chunk is loaded; overdue repairs land as soon as someone comes
+near. At most `baseRepairMaxPerTick` blocks per second server-wide. The journal persists in
+`config/sanctuary_repairs.json`. `/sanctuary heal report` (ops) lists the damage-related gamerules,
+Flan's global flags and every anchor's repair speed, backlog and claim.
+

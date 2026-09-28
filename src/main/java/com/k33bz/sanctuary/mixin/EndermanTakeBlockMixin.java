@@ -13,6 +13,10 @@ import com.k33bz.sanctuary.SanctuaryConfig;
  * world before the enderman carries it off; with the toggle on, the removal is skipped while
  * the carry still happens — the enderman wanders away with a copy and the world keeps its
  * grass. (It may plant the clone somewhere later; a stray mundane block is the worst case.)
+ *
+ * <p>System 12: with the toggle OFF, a real theft inside an active sanctuary is journaled just
+ * before the removal, so the sanctuary regrows the block later (endermen can only lift cheap
+ * "holdable" blocks, and each theft is logged).
  */
 @Mixin(targets = "net.minecraft.world.entity.monster.EnderMan$EndermanTakeBlockGoal")
 public class EndermanTakeBlockMixin {
@@ -23,6 +27,10 @@ public class EndermanTakeBlockMixin {
         SanctuaryConfig cfg = Sanctuary.CONFIG;
         if (cfg != null && cfg.endermanCloneNotSteal) {
             return true; // pretend the removal succeeded; the world keeps the block
+        }
+        if (level instanceof net.minecraft.server.level.ServerLevel sl) {
+            com.k33bz.sanctuary.anchor.BaseRepair.journal(sl, pos, level.getBlockState(pos),
+                    "minecraft:air", "mob:enderman", null);
         }
         return level.removeBlock(pos, moving);
     }

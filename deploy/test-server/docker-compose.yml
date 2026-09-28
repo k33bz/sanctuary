@@ -1,0 +1,27 @@
+# Ephemeral Fabric server. Everything is disposable:
+#   up    docker compose up -d --build
+#   down  docker compose down -v      <- -v also drops the world
+services:
+  mc-test:
+    build:
+      context: .
+      args:
+        MC_VERSION: ${MC_VERSION:-26.1.2}
+        FABRIC_LOADER: ${FABRIC_LOADER:-0.19.3}
+        FABRIC_INSTALLER: ${FABRIC_INSTALLER:-1.1.2}
+    container_name: mc-test-${MC_VERSION:-26.1.2}
+    environment:
+      RCON_PASSWORD: ${RCON_PASSWORD:?set RCON_PASSWORD}
+      MEMORY: ${MEMORY:-2G}
+      DIFFICULTY: ${DIFFICULTY:-normal}
+    ports:
+      # High host ports so this can never collide with the real server on 25565.
+      - "${HOST_GAME_PORT:-25599}:25565"
+      - "${HOST_RCON_PORT:-25598}:25575"
+    volumes:
+      # Mount the jars under test read-only; the server never writes to them.
+      - ${MODS_DIR:-./mods}:/server/mods:ro
+    tmpfs:
+      # World in RAM - teardown leaves nothing behind and chunk gen is faster.
+      - /server/world
+    stop_grace_period: 30s

@@ -1,3 +1,17 @@
+## 0.8.11.2
+
+**Hotfix (26.1 line) — a drowned door-breaker crashed the server (gmc101 went down 2026-09-03 19:07 and
+2026-09-06 11:36).** Both outages were `Exception ticking world` ← `IllegalArgumentException: Unsupported
+mob type for DoorInteractGoal` at `MobDifficulty.attachDoorBreakGoalIfMarked(MobDifficulty.java:328)` ←
+`onSpawn` ← the entity-load event, each followed by the watchdog's forced shutdown. Vanilla's
+`DoorInteractGoal` constructor throws unless the mob has ground navigation. A Drowned *is* a `Zombie` (so
+it passed our `instanceof Zombie` check), swaps to water navigation while swimming, and a tagged wildlands
+door-breaker that drowns converts to a Drowned carrying its tags along. Loading that chunk with the Drowned
+in water re-attached the goals, threw, and the exception escaped the world tick. The attach now checks
+`GoalUtils.hasGroundPathNavigation` first and skips (the next load on dry ground attaches as usual), and any
+`IllegalArgumentException` from goal construction is logged instead of propagated. Found by a log sweep of
+gmc101 (2026-08-30..09-14). The same fix ships on `main` in 0.8.12.0. This release contains nothing else.
+
 ## 0.8.11.0
 
 **The gathering world is now a true dead end: renamed to `sanctuary:rssworld`, no Nether gates, no

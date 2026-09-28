@@ -198,7 +198,7 @@ public final class AnchorUpkeep {
             if (active) {
                 AnchorInteraction.spawnSpinDisplay(server, pos); // the shell spins only while alive
                 if (flan) {
-                    FlanIntegration.createClaim(overworld, pos, cfg.flanClaimRadius);
+                    FlanIntegration.createClaim(overworld, pos, cfg.flanClaimRadius, a);
                 }
                 if (last != null) {
                     Sanctuary.LOGGER.info("[sanctuary] Anchor at {},{} reawakened", pos.getX(), pos.getZ());
@@ -206,7 +206,7 @@ public final class AnchorUpkeep {
             } else {
                 AnchorInteraction.removeSpinDisplay(server, pos); // still crystal = dead crystal
                 if (flan) {
-                    FlanIntegration.removeClaim(overworld, pos);
+                    FlanIntegration.removeClaim(overworld, pos, cfg.flanClaimRadius, a);
                 }
                 if (last != null) {
                     Sanctuary.LOGGER.info("[sanctuary] Anchor at {},{} went dormant (out of fuel)",

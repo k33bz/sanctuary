@@ -95,12 +95,32 @@ public class AnchorMenu extends SimpleGui {
         // Fuel gauge (bottom): the banked charge in plain numbers.
         double cap = cfg == null ? 1536.0 : cfg.anchorMaxFuelHours;
         double hours = anchor.isExempt() ? Double.MAX_VALUE : anchor.hoursLeft(now);
-        this.setSlot(1, new GuiElementBuilder(Items.CLOCK)
+        java.util.List<Component> gauge = new java.util.ArrayList<>();
+        gauge.add(anchor.isExempt()
+                ? Component.literal("∞ — eternal").withStyle(ChatFormatting.LIGHT_PURPLE)
+                : Component.literal(String.format(Locale.ROOT, "%.1f h banked (cap %.0f h)", hours, cap))
+                        .withStyle(ChatFormatting.GRAY));
+        // System 12: repair speed + backlog on the gauge; the owner clicks it to step the speed.
+        boolean canTune = cfg != null && cfg.baseRepairEnabled && AnchorDialog.canRename(player, anchor);
+        if (cfg != null && cfg.baseRepairEnabled) {
+            gauge.add(Component.literal("Repairs: " + BaseRepair.modeOf(anchor).label()
+                    + " (" + BaseRepair.queued(anchor) + " waiting)").withStyle(ChatFormatting.GRAY));
+            if (canTune) {
+                gauge.add(Component.literal("Click: change repair speed (faster burns more fuel)")
+                        .withStyle(ChatFormatting.DARK_GRAY));
+            }
+        }
+        GuiElementBuilder clock = new GuiElementBuilder(Items.CLOCK)
                 .setName(Component.literal("Charge").withStyle(ChatFormatting.GOLD))
-                .setLore(List.of(anchor.isExempt()
-                        ? Component.literal("∞ — eternal").withStyle(ChatFormatting.LIGHT_PURPLE)
-                        : Component.literal(String.format(Locale.ROOT, "%.1f h banked (cap %.0f h)", hours, cap))
-                                .withStyle(ChatFormatting.GRAY))));
+                .setLore(gauge);
+        if (canTune) {
+            clock.setCallback((index, type, action, gui) -> {
+                anchor.repairMode = BaseRepair.modeOf(anchor).next().name();
+                AnchorState.get().save();
+                refresh();
+            });
+        }
+        this.setSlot(1, clock);
 
         // Output (right, locked): the crystal's full status — owner, UUID, live countdown.
         String who = anchor.owner == null ? "server" : anchor.owner;

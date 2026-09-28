@@ -311,6 +311,39 @@ public class SanctuaryConfig {
     // around the crystal (protection for the anchor + its immediate town core). Requires Flan.
     public boolean flanIntegration = true;
     public int flanClaimRadius = 16;
+    // 0.8.12.0: the claim is OWNED by the anchor's owner (was an ownerless admin claim, which locked
+    // non-op owners out of their own core). Off = legacy admin claims. Server/admin anchors with no
+    // owner still get an admin claim either way.
+    public boolean flanClaimOwnedByAnchorOwner = true;
+
+    // System 12 — base auto-repair. Damage that isn't the owner's doing inside an ACTIVE sanctuary
+    // (explosions, mobs breaking blocks, zombie door-breaking, trampled farmland, fire) is journaled
+    // instead of dropped and rebuilt later, paid for out of the anchor's fuel bank. The broken block
+    // drops NOTHING (that is the anti-dupe: no "creeper my netherite wall, keep the drops, let the
+    // base rebuild it"). Blocks with block entities (chests, shulkers, signs, beds) are never
+    // journaled — they break exactly as vanilla, contents and all. Leaf decay and ice melt are
+    // deliberately NOT repaired (they loop); `/sanctuary heal report` shows the gamerules instead.
+    // Blocks broken by other players are logged (config/sanctuary_repair_logs/) but not rebuilt.
+    public boolean baseRepairEnabled = true;
+    public String baseRepairDefaultMode = "NORMAL";   // OFF | SLOW | NORMAL | FAST | TURBO
+    // Tier = value class. Hardness ceilings for tiers 0,1,2 (above the last = tier 3); precious ids
+    // are always tier 3 however soft. Cheaper tiers wait less and burn less fuel.
+    public List<Double> baseRepairTierHardness = new ArrayList<>(List.of(0.6, 2.0, 5.0));
+    public List<String> baseRepairPreciousBlocks = new ArrayList<>(List.of(
+            "minecraft:diamond_block", "minecraft:emerald_block", "minecraft:netherite_block",
+            "minecraft:gold_block", "minecraft:iron_block", "minecraft:lapis_block",
+            "minecraft:ancient_debris", "minecraft:beacon", "minecraft:conduit",
+            "minecraft:crying_obsidian", "minecraft:respawn_anchor", "minecraft:lodestone"));
+    // Per-tier wait before rebuilding at NORMAL speed (seconds): 1 min, 5 min, 30 min, 4 h.
+    public List<Double> baseRepairTierDelaySeconds = new ArrayList<>(List.of(60.0, 300.0, 1800.0, 14400.0));
+    // Per-tier fuel per rebuilt block at NORMAL speed (hours). A 40-block creeper-and-mob mess of
+    // stone and planks costs ~0.2 h; one netherite block costs half an hour.
+    public List<Double> baseRepairTierCostHours = new ArrayList<>(List.of(0.001, 0.005, 0.05, 0.5));
+    // Repairs never spend a fueled anchor below this many hours (never tip it into dormancy).
+    public double baseRepairFuelReserveHours = 1.0;
+    public int baseRepairMaxPerTick = 8;              // rebuilds per second, server-wide
+    public int baseRepairMaxQueue = 20000;            // journal cap (oldest dropped past it)
+    public boolean baseRepairLogPlayerBreaks = true;  // log non-owner block breaks in sanctuaries
 
     // Rift anchors (the gathering dimension). A Rift Anchor used on open ground OUTSIDE a sanctuary
     // tears a persistent rift to riftDimension; stepping on it teleports across (a return rift opens

@@ -96,9 +96,9 @@ Packages under `com.k33bz.sanctuary`:
   `config/sanctuary_anchors.json`), fuel/upkeep, cap progression via Warden kills
   (`AnchorCapRules`), the Wild Essence → Wild Membrane → Sanctuary Crystal crafting chain
   (component-aware special recipes registered before datapacks load), anchor dialogs/menus,
-  `FlanIntegration` (claim owned by the anchor owner; only the claim an anchor created is ever
-  deleted), and **System 12 base auto-repair** (`BaseRepair` + pure `BaseRepairRules`: non-owner
-  damage is journaled with NO drops and rebuilt on fuel; journal in `config/sanctuary_repairs.json`).
+  `FlanIntegration` (admin claim with the anchor owner as Co-Owner, so it costs them no claim
+  blocks; only the claim an anchor created is ever deleted), and **System 12 base auto-repair**
+  (`BaseRepair` + pure `BaseRepairRules`: non-owner damage is journaled with NO drops and rebuilt on fuel; journal in `config/sanctuary_repairs.json`).
 - **grave/** — headstones, graveyard consecration, the Gravekeeper villager + allay couriers,
   patrol/mutter/hover AI, graveyard protection and smite, `OfflineUuid`.
 - **rift/** — the "gathering world" resource dimension. Access is via **ruined-portal rifts**

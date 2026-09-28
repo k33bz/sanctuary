@@ -29,6 +29,22 @@ class RiftRenamePlanTest {
     }
 
     @Test
+    @DisplayName("an upgraded config still naming the legacy id is moved onto the current one")
+    void upgradesLegacyConfiguredId() {
+        // gmc101 0.8.11.0: sanctuary.json kept resource_world, so nothing migrated.
+        assertEquals(NEW, RiftRenamePlan.upgradeConfiguredId(OLD, List.of(OLD), NEW));
+    }
+
+    @Test
+    @DisplayName("a configured id that is not legacy is left alone")
+    void keepsCustomConfiguredId() {
+        assertEquals("custom:gathering", RiftRenamePlan.upgradeConfiguredId("custom:gathering", List.of(OLD), NEW));
+        assertEquals(NEW, RiftRenamePlan.upgradeConfiguredId(NEW, List.of(OLD), NEW));
+        assertEquals(OLD, RiftRenamePlan.upgradeConfiguredId(OLD, List.of(), NEW));
+        assertNull(RiftRenamePlan.upgradeConfiguredId(null, List.of(OLD), NEW));
+    }
+
+    @Test
     @DisplayName("moves the legacy folder when the new id has none yet")
     void movesLegacyFolder() {
         assertEquals(OLD, RiftRenamePlan.chooseSource(NEW, List.of(OLD), false, onDisk(OLD)));

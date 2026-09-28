@@ -454,7 +454,8 @@ state silently. The glyph is `☠` (U+2620); emoji are not in Minecraft's font.
 | `anchorUpkeepEnabled` / `anchorStartHours` | true / 24 | §1 |
 | `anchorHoursPerEmerald` / `anchorHoursPerEmeraldBlock` / `anchorHoursPerEgg` / `anchorMaxFuelHours` | 2.5 / 24 / 168 / 1536 | §1 |
 | `flanIntegration` / `flanClaimRadius` | true / 16 | §1 |
-| `flanClaimOwnedByAnchorOwner` | true | §12 — anchor claim owned by the anchor owner (false = legacy admin claim) |
+| `flanClaimOwnedByAnchorOwner` | true | §12 — the anchor owner gets rights in the anchor claim (false = none, legacy) |
+| `flanAnchorOwnerGroup` | Co-Owner | §12 — Flan group the anchor owner joins in the (admin) anchor claim |
 | `baseRepairEnabled` / `baseRepairDefaultMode` | true / NORMAL | §12 |
 | `baseRepairTierHardness` / `baseRepairPreciousBlocks` | [0.6, 2, 5] / diamond, emerald, netherite, gold, iron, lapis blocks, ancient debris, beacon, conduit, crying obsidian, respawn anchor, lodestone | §12 |
 | `baseRepairTierDelaySeconds` / `baseRepairTierCostHours` | [60, 300, 1800, 14400] / [0.001, 0.005, 0.05, 0.5] | §12 |

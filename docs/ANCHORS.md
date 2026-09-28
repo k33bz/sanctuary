@@ -88,9 +88,9 @@ blocks other players break (logged for admins), and leaf decay or melting ice. F
 ## Integrations
 
 - **Flan**: active anchors auto-carry a grief-protection claim over the core (`flanClaimRadius`,
-  16 by default), **owned by the anchor's owner**, so you can build there and use Flan's own trust
-  menu to give friends granular access (build, doors, containers, redstone...). Released on
-  dormancy. If the core overlaps another claim, Flan refuses it and the server log says so.
+  16 by default). It is a server (admin) claim, so it costs you no claim blocks, and you are made
+  a **Co-Owner** of it, so you can build there and trust friends with Flan's own groups
+  (`/flan group players add Co-Owner <player>`). Released on dormancy. If the core overlaps another claim, Flan refuses it and the server log says so.
 - **Permissions**: `sanctuary.anchor.create / .break / .admin` via fabric-permissions-api —
   LuckPerms-ready, safe defaults without it.
 - **Renewable dragon eggs**: enable the bundled `dragon drops` VT pack

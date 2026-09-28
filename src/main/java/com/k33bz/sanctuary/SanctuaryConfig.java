@@ -311,10 +311,15 @@ public class SanctuaryConfig {
     // around the crystal (protection for the anchor + its immediate town core). Requires Flan.
     public boolean flanIntegration = true;
     public int flanClaimRadius = 16;
-    // 0.8.12.0: the claim is OWNED by the anchor's owner (was an ownerless admin claim, which locked
-    // non-op owners out of their own core). Off = legacy admin claims. Server/admin anchors with no
-    // owner still get an admin claim either way.
+    // The anchor's owner gets full rights in the anchor claim (an ownerless admin claim locked non-op
+    // owners out of their own core). Off = no rights, the pre-0.8.12 behaviour. Server/admin anchors
+    // have no owner and are unaffected. The key name dates from 0.8.12.0, which transferred the claim;
+    // 0.8.12.1 keeps the admin claim and adds the owner to flanAnchorOwnerGroup instead, because an
+    // owned claim is charged against the owner's Flan claim blocks.
     public boolean flanClaimOwnedByAnchorOwner = true;
+    // Flan permission group the anchor's owner joins in the anchor claim. Co-Owner is Flan's default
+    // near-full group (build, containers, edit_perms to trust friends). Config file only.
+    public String flanAnchorOwnerGroup = "Co-Owner";
 
     // System 12 — base auto-repair. Damage that isn't the owner's doing inside an ACTIVE sanctuary
     // (explosions, mobs breaking blocks, zombie door-breaking, trampled farmland, fire) is journaled
@@ -666,6 +671,13 @@ public class SanctuaryConfig {
             if (Files.exists(path)) {
                 SanctuaryConfig cfg = GSON.fromJson(Files.readString(path), SanctuaryConfig.class);
                 if (cfg != null) {
+                    String rift = com.k33bz.sanctuary.rift.RiftRenamePlan.upgradeConfiguredId(
+                            cfg.riftDimension, cfg.riftDimensionLegacyIds, new SanctuaryConfig().riftDimension);
+                    if (rift != null && !rift.equals(cfg.riftDimension)) {
+                        Sanctuary.LOGGER.warn("[sanctuary] riftDimension {} is a legacy id; using {} so the"
+                                + " gathering world's folder migrates", cfg.riftDimension, rift);
+                        cfg.riftDimension = rift;
+                    }
                     cfg.save(path); // re-write so newly added keys appear with defaults
                     return cfg;
                 }

@@ -39,11 +39,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # HARNESS_READ_TOKEN, not FORGEJO_READ_TOKEN: Forgejo refuses secret names
+      # starting with FORGEJO_, GITEA_ or GITHUB_, so the old name could never be
+      # set and this checkout failed on every run from 2026-08-11 on.
       - name: check out mc-test-harness
         uses: actions/checkout@v4
         with:
           repository: homelab/mc-test-harness
-          token: ${{ secrets.FORGEJO_READ_TOKEN }}
+          token: ${{ secrets.HARNESS_READ_TOKEN }}
           path: harness
 
       - uses: actions/setup-java@v4

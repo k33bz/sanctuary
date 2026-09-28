@@ -40,6 +40,22 @@ jobs:
           echo "== Objective/ScoreAccess"
           javap -cp "$J" net.minecraft.world.scores.ScoreAccess 2>/dev/null
           javap -cp "$J" net.minecraft.world.scores.PlayerScoreEntry 2>/dev/null
+      # Boot a real Fabric server with the jar and run scripted checks (boot, mixins apply,
+      # System 12 repairs when present, the 0.8.11.2 crash). No bots needed: vanilla's
+      # `execute if` answers through the console. Results land in the job summary.
+      - name: Server test (real Fabric server)
+        timeout-minutes: 20
+        run: python3 scripts/server_test.py
+      - name: Upload server-test log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-test-log
+          path: |
+            build/server-test/console.log
+            build/server-test/logs/
+            build/server-test/crash-reports/
+          if-no-files-found: ignore
       - name: Upload jar
         uses: actions/upload-artifact@v4
         with:

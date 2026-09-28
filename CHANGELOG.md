@@ -3,8 +3,13 @@
 **Version badges.** Same CI change as `main`: `build.yml` records what the real-server test compiled
 against and booted with (`scripts/server_test.py` → `versions.json`), and on pushes to `26.1` publishes
 it as shields.io endpoint badges to the orphan `badges` branch on GitHub (`scripts/publish_badges.py`,
-`scripts/commit_badges.sh`). The README badges and the gmc101 live-version badge live on `main`.
+`scripts/commit_badges.sh`). The README badges live on `main`.
 CI artifacts are now named `sanctuary-<mod>+<minecraft>` and each run summary starts with that version.
+
+**gmc101 badge fix.** The first deploy after landing this (26.1 @ 6987e11) published no gmc101 badge:
+GitHub reads a `deployment_status` workflow from the *deployed commit*, not the default branch, and
+`badges-deploy.yml` only existed on `main`. It now lives on `26.1` too (identical to `main`'s copy)
+and uses the deployed commit's own badge scripts. The next deploy of 26.1 fills the badge.
 
 ## 0.8.12.1
 

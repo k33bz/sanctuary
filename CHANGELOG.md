@@ -11,6 +11,11 @@ touches the mirrored branches). The gmc101 badge comes from `badges-deploy.yml`,
 deployment Forgejo records on each deploy and reads the deployed commit's own `gradle.properties`.
 CI artifacts are now named `sanctuary-<mod>+<minecraft>` and each run summary starts with that version.
 
+**gmc101 badge fix.** The first deploy after landing this (26.1 @ 6987e11) published no gmc101 badge:
+GitHub reads a `deployment_status` workflow from the *deployed commit*, not the default branch, and
+`badges-deploy.yml` only existed on `main`. It now lives on both `main` and `26.1` (identical copies)
+and uses the deployed commit's own badge scripts, falling back to `main`'s.
+
 ## 0.8.12.1
 
 **Anchor claims no longer eat the owner's claim blocks.** 0.8.12.0 fixed owners being locked out of their

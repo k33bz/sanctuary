@@ -13,13 +13,14 @@ import java.util.UUID;
  *
  * <p>0.8.12.0 — three fixes, all found by reading Flan's {@code Claim.canInteract}:
  * <ol>
- *   <li><b>Owned, not admin.</b> The claim used to be an ownerless ADMIN claim. Flan lets only the
- *       owner, trusted group members and ops act inside a claim, and an admin claim has no owner —
- *       so a non-op player who paid for a sanctuary could not build, break or open chests in its
- *       core. The claim is now transferred to the anchor's owner (when there is one), which also
- *       gives them Flan's own per-claim trust groups for granular access (build, doors,
- *       containers, redstone...). {@code flanClaimOwnedByAnchorOwner=false} restores the old
- *       behaviour.</li>
+ *   <li><b>The owner has rights in their own core.</b> Flan lets only the owner, group members
+ *       and ops act inside a claim, and the anchor claim is an ownerless ADMIN claim, so a non-op
+ *       player who paid for a sanctuary could not build, break or open chests in its core. The
+ *       anchor's owner is now a member of the claim's {@code flanAnchorOwnerGroup} (Co-Owner),
+ *       which also lets them trust friends through Flan's own groups. 0.8.12.0 transferred the
+ *       claim to the owner instead; 0.8.12.1 keeps it an admin claim because an owned claim is
+ *       charged against the owner's claim blocks. {@code flanClaimOwnedByAnchorOwner=false}
+ *       restores the old no-rights behaviour.</li>
  *   <li><b>Honest logging.</b> Flan refuses a claim that overlaps any other and returns null; the
  *       old code logged "claim raised" regardless, so an unprotected base looked protected.</li>
  *   <li><b>Only delete our own claim.</b> Removal used to delete whatever admin claim covered the
@@ -62,7 +63,7 @@ public final class FlanIntegration {
                             anchor.flanClaimId, pos.getX(), pos.getZ());
                 }
                 if (ours) {
-                    assignOwner(storage, existing, anchor);
+                    assignOwner(level, existing, anchor);
                 } else {
                     // Someone else's claim already covers the crystal: leave it alone (its own
                     // protection applies), but say so — the bot harness (B15) found this silent.
@@ -89,9 +90,9 @@ public final class FlanIntegration {
                 anchor.flanClaimId = String.valueOf(claim.getClaimID());
                 AnchorState.get().save();
             }
-            assignOwner(storage, claim, anchor);
-            Sanctuary.LOGGER.info("[sanctuary] Flan claim raised around anchor at {},{} (r={}, owner={})",
-                    pos.getX(), pos.getZ(), radius, claim.isAdminClaim() ? "admin" : anchor.owner);
+            assignOwner(level, claim, anchor);
+            Sanctuary.LOGGER.info("[sanctuary] Flan claim raised around anchor at {},{} (r={}, anchor owner={})",
+                    pos.getX(), pos.getZ(), radius, anchor == null || anchor.owner == null ? "server" : anchor.owner);
             return true;
         } catch (Throwable t) {
             Sanctuary.LOGGER.warn("[sanctuary] Flan claim creation failed", t);
@@ -99,13 +100,22 @@ public final class FlanIntegration {
         }
     }
 
-    /** Hand our claim to the anchor's owner (config-gated). Server anchors stay admin claims. */
-    private static void assignOwner(io.github.flemmli97.flan.claim.ClaimStorage storage,
+    /**
+     * Give the anchor's owner full rights in our claim (config-gated) by putting them in the claim's
+     * {@code flanAnchorOwnerGroup} (Co-Owner: build, containers, and edit_perms so they can trust
+     * friends themselves).
+     *
+     * <p>0.8.12.1: the claim stays an ADMIN claim instead of being transferred. Flan charges an owned
+     * claim against its owner's claim blocks, so in 0.8.12.0 every anchor cost a 33x33 claim: two
+     * anchors put the bot harness owner at -1667 blocks, unable to claim any land of their own (B15).
+     * An admin claim costs nobody blocks, and ops keep access without /flan bypass (B4).
+     */
+    private static void assignOwner(ServerLevel level,
                                     io.github.flemmli97.flan.claim.Claim claim,
                                     AnchorState.PlacedAnchor anchor) {
         if (anchor == null || anchor.ownerId == null || Sanctuary.CONFIG == null
                 || !Sanctuary.CONFIG.flanClaimOwnedByAnchorOwner || anchor.isExempt()) {
-            return; // exempt = admin/creative placed: stays an admin claim, like before
+            return; // exempt = admin/creative placed: no owner to grant, like before
         }
         UUID owner;
         try {
@@ -113,12 +123,19 @@ public final class FlanIntegration {
         } catch (IllegalArgumentException e) {
             return;
         }
-        if (owner.equals(claim.getOwner())) {
-            return;
+        String group = Sanctuary.CONFIG.flanAnchorOwnerGroup;
+        if (claim.playersFromGroup(level.getServer(), group).stream()
+                .anyMatch(p -> owner.equals(p.id()))) {
+            return; // already a member; nothing to re-save
         }
-        storage.transferOwner(claim, owner);
-        Sanctuary.LOGGER.info("[sanctuary] Flan claim {} now owned by anchor owner {}",
-                claim.getClaimID(), anchor.owner);
+        if (claim.setPlayerGroup(owner, group, true)) {
+            Sanctuary.LOGGER.info("[sanctuary] Anchor owner {} added to group {} of Flan claim {}",
+                    anchor.owner, group, claim.getClaimID());
+        } else {
+            Sanctuary.LOGGER.warn("[sanctuary] Could not add anchor owner {} to group {} of Flan claim {}"
+                    + " (does the group exist?). The owner has no rights in their sanctuary core.",
+                    anchor.owner, group, claim.getClaimID());
+        }
     }
 
     /** Remove the claim THIS anchor created. Never deletes a claim that isn't ours. */

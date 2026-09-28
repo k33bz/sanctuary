@@ -170,6 +170,10 @@ class Server:
 
 # ---------------------------------------------------------------- setup
 
+# What the server test actually booted with, for scripts/publish_badges.py (and humans).
+TESTED = {}
+
+
 def setup(workdir, jar, p):
     mc = p["minecraft_version"]
     os.makedirs(os.path.join(workdir, "mods"), exist_ok=True)
@@ -189,11 +193,13 @@ def setup(workdir, jar, p):
         raise SystemExit(f"no fabric-api build on Modrinth for {mc}")
     download(api[1], os.path.join(workdir, "mods", api[2]))
     notes.append(f"fabric-api {api[0]} (newest for {mc}; compiled against {p.get('fabric_api_version')})")
+    TESTED["fabric_api_tested"] = api[0]
 
     flan = modrinth_file("flan", mc)
     if flan:
         download(flan[1], os.path.join(workdir, "mods", flan[2]))
         notes.append(f"Flan {flan[0]}")
+        TESTED["flan_tested"] = flan[0]
     else:
         notes.append(f"Flan: no build for {mc}, integration inert (not tested)")
 
@@ -376,6 +382,17 @@ def main():
     with open(os.path.join(a.workdir, "console.log"), "w") as f:
         f.write("\n".join(s.log))
     failed = [r for r in results if r[1] is False]
+    ran = [r for r in results if r[1] is not None]
+    # Machine-readable record of this run: versions compiled against, versions booted with, and
+    # the verdict. build.yml turns it into README badges (scripts/publish_badges.py).
+    with open(os.path.join(a.workdir, "versions.json"), "w") as f:
+        json.dump({
+            "mod": p.get("mod_version"), "minecraft": p.get("minecraft_version"),
+            "loader": p.get("loader_version"), "fabric_api_compiled": p.get("fabric_api_version"),
+            "fabric_api_tested": TESTED.get("fabric_api_tested"), "flan_tested": TESTED.get("flan_tested"),
+            "passed": len(ran) - len(failed), "total": len(ran),
+            "sha": os.environ.get("GITHUB_SHA"), "branch": os.environ.get("GITHUB_REF_NAME"),
+        }, f, indent=2)
     if failed:
         # The job log is the first place anyone looks; don't make them download an artifact.
         print("---- last 80 console lines ----")

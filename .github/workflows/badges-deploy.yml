@@ -1,0 +1,38 @@
+name: deploy-badge
+
+# Forgejo records every gmc101 deploy as a GitHub deployment (scripts/github_report.py). When that
+# deployment gets a final status, read the deployed commit's gradle.properties and publish a
+# "live on gmc101: <mod>+<minecraft>" badge to the `badges` branch (scripts/publish_badges.py).
+# deployment_status workflows run from the default branch, so this file only needs to live on main.
+
+on:
+  deployment_status:
+
+permissions:
+  contents: write   # push the badge JSON to the `badges` branch
+
+jobs:
+  badge:
+    if: >-
+      github.repository_owner == 'k33bz'
+      && (github.event.deployment_status.state == 'success' || github.event.deployment_status.state == 'failure')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.deployment.sha }}
+      - name: Publish the live-version badge
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          ENVIRONMENT: ${{ github.event.deployment.environment }}
+          STATE: ${{ github.event.deployment_status.state }}
+          SHA: ${{ github.event.deployment.sha }}
+        run: |
+          # The scripts come from main (this workflow's branch), the version from the deployed commit.
+          git fetch -q --depth 1 origin main
+          git show origin/main:scripts/publish_badges.py > /tmp/publish_badges.py
+          git show origin/main:scripts/commit_badges.sh > /tmp/commit_badges.sh
+          python3 /tmp/publish_badges.py deployment --properties gradle.properties \
+            --environment "$ENVIRONMENT" --state "$STATE" --out /tmp/badges
+          bash /tmp/commit_badges.sh /tmp/badges "$ENVIRONMENT: ${STATE} @ ${SHA::7}"

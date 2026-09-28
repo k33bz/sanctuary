@@ -180,11 +180,14 @@ def setup(workdir, jar, p):
              os.path.join(workdir, "fabric-server-launch.jar"))
     notes.append(f"Fabric loader {p['loader_version']} (installer {installer}) for Minecraft {mc}")
 
-    api = modrinth_file("fabric-api", mc, p.get("fabric_api_version"))
+    # The NEWEST fabric-api for this Minecraft version, not the compile pin: a real server runs
+    # a current one, and other mods need it (Flan 1.12.8 for 26.2 demands >= 0.158.0 while the
+    # pin was 0.155.2, and Fabric refuses to start at all on an unmet dependency).
+    api = modrinth_file("fabric-api", mc)
     if api is None:
         raise SystemExit(f"no fabric-api build on Modrinth for {mc}")
     download(api[1], os.path.join(workdir, "mods", api[2]))
-    notes.append(f"fabric-api {api[0]}")
+    notes.append(f"fabric-api {api[0]} (newest for {mc}; compiled against {p.get('fabric_api_version')})")
 
     flan = modrinth_file("flan", mc)
     if flan:

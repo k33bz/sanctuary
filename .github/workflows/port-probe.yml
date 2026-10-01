@@ -1,0 +1,19 @@
+name: port-probe
+# TEMPORARY: javap probe for the 26.3 port. Deleted before review.
+on:
+  push:
+    branches: [claude/port-26.3]
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: {distribution: temurin, java-version: 25}
+      - run: ./gradlew --no-daemon help -q
+      - run: |
+          J=$(ls ~/.gradle/caches/fabric-loom/26.3/*merged*.jar | head -1)
+          javap -cp "$J" net.minecraft.data.registries.VanillaRegistries || true
+          unzip -Z1 "$J" | grep -E "^net/minecraft/data/registries/[A-Za-z]*\.class$" | head -20
+          javap -cp "$J" net.minecraft.core.registries.BuiltInRegistries | grep -i "COMPONENT_INIT"
+          for c in $(unzip -Z1 "$J" | grep -E "DataComponentInitializers[^/]*\.class$" | sed 's/\.class$//;s#/#.#g'); do javap -cp "$J" "$c" | grep -iE "build|apply|class|interface"; done

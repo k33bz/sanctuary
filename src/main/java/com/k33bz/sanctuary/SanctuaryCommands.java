@@ -1169,7 +1169,7 @@ public final class SanctuaryCommands {
         net.minecraft.server.level.ServerPlayer player = ctx.getSource().getPlayerOrException();
         boolean added = player.getInventory().add(com.k33bz.sanctuary.anchor.SanctuaryCrystal.create());
         if (!added) {
-            player.drop(com.k33bz.sanctuary.anchor.SanctuaryCrystal.create(), false);
+            player.drop(com.k33bz.sanctuary.anchor.SanctuaryCrystal.create(), false, net.minecraft.util.Prediction.SERVER_ONLY);
         }
         ctx.getSource().sendSuccess(() -> Component.literal("Gave 1 Sanctuary Crystal."), true);
         return 1;
@@ -1179,7 +1179,7 @@ public final class SanctuaryCommands {
         net.minecraft.server.level.ServerPlayer player = ctx.getSource().getPlayerOrException();
         boolean added = player.getInventory().add(com.k33bz.sanctuary.anchor.WildEssence.create());
         if (!added) {
-            player.drop(com.k33bz.sanctuary.anchor.WildEssence.create(), false);
+            player.drop(com.k33bz.sanctuary.anchor.WildEssence.create(), false, net.minecraft.util.Prediction.SERVER_ONLY);
         }
         ctx.getSource().sendSuccess(() -> Component.literal("Gave 1 Wild Essence."), true);
         return 1;
@@ -1193,7 +1193,7 @@ public final class SanctuaryCommands {
                 ? com.k33bz.sanctuary.anchor.WildMembrane::createRaw
                 : com.k33bz.sanctuary.anchor.WildMembrane::create;
         if (!player.getInventory().add(make.get())) {
-            player.drop(make.get(), false);
+            player.drop(make.get(), false, net.minecraft.util.Prediction.SERVER_ONLY);
         }
         String which = raw ? "Raw " : "";
         ctx.getSource().sendSuccess(() -> Component.literal("Gave 1 " + which + "Wild Membrane."), true);

@@ -40,7 +40,7 @@ import java.util.Properties;
  *       every structure it has. Covers ruined portals (all seven variants), strongholds, villages, swamp
  *       huts, trail ruins, trial chambers, ancient cities and anything a worldgen datapack adds.</li>
  *   <li><b>No listed features.</b> Monster rooms are a placed FEATURE, not a structure, so they need their
- *       own hook at {@code ConfiguredFeature.place}. Matching is by feature-type id, which is why one
+ *       own hook at {@code PlacedFeature.place}. Matching is by feature-type id, which is why one
  *       {@code minecraft:monster_room} entry retires both the shallow and the deep dungeon placements.</li>
  * </ul>
  *
@@ -171,7 +171,7 @@ public final class RiftWorldgen {
     // ---- features -----------------------------------------------------------------------------
 
     /** True when this feature type must not be placed in this level (monster rooms and friends). */
-    public static boolean suppressFeature(SanctuaryConfig cfg, WorldGenLevel level, Feature<?> feature) {
+    public static boolean suppressFeature(SanctuaryConfig cfg, WorldGenLevel level, Feature feature) {
         if (cfg == null || !cfg.riftsEnabled || feature == null) {
             return false;
         }
@@ -179,7 +179,9 @@ public final class RiftWorldgen {
         if (blocked == null || blocked.isEmpty() || !isGathering(cfg, level.getLevel().dimension())) {
             return false;
         }
-        Identifier id = BuiltInRegistries.FEATURE.getKey(feature);
+        // 26.3 folded ConfiguredFeature into Feature (now an interface); the feature TYPE, which is what
+        // riftSuppressedFeatures names (minecraft:monster_room), is the registry key of its codec.
+        Identifier id = BuiltInRegistries.FEATURE_TYPE.getKey(feature.codec());
         return id != null && blocked.contains(id.toString());
     }
 

@@ -352,7 +352,8 @@ public final class RiftPortals {
         BlockPos feet = new BlockPos(x, y, z);
         return w.getBlockState(feet).isAir()
                 && w.getBlockState(feet.above()).isAir()
-                && w.getBlockState(feet.below()).blocksMotion();
+                // 26.3 removed BlockState.blocksMotion(); "has a collision shape" is the same test
+                && !w.getBlockState(feet.below()).getCollisionShape(w, feet.below()).isEmpty();
     }
 
     /**

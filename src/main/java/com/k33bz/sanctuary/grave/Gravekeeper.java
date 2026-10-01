@@ -297,7 +297,7 @@ public final class Gravekeeper {
         }
         allay.snapTo(at.x, at.y, at.z, 0.0f, 0.0f);
         allay.setNoAi(true);
-        allay.setInvulnerable(true);
+        allay.setPermanentlyInvulnerable(true);
         allay.setPersistenceRequired();
         allay.setSilent(true);
         allay.setNoGravity(true);

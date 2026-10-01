@@ -71,7 +71,7 @@ public class RabidAttackGoal extends Goal {
         if (mob.distanceToSqr(target) > reach * reach || !mob.getSensing().hasLineOfSight(target)) {
             return;
         }
-        mob.swing(InteractionHand.MAIN_HAND);
+        mob.swing(InteractionHand.MAIN_HAND, net.minecraft.world.item.component.SwingAnimation.DEFAULT);
         target.hurtServer(level, level.damageSources().mobAttack(mob), damage());
         level.playSound(null, mob.blockPosition(), SoundEvents.PLAYER_ATTACK_KNOCKBACK, SoundSource.HOSTILE,
                 0.8f, 0.7f);

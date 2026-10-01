@@ -127,7 +127,7 @@ public class SmashDoorFrameGoal extends Goal {
         }
         mob.getLookControl().setLookAt(targetBlock.getX() + 0.5, targetBlock.getY() + 0.5, targetBlock.getZ() + 0.5);
         if (progress % 20 == 0) {
-            mob.swing(net.minecraft.world.InteractionHand.MAIN_HAND);
+            mob.swing(net.minecraft.world.InteractionHand.MAIN_HAND, net.minecraft.world.item.component.SwingAnimation.DEFAULT);
             level.playSound(null, targetBlock, SoundEvents.ZOMBIE_ATTACK_WOODEN_DOOR, SoundSource.HOSTILE, 0.7f, 0.9f);
         }
         progress++;

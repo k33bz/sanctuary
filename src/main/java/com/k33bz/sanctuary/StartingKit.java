@@ -121,7 +121,7 @@ public final class StartingKit {
     /** Drop-safe give: a full inventory spills to the ground rather than voiding the item. */
     private static void give(ServerPlayer p, ItemStack s) {
         if (!p.getInventory().add(s)) {
-            p.drop(s, false);
+            p.drop(s, false, net.minecraft.util.Prediction.SERVER_ONLY);
         }
     }
 

@@ -52,9 +52,15 @@ ROOTS = {("noise_settings", "overworld"): "noise_settings/vanilla_overworld.json
 # `sanctuary:` copy, or the gathering world quietly shares the home overworld's terrain or surface.
 NAMESPACED = ("density_function", "noise", "material_rule")
 
-# Keys whose string value is never a worldgen id even when it looks like one: object types, block
-# states and biome tests. ("minecraft:calcite" is both a block and a noise; context decides.)
-NEVER = {"type", "Name", "default_block", "default_fluid", "biome_is", "biome", "biomes"}
+# Keys whose string value is never a worldgen id even when it looks like one: object types, blocks
+# (26.3 material rules write `"result_state": "minecraft:calcite"`, and calcite, gravel, ice,
+# packed_ice and powder_snow are ALSO noise ids), biome tests, the built-in biome-source `preset`,
+# and `random_name`, which is a seed string rather than a reference.
+NEVER = {"type", "Name", "default_block", "default_fluid", "biome_is", "biome", "biomes",
+         "result_state", "preset", "random_name"}
+
+# The only keys through which one material rule references another.
+RULE_KEYS = {"material_rule", "sequence", "then_run"}
 
 # Ids per registry in the vanilla jar ({"noise": {"calcite", ...}, ...}); set by main().
 VANILLA_IDS = {reg: set() for reg in NAMESPACED}
@@ -69,8 +75,12 @@ def registry_for(rid, key):
     """
     if key in NEVER:
         return None
-    order = {"noise": ("noise", "density_function"),
-             "material_rule": ("material_rule",)}.get(key, ("density_function", "noise", "material_rule"))
+    if key in RULE_KEYS:
+        order = ("material_rule",)
+    elif key == "noise":
+        order = ("noise", "density_function")
+    else:
+        order = ("density_function", "noise")
     return next((reg for reg in order if rid in VANILLA_IDS[reg]), None)
 
 

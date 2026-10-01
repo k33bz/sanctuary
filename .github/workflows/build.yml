@@ -10,7 +10,7 @@ jobs:
     if: github.repository_owner == 'k33bz'
     runs-on: ubuntu-latest
     permissions:
-      contents: write   # only used to push version badges to the `badges` branch (pushes to main/26.1)
+      contents: write   # only used to push version badges to the `badges` branch (pushes to main/26.2/26.1)
     steps:
       - uses: actions/checkout@v4
       # The version this build produces, for the artifact name and the run summary.
@@ -27,6 +27,8 @@ jobs:
           cache: gradle
       - name: Build + tests
         run: ./gradlew build
+      - name: Worldgen copies match the Minecraft jar
+        run: python3 scripts/check_worldgen.py
       - name: Diagnose mappings (only on failure)
         if: failure()
         run: |
@@ -69,7 +71,7 @@ jobs:
       # Live version badges for the README (see scripts/publish_badges.py). Release lines only:
       # a PR or feature branch must never overwrite what main/26.1 report.
       - name: Publish version badges
-        if: always() && github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == '26.1') && hashFiles('build/server-test/versions.json') != ''
+        if: always() && github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == '26.2' || github.ref_name == '26.1') && hashFiles('build/server-test/versions.json') != ''
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}

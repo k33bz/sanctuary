@@ -1,0 +1,33 @@
+name: worldgen-probe
+# TEMPORARY (removed before review): run the 26.3 closure-based worldgen check READ-ONLY against
+# this line's own Minecraft jar, to see whether the older copies have gaps the old check missed.
+on:
+  push:
+    branches: [claude/worldgen-check-262, claude/26.1-worldgen-check]
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: {distribution: temurin, java-version: 25}
+      - run: ./gradlew --no-daemon help -q
+      - run: |
+          curl -s https://raw.githubusercontent.com/k33bz/sanctuary/claude/port-26.3/scripts/check_worldgen.py > /tmp/cw.py
+          cp /tmp/cw.py scripts/check_worldgen_closure.py
+          python3 scripts/check_worldgen_closure.py || true
+          echo "== old check"; python3 scripts/check_worldgen.py || true
+          echo "== minecraft: refs still in the copies (by key)"
+          python3 - <<'PY'
+          import json,pathlib,collections
+          c=collections.Counter()
+          def w(n,k=None):
+              if isinstance(n,dict):
+                  for a,b in n.items(): w(b,a)
+              elif isinstance(n,list):
+                  for b in n: w(b,k)
+              elif isinstance(n,str) and n.startswith("minecraft:") and k not in ("type","Name","biome_is","default_block","default_fluid","preset"):
+                  c[(k,n)]+=1
+          for p in pathlib.Path("src/main/resources/data/sanctuary/worldgen").rglob("*.json"): w(json.loads(p.read_text()))
+          for (k,n),v in sorted(c.items()): print(v,k,n)
+          PY

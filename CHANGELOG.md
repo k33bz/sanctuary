@@ -28,6 +28,24 @@ GitHub reads a `deployment_status` workflow from the *deployed commit*, not the 
 `badges-deploy.yml` only existed on `main`. It now lives on both `main` and `26.1` (identical copies)
 and uses the deployed commit's own badge scripts, falling back to `main`'s.
 
+## 0.8.12.2
+
+**Worldgen guarded the same way on every line.** The gathering world generates from namespaced copies of
+vanilla worldgen, and a bad copy boots fine and only fails when a chunk is generated (0.8.11.1 broke 26.2
+exactly this way). Two gaps closed:
+- The real-server CI test now generates fresh gathering-world chunks and requires the bedrock floor the
+  copied surface rules lay; registry or chunk-generation errors in the log fail the run.
+- `scripts/check_worldgen.py` is now the same file on 26.3, 26.2 and 26.1: it checks the whole closure the
+  gathering world's dimension reaches against this line's own Minecraft jar (drifted, missing, dangling,
+  or unreachable copies all fail), matching ids against the jar and never renaming blocks, the biome
+  preset or seed names.
+
+**36 unused worldgen copies removed** (End, Nether, amplified and large-biomes density functions and the
+noises only they used). Nothing in the gathering world referenced them, so its terrain is unchanged, but
+Minecraft still loads every file into its registries, so a leftover is a boot crash waiting for the next
+game version. Checked before deleting: no JSON or Java in the mod references any of them, and the
+strict check reports 0 drifted and 0 missing on this line.
+
 ## 0.8.12.1
 
 **Anchor claims no longer eat the owner's claim blocks.** 0.8.12.0 fixed owners being locked out of their

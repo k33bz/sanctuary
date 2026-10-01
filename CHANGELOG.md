@@ -1,5 +1,11 @@
 ## Unreleased (CI only, no mod change)
 
+**Three release lines.** `main` moves to Minecraft 26.3, a new `26.2` branch keeps the 26.2 build, and
+`26.1` stays the live gmc101 line, so fixes can still be backported to older versions. CI now treats
+`26.2` like the others: Forgejo mirrors it to GitHub after the compat gate (`forgejo-ci.yml`
+push-upstream), its GitHub build publishes version badges (`build.yml`), and `forgejo-parity.yml` checks
+its head carries Forgejo's verification (a line not yet on GitHub is reported, not failed).
+
 **"Can gmc101 upgrade yet?" now answers itself weekly.** `scripts/check_modpack.py` existed but nothing
 ran it. `.github/workflows/modpack.yml` runs it every Monday (and on demand, with any target version)
 against the gmc101 mod list and publishes a README badge, `gmc101 → 26.3: N blockers` or `ready`; the

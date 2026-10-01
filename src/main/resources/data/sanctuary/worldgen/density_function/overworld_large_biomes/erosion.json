@@ -1,12 +1,11 @@
 {
-  "argument": {
+  "input": {
+    "noise": "sanctuary:erosion_large",
     "shift_x": "sanctuary:shift_x",
-    "shift_y": 0.0,
     "shift_z": "sanctuary:shift_z",
     "xz_scale": 0.25,
     "y_scale": 0.0,
-    "noise": "sanctuary:erosion_large",
-    "type": "minecraft:shifted_noise"
+    "type": "minecraft:noise"
   },
-  "type": "minecraft:flat_cache"
+  "type": "minecraft:cache"
 }

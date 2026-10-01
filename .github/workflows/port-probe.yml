@@ -14,20 +14,9 @@ jobs:
       - run: |
           J=$(ls ~/.gradle/caches/fabric-loom/26.3/*merged*.jar | head -1)
           p() { echo "===== $1 ${2:-}"; javap -cp "$J" "$1" 2>&1 | grep -iE "${2:-.}" | head -60; }
-          p net.minecraft.server.level.ServerPlayer " drop\("
-          p net.minecraft.world.entity.player.Player " drop\("
-          unzip -Z1 "$J" | grep -iE "Prediction" | head
-          for c in $(unzip -Z1 "$J" | grep -iE "/[A-Za-z]*Prediction[^/]*\.class$" | sed 's/\.class$//;s#/#.#g' | head -3); do javap -cp "$J" "$c"; done
-          p net.minecraft.world.entity.LivingEntity " swing\("
-          p net.minecraft.world.entity.Mob " swing\("
-          for c in $(unzip -Z1 "$J" | grep -E "/SwingAnimation[^/]*\.class$" | sed 's/\.class$//;s#/#.#g' | head -3); do javap -cp "$J" "$c"; done
-          p 'net.minecraft.world.level.block.state.BlockBehaviour$BlockStateBase' "motion|solid|collision|blocks"
-          p net.minecraft.world.entity.Entity "invulnerab"
-          p net.minecraft.world.entity.animal.allay.Allay "invulnerab"
-          unzip -Z1 "$J" | grep "^net/minecraft/world/level/levelgen/feature/[A-Za-z]*\.class$" | head -80
-          unzip -Z1 "$J" | grep -iE "levelgen/(placement|feature)/[A-Za-z]*(Placed|Configured)[A-Za-z]*\.class$" | head
-          p net.minecraft.core.registries.BuiltInRegistries "FEATURE|PLACE"
-          p net.minecraft.core.registries.Registries "FEATURE|PLACE"
-          p net.minecraft.world.level.levelgen.feature.Feature "place|class|Feature\("
-          p net.minecraft.world.level.levelgen.placement.PlacedFeature ""
-          unzip -Z1 "$J" | grep -iE "monster_room|MonsterRoom" | head
+          javap -cp "$J" net.minecraft.world.item.component.SwingAnimation
+          javap -cp "$J" net.minecraft.world.level.levelgen.feature.Feature | head -40
+          javap -cp "$J" net.minecraft.world.level.levelgen.feature.MonsterRoomFeature | head -20
+          unzip -p "$J" data/minecraft/worldgen/feature/monster_room.json; echo
+          unzip -p "$J" data/minecraft/worldgen/placed_feature/monster_room.json; echo
+          javap -cp "$J" net.minecraft.world.level.levelgen.feature.FeatureTypes | grep -i monster

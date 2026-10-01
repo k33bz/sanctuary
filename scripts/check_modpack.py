@@ -9,6 +9,10 @@ schedule instead of by hand.
   python3 scripts/check_modpack.py                       # target = minecraft_version in gradle.properties
   python3 scripts/check_modpack.py --target 26.3
   python3 scripts/check_modpack.py --refresh-from <mods-dir>   # re-capture the installed jar list
+  python3 scripts/check_modpack.py --target 26.3 --json out.json   # also write a machine summary
+
+.github/workflows/modpack.yml runs this weekly and turns --json into a README badge
+(scripts/publish_badges.py modpack).
 
 Mods k33bz maintains are listed separately: those are porting work in their own repos, not a wait
 on a third party, so they never make the verdict say "blocked".
@@ -61,6 +65,8 @@ def refresh(mods_dir: Path) -> None:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--target", help="Minecraft version to test (default: gradle.properties)")
+    ap.add_argument("--json", metavar="PATH",
+                    help="also write {target, ready, missing, errors, ...} here (for the badge)")
     ap.add_argument("--refresh-from", metavar="MODS_DIR",
                     help="print the jar list from a mods directory, to update the manifest")
     args = ap.parse_args()
@@ -97,6 +103,15 @@ def main() -> int:
           % (len(ready), len(missing), ", %d lookup failed" % len(errors) if errors else ""))
     print("  self-maintained (port in their own repos): %s"
           % ", ".join(m["name"] for m in data["mine"]))
+
+    if args.json:
+        Path(args.json).parent.mkdir(parents=True, exist_ok=True)
+        Path(args.json).write_text(json.dumps({
+            "target": target, "captured": data["captured"],
+            "current_minecraft": data["current_minecraft"],
+            "ready": len(ready), "total": len(data["third_party"]),
+            "missing": [m["name"] for m in missing], "errors": errors,
+        }, indent=2) + "\n")
 
     if missing:
         print()

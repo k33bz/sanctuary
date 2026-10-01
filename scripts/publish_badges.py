@@ -8,6 +8,8 @@ orphan `badges` branch on GitHub and shields.io renders them. Two sources:
                release line, the mod + Minecraft versions, Fabric loader, fabric-api compiled
                against vs. booted with, the Flan the server test ran, and its pass count.
                Files land in <out>/<branch>/*.json.
+  modpack      from check_modpack.py --json: can the gmc101 modpack move to the target Minecraft
+               yet? "ready" or "N blockers". File: <out>/modpack-<target>.json.
   deployment   from a GitHub deployment of the given commit (recorded by Forgejo when it deploys
                to gmc101): the mod + Minecraft version live on the server, read from that
                commit's gradle.properties. File: <out>/<environment>.json.
@@ -63,6 +65,19 @@ def from_deployment(properties, out, environment, state):
           version if ok else f"{version} ({state})", "brightgreen" if ok else "red")
 
 
+def from_modpack(summary, out):
+    with open(summary) as f:
+        m = json.load(f)
+    missing, errors = m.get("missing", []), m.get("errors", [])
+    if errors:
+        msg, color = f"{len(errors)} lookup(s) failed", "lightgrey"
+    elif missing:
+        msg, color = f"{len(missing)} blocker{'s' if len(missing) != 1 else ''}", "orange"
+    else:
+        msg, color = "ready", "brightgreen"
+    badge(f"{out}/modpack-{m['target']}.json", f"gmc101 → {m['target']}", msg, color)
+
+
 def main():
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -70,6 +85,9 @@ def main():
     b.add_argument("--versions", default="build/server-test/versions.json")
     b.add_argument("--branch", required=True)
     b.add_argument("--out", required=True)
+    m = sub.add_parser("modpack")
+    m.add_argument("--summary", required=True)
+    m.add_argument("--out", required=True)
     d = sub.add_parser("deployment")
     d.add_argument("--properties", default="gradle.properties")
     d.add_argument("--environment", required=True)
@@ -78,6 +96,8 @@ def main():
     a = ap.parse_args()
     if a.cmd == "build":
         from_build(a.versions, a.out, a.branch)
+    elif a.cmd == "modpack":
+        from_modpack(a.summary, a.out)
     else:
         from_deployment(a.properties, a.out, a.environment, a.state)
 

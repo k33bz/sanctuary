@@ -1,6 +1,7 @@
 # Sanctuary
 
 [![live on gmc101](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/k33bz/sanctuary/badges/gmc101.json&style=flat-square)](https://github.com/k33bz/sanctuary/deployments/gmc101)
+[![gmc101 → 26.3](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/k33bz/sanctuary/badges/modpack-26.3.json&style=flat-square)](https://github.com/k33bz/sanctuary/actions/workflows/modpack.yml)
 [![forgejo parity](https://img.shields.io/github/actions/workflow/status/k33bz/sanctuary/forgejo-parity.yml?label=forgejo%20parity&style=flat-square)](https://github.com/k33bz/sanctuary/actions/workflows/forgejo-parity.yml)
 
 **Minecraft 26.2** · [`main`](../../tree/main)<br>
@@ -19,7 +20,8 @@
 [![flan](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/k33bz/sanctuary/badges/26.1/flan.json&label=flan&style=flat-square)](https://github.com/k33bz/sanctuary/actions/workflows/build.yml?query=branch%3A26.1)
 [![server test](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/k33bz/sanctuary/badges/26.1/server-test.json&label=server%20test&style=flat-square)](https://github.com/k33bz/sanctuary/actions/workflows/build.yml?query=branch%3A26.1)
 
-<sub>Badges are written by CI on every push to `main`/`26.1` (`scripts/publish_badges.py`, kept on the `badges` branch). fabric-api and flan are the versions the real-server CI test booted with.</sub>
+<sub>Badges are written by CI on every push to `main`/`26.1` (`scripts/publish_badges.py`, kept on the `badges` branch). fabric-api and flan are the versions the real-server CI test booted with.
+"gmc101 → 26.3" counts third-party mods with no 26.3 build yet (weekly, `scripts/check_modpack.py`).</sub>
 
 **Your XP is your life force. Distance is danger.** A server-side Fabric mod — vanilla
 clients connect with no mods; everything renders through vanilla attributes, effects, and

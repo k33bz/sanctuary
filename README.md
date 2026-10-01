@@ -4,13 +4,21 @@
 [![gmc101 → 26.3](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/k33bz/sanctuary/badges/modpack-26.3.json&style=flat-square)](https://github.com/k33bz/sanctuary/actions/workflows/modpack.yml)
 [![forgejo parity](https://img.shields.io/github/actions/workflow/status/k33bz/sanctuary/forgejo-parity.yml?label=forgejo%20parity&style=flat-square)](https://github.com/k33bz/sanctuary/actions/workflows/forgejo-parity.yml)
 
-**Minecraft 26.2** · [`main`](../../tree/main)<br>
+**Minecraft 26.3** · [`main`](../../tree/main)<br>
 [![build](https://img.shields.io/github/actions/workflow/status/k33bz/sanctuary/build.yml?branch=main&label=build&style=flat-square)](https://github.com/k33bz/sanctuary/actions/workflows/build.yml?query=branch%3Amain)
 [![sanctuary](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/k33bz/sanctuary/badges/main/mod.json&label=sanctuary&style=flat-square)](https://github.com/k33bz/sanctuary/actions/workflows/build.yml?query=branch%3Amain)
 [![loader](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/k33bz/sanctuary/badges/main/loader.json&label=loader&style=flat-square)](https://github.com/k33bz/sanctuary/actions/workflows/build.yml?query=branch%3Amain)
 [![fabric-api](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/k33bz/sanctuary/badges/main/fabric-api.json&label=fabric-api&style=flat-square)](https://github.com/k33bz/sanctuary/actions/workflows/build.yml?query=branch%3Amain)
 [![flan](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/k33bz/sanctuary/badges/main/flan.json&label=flan&style=flat-square)](https://github.com/k33bz/sanctuary/actions/workflows/build.yml?query=branch%3Amain)
 [![server test](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/k33bz/sanctuary/badges/main/server-test.json&label=server%20test&style=flat-square)](https://github.com/k33bz/sanctuary/actions/workflows/build.yml?query=branch%3Amain)
+
+**Minecraft 26.2** · [`26.2`](../../tree/26.2)<br>
+[![build](https://img.shields.io/github/actions/workflow/status/k33bz/sanctuary/build.yml?branch=26.2&label=build&style=flat-square)](https://github.com/k33bz/sanctuary/actions/workflows/build.yml?query=branch%3A26.2)
+[![sanctuary](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/k33bz/sanctuary/badges/26.2/mod.json&label=sanctuary&style=flat-square)](https://github.com/k33bz/sanctuary/actions/workflows/build.yml?query=branch%3A26.2)
+[![loader](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/k33bz/sanctuary/badges/26.2/loader.json&label=loader&style=flat-square)](https://github.com/k33bz/sanctuary/actions/workflows/build.yml?query=branch%3A26.2)
+[![fabric-api](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/k33bz/sanctuary/badges/26.2/fabric-api.json&label=fabric-api&style=flat-square)](https://github.com/k33bz/sanctuary/actions/workflows/build.yml?query=branch%3A26.2)
+[![flan](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/k33bz/sanctuary/badges/26.2/flan.json&label=flan&style=flat-square)](https://github.com/k33bz/sanctuary/actions/workflows/build.yml?query=branch%3A26.2)
+[![server test](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/k33bz/sanctuary/badges/26.2/server-test.json&label=server%20test&style=flat-square)](https://github.com/k33bz/sanctuary/actions/workflows/build.yml?query=branch%3A26.2)
 
 **Minecraft 26.1.2** · [`26.1`](../../tree/26.1) — runs gmc101<br>
 [![build](https://img.shields.io/github/actions/workflow/status/k33bz/sanctuary/build.yml?branch=26.1&label=build&style=flat-square)](https://github.com/k33bz/sanctuary/actions/workflows/build.yml?query=branch%3A26.1)
@@ -20,7 +28,7 @@
 [![flan](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/k33bz/sanctuary/badges/26.1/flan.json&label=flan&style=flat-square)](https://github.com/k33bz/sanctuary/actions/workflows/build.yml?query=branch%3A26.1)
 [![server test](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/k33bz/sanctuary/badges/26.1/server-test.json&label=server%20test&style=flat-square)](https://github.com/k33bz/sanctuary/actions/workflows/build.yml?query=branch%3A26.1)
 
-<sub>Badges are written by CI on every push to `main`/`26.1` (`scripts/publish_badges.py`, kept on the `badges` branch). fabric-api and flan are the versions the real-server CI test booted with.
+<sub>Badges are written by CI on every push to `main`/`26.2`/`26.1` (`scripts/publish_badges.py`, kept on the `badges` branch). fabric-api and flan are the versions the real-server CI test booted with.
 "gmc101 → 26.3" counts third-party mods with no 26.3 build yet (weekly, `scripts/check_modpack.py`).</sub>
 
 **Your XP is your life force. Distance is danger.** A server-side Fabric mod — vanilla
@@ -35,8 +43,9 @@ you carve out of the wilds — and defend, fuel, and one day get buried in.
 
 | Minecraft | Branch | Fabric API | Notes |
 |---|---|---|---|
-| 26.2 | [`main`](../../tree/main) | 0.161.0+26.2 | active development; Flan 1.12.8 (needs fabric-api >= 0.158) |
-| 26.1.x | [`26.1`](../../tree/26.1) | 0.154.0+26.1.2 | maintenance — backports only |
+| 26.3 | [`main`](../../tree/main) | 0.161.0+26.3 | active development; Flan 1.12.8.b |
+| 26.2 | [`26.2`](../../tree/26.2) | 0.161.0+26.2 | backports; Flan 1.12.8 (needs fabric-api >= 0.158) |
+| 26.1.x | [`26.1`](../../tree/26.1) | 0.154.0+26.1.2 | live on gmc101; backports |
 
 Downloads: [GitHub Releases](../../releases) · [Modrinth](https://modrinth.com/project/y5hXc8My).
 Jars are `sanctuary-<modver>+<mcversion>.jar` — grab the one matching your server.

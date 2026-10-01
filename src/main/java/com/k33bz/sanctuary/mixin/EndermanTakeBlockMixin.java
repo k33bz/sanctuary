@@ -18,7 +18,8 @@ import com.k33bz.sanctuary.SanctuaryConfig;
  * before the removal, so the sanctuary regrows the block later (endermen can only lift cheap
  * "holdable" blocks, and each theft is logged).
  */
-@Mixin(targets = "net.minecraft.world.entity.monster.EnderMan$EndermanTakeBlockGoal")
+// 26.3 renamed the outer class EnderMan -> Enderman.
+@Mixin(targets = "net.minecraft.world.entity.monster.Enderman$EndermanTakeBlockGoal")
 public class EndermanTakeBlockMixin {
 
     @Redirect(method = "tick", at = @At(value = "INVOKE",

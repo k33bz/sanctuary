@@ -33,7 +33,10 @@ class WildMembraneChainTest {
         // registry holder never fires, so a fresh ItemStack throws "Components not bound yet".
         // Drive that step ourselves: build the pending component sets against a full registry
         // lookup and apply them (exactly what the server does after a registry reload).
-        var provider = net.minecraft.data.registries.VanillaRegistries.createLookup();
+        // 26.3 split the old createLookup() into the world registries and the reloadable ones layered
+        // on top; item components can reference either, so build against the combined lookup.
+        var provider = net.minecraft.data.registries.VanillaRegistries.createReloadableLookup(
+                net.minecraft.data.registries.VanillaRegistries.createWorldLookup());
         for (var pending : net.minecraft.core.registries.BuiltInRegistries.DATA_COMPONENT_INITIALIZERS
                 .build(provider)) {
             pending.apply();

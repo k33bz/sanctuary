@@ -1,23 +1,22 @@
 {
-  "argument": {
-    "argument1": {
-      "argument1": -0.05,
-      "argument2": {
-        "argument1": -0.05,
-        "argument2": {
+  "input": {
+    "left": {
+      "left": {
+        "left": {
           "noise": "sanctuary:spaghetti_roughness_modulator",
           "xz_scale": 1.0,
           "y_scale": 1.0,
           "type": "minecraft:noise"
         },
+        "right": -0.05,
         "type": "minecraft:mul"
       },
+      "right": -0.05,
       "type": "minecraft:add"
     },
-    "argument2": {
-      "argument1": -0.4,
-      "argument2": {
-        "argument": {
+    "right": {
+      "left": {
+        "input": {
           "noise": "sanctuary:spaghetti_roughness",
           "xz_scale": 1.0,
           "y_scale": 1.0,
@@ -25,9 +24,10 @@
         },
         "type": "minecraft:abs"
       },
+      "right": -0.4,
       "type": "minecraft:add"
     },
     "type": "minecraft:mul"
   },
-  "type": "minecraft:cache_once"
+  "type": "minecraft:cache"
 }

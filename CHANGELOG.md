@@ -45,6 +45,35 @@ and uses the deployed commit's own badge scripts, falling back to `main`'s.
 
 ## 0.8.12.2
 
+**Minecraft 26.3 on `main`.** `main` now builds for 26.3; the 26.2 build continues on a new `26.2` branch and
+`26.1` stays the live gmc101 line, so fixes can still be backported. No gameplay change: same features as
+0.8.12.1, the number moves only because this jar is a different game version.
+
+*What 26.3 broke, and the fixes.* `ServerPlayer.drop` takes a `Prediction` (we pass `SERVER_ONLY`: every drop
+is server-originated), `swing` takes a `SwingAnimation`, permanent invulnerability is its own setter,
+`BlockState.blocksMotion()` is gone (rift landing spots now test the collision shape, which is the same
+question), and `EnderMan` became `Enderman`. Two hooks moved: farmland trampling is now the instance method
+`turnToBaseBlock`, and since farmland can revert to something other than dirt, the base-repair journal records
+the block it actually becomes; and `ConfiguredFeature` was folded into a `Feature` interface whose `place` is
+abstract, so the monster-room suppressor hooks `PlacedFeature.place` and matches the feature TYPE via its codec
+(the `riftSuppressedFeatures` default, `minecraft:monster_room`, is unchanged). The structure suppressor
+follows `tryGenerateStructure`'s new signature.
+
+*The gathering world's worldgen.* 26.3 restructured overworld generation: the noise router names new
+density functions (`overworld/final_density`, `temperature`, `vegetation`, `preliminary_surface_level`,
+`chunk_surface_level`), surface rules moved into a new `material_rule` registry, and noise parameters changed
+format (`base_octave`/`octave_count`/`base_amplitude`). Refreshing only the files we already had would have
+left `sanctuary:` ids pointing at nothing (a crash on chunk generation) and the rest still on `minecraft:`
+ids (the gathering world silently mirroring the home world's terrain). `scripts/check_worldgen.py` now
+copies the whole closure reachable from the dimension's two roots, matching ids against the jar rather than a
+fixed key list, and never renaming blocks (calcite, gravel, ice, packed ice and powder snow are also noise
+names), the built-in biome `preset`, or seed strings; it deletes copies nothing reaches, since unreachable
+files still load into registries and can crash a future boot. 112 copies, all matching vanilla 26.3.
+
+*Tests.* The real-server CI test gained a worldgen check: it generates fresh gathering-world chunks and
+requires the bedrock floor laid by the copied material rules, and registry or chunk-generation errors in the
+log fail the run. 17/17 on 26.3.
+
 **Worldgen guarded the same way on every line.** The gathering world generates from namespaced copies of
 vanilla worldgen, and a bad copy boots fine and only fails when a chunk is generated (0.8.11.1 broke 26.2
 exactly this way). Two gaps closed:

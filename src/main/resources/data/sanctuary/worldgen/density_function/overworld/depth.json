@@ -1,11 +1,12 @@
 {
-  "argument1": {
-    "from_y": -64,
-    "to_y": 320,
+  "left": {
+    "axis": "y",
+    "from_coordinate": -64,
     "from_value": 1.5,
+    "to_coordinate": 320,
     "to_value": -1.5,
-    "type": "minecraft:y_clamped_gradient"
+    "type": "minecraft:gradient"
   },
-  "argument2": "sanctuary:overworld/offset",
+  "right": "sanctuary:overworld/offset",
   "type": "minecraft:add"
 }

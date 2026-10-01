@@ -1,17 +1,17 @@
 {
-  "argument": {
-    "argument1": -0.95,
-    "argument2": {
-      "argument1": -0.35000000000000003,
-      "argument2": {
+  "input": {
+    "left": {
+      "left": {
         "noise": "sanctuary:spaghetti_2d_thickness",
         "xz_scale": 2.0,
         "y_scale": 1.0,
         "type": "minecraft:noise"
       },
+      "right": -0.34999996,
       "type": "minecraft:mul"
     },
+    "right": -0.95,
     "type": "minecraft:add"
   },
-  "type": "minecraft:cache_once"
+  "type": "minecraft:cache"
 }

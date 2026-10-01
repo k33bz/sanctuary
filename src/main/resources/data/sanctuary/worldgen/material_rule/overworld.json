@@ -1,0 +1,16 @@
+{
+  "sequence": [
+    "sanctuary:bedrock_floor",
+    "sanctuary:overworld/copper_ore_vein",
+    "sanctuary:overworld/iron_ore_vein",
+    {
+      "if_true": {
+        "type": "minecraft:above_preliminary_surface"
+      },
+      "then_run": "sanctuary:overworld/surface",
+      "type": "minecraft:condition"
+    },
+    "sanctuary:overworld/underground"
+  ],
+  "type": "minecraft:sequence"
+}

@@ -1,10 +1,7 @@
 {
-  "argument": {
-    "argument": {
-      "argument": "sanctuary:offset",
-      "type": "minecraft:shift_b"
-    },
-    "type": "minecraft:cache_2d"
+  "input": {
+    "noise": "sanctuary:offset",
+    "type": "minecraft:shift_b"
   },
-  "type": "minecraft:flat_cache"
+  "type": "minecraft:cache"
 }

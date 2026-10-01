@@ -401,7 +401,7 @@ public class Sanctuary implements ModInitializer {
             net.minecraft.world.item.ItemStack bottle =
                     new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.EXPERIENCE_BOTTLE);
             if (!sp.getInventory().add(bottle)) {
-                sp.drop(bottle, false);
+                sp.drop(bottle, false, net.minecraft.util.Prediction.SERVER_ONLY);
             }
             level.playSound(null, hit.getBlockPos(), net.minecraft.sounds.SoundEvents.BOTTLE_FILL_DRAGONBREATH,
                     net.minecraft.sounds.SoundSource.PLAYERS, 1.0f, 1.25f);

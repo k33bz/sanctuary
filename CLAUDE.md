@@ -39,6 +39,7 @@ loading fail, which is a hard boot crash: the server cannot start with the mod i
 That is exactly how 26.2 was broken between 0.8.7.x and 0.8.11.1. Run `python3
 scripts/check_worldgen.py` after touching anything under that directory, and refresh from the
 vanilla JSONs inside the matching Minecraft jar rather than from the other branch.
+
 26.3 went further: the overworld settings now point at density functions Sanctuary never copied
 (`overworld/final_density`, `preliminary_surface_level`, ...) and a new `material_rule` registry.
 `check_worldgen.py --write` therefore copies the whole closure the gathering world's roots reach

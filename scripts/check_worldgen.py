@@ -18,7 +18,13 @@ copies against the vanilla files inside the Minecraft jar so a game bump surface
 immediately instead of on the next `runServer`.
 
   python3 scripts/check_worldgen.py            # report drift, exit 1 if any
-  python3 scripts/check_worldgen.py --write     # refresh the drifted copies in place
+  python3 scripts/check_worldgen.py --write     # refresh drifted copies, copy missing ones, and
+                                                # delete copies nothing reaches any more
+
+What gets copied is the closure of ROOTS: every density function, noise and material rule the
+gathering world's settings reach, found by following ids rather than by a fixed file list. A game
+version that adds a new layer (26.3: `overworld/final_density`, the `material_rule` registry)
+therefore gets `sanctuary:` copies instead of silently falling back to the home world's noise.
 
 Comparison is structural: JSON key order is not meaningful to Minecraft, and the copies were
 serialised by a tool that ordered keys differently to Mojang's data generator.
@@ -34,8 +40,12 @@ ROOT = Path(__file__).resolve().parent.parent
 SANCT = ROOT / "src" / "main" / "resources" / "data" / "sanctuary" / "worldgen"
 GRADLE_PROPS = ROOT / "gradle.properties"
 
-# `sanctuary:vanilla_overworld` is a copy of vanilla's `minecraft:overworld` noise settings; it
-# is the root of the copied tree (see closure()).
+# The roots of the copied tree, i.e. what data/sanctuary/dimension/rssworld.json points at:
+# `sanctuary:vanilla_overworld` (a copy of vanilla's `minecraft:overworld` noise settings) and the
+# `sanctuary:overworld` biome-source preset. Everything else is copied because a root reaches it.
+ROOTS = {("noise_settings", "overworld"): "noise_settings/vanilla_overworld.json",
+         ("multi_noise_biome_source_parameter_list", "overworld"):
+             "multi_noise_biome_source_parameter_list/overworld.json"}
 
 # Registries whose entries the copies re-namespace. Minecraft seeds noise from the id string, so
 # every density function, noise and material (surface) rule the overworld settings reach must be a
@@ -121,11 +131,11 @@ def namespace(node, key=None, refs=None):
 def closure(vanilla):
     """Every vanilla file the overworld settings reach, as {relative path: namespaced content}.
 
-    Walks from noise_settings/overworld.json through each referenced density function, noise and
+    Walks from ROOTS through each referenced density function, noise and
     material rule, so a game version that adds a new one (26.3: overworld/final_density,
     preliminary_surface_level, the material_rule registry) gets a copy instead of a dangling id.
     """
-    out, todo, seen = {}, [("noise_settings", "overworld")], set()
+    out, todo, seen = {}, list(ROOTS), set()
     while todo:
         reg, rid = todo.pop()
         if (reg, rid) in seen:
@@ -136,7 +146,7 @@ def closure(vanilla):
             continue
         refs = set()
         content = namespace(vanilla[rel], None, refs)
-        out["noise_settings/vanilla_overworld.json" if reg == "noise_settings" else rel] = content
+        out[ROOTS.get((reg, rid), rel)] = content
         todo.extend(refs)
     return out
 
@@ -249,10 +259,16 @@ def main(argv):
         if rel not in wanted:
             orphaned.append(rel)
 
+    # Unreachable copies are not harmless: Minecraft still loads every file into its registries,
+    # so a leftover that uses a retired density-function type crashes boot (0.8.11.1) even though
+    # nothing generates from it. --write deletes them; a check run fails on them.
     for rel in orphaned:
-        print(f"  ?  {rel}: not reachable from the overworld settings any more (safe to delete)")
+        print(f"  UNREACHABLE  {rel}: nothing in the gathering world uses it"
+              + (" (deleted)" if write else "; delete it (--write does)"))
+        if write:
+            (SANCT / rel).unlink()
 
-    if not drifted and not missing:
+    if not drifted and not missing and not orphaned:
         dangling = dangling_refs()
         for rid, key in dangling:
             print(f"  DANGLING  sanctuary:{rid} (referenced as \"{key}\") has no file in the tree; "
@@ -278,9 +294,11 @@ def main(argv):
             print(f"         refreshed from {jar.name}")
 
     if write:
-        print(f"\nrefreshed {len(drifted)}, copied {len(missing)} file(s); re-run without --write to confirm")
+        print(f"\nrefreshed {len(drifted)}, copied {len(missing)}, deleted {len(orphaned)} file(s); "
+              f"re-run without --write to confirm")
         return 0
-    print(f"\n{len(drifted)} copy(ies) drifted and {len(missing)} missing against vanilla {version}. "
+    print(f"\n{len(drifted)} copy(ies) drifted, {len(missing)} missing and {len(orphaned)} unreachable "
+          f"against vanilla {version}. "
           f"Refresh with: python3 scripts/check_worldgen.py --write")
     return 1
 

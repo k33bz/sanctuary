@@ -1,5 +1,11 @@
 ## Unreleased (CI only, no mod change)
 
+**Three release lines.** `main` moves to Minecraft 26.3, a new `26.2` branch keeps the 26.2 build, and
+`26.1` stays the live gmc101 line, so fixes can still be backported to older versions. CI now treats
+`26.2` like the others: Forgejo mirrors it to GitHub after the compat gate (`forgejo-ci.yml`
+push-upstream), its GitHub build publishes version badges (`build.yml`), and `forgejo-parity.yml` checks
+its head carries Forgejo's verification (a line not yet on GitHub is reported, not failed).
+
 **Version badges.** The README shows, per release line (`main` = 26.2, `26.1` = 26.1.2), the mod and
 Minecraft versions, the Fabric loader, fabric-api (the version the real-server CI test booted with,
 next to the one we compile against when they differ), the Flan it booted with, and the server-test

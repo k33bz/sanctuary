@@ -9,8 +9,6 @@ name: modpack
 on:
   schedule:
     - cron: "41 7 * * 1"   # Mondays 07:41 UTC
-  push:
-    branches: [claude/quirky-feynman-h29dt1]   # TEMP: verify once, removed before review
   workflow_dispatch:
     inputs:
       target:

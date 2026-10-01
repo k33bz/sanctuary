@@ -11,12 +11,12 @@ base {
     archivesName = project.archives_base_name
 }
 
-// Dev-server run dir. BRANCH-SPECIFIC: main (26.2) uses run262/, the 26.1 line uses run/.
-// A 26.2 server silently upgrades a 26.1.2 world the moment it opens one, and that upgrade is
-// irreversible, so the two lines must never share a run dir. A cross-branch
+// Dev-server run dir. BRANCH-SPECIFIC: main (26.3) uses run263/, the 26.2 line run262/, and the
+// 26.1 line run/. A newer server silently upgrades an older world the moment it opens one, and that
+// upgrade is irreversible, so the lines must never share a run dir. A cross-branch
 // `git checkout <otherbranch> -- build.gradle` clobbers this line (that is exactly how both
 // lines ended up on run262/), so re-check it after porting. The runServer guard is the backstop.
-def devRunDir = "run262"
+def devRunDir = "run263"
 
 loom {
     accessWidenerPath = file("src/main/resources/sanctuary.accesswidener")

@@ -4,32 +4,47 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-Sanctuary is a **server-side-only Fabric mod** for Minecraft 26.2 (Java 25). Two intertwined
+Sanctuary is a **server-side-only Fabric mod** for Minecraft 26.3 (Java 25). Two intertwined
 economies: XP is a life force (heals, armors, shields, buys back your life) and distance is
 danger (mobs scale with distance from the nearest sanctuary anchor).
 
-Two version lines are kept at FEATURE parity (currently 0.8.12.0 on both `main` and `26.1`).
-Version numbers are allowed to diverge when a fix only applies to one Minecraft version:
+Three version lines are kept at FEATURE parity (0.8.12.x on all three; `main` is 0.8.12.2 only
+for the 26.3 port). Version numbers are allowed to diverge when a fix only applies to one
+Minecraft version:
 
-- **`main`** targets **MC 26.2** (run dir `run262/`).
+- **`main`** targets **MC 26.3** (run dir `run263/`).
+- **`26.2`** targets **MC 26.2** (run dir `run262/`), kept for backports.
 - **`26.1`** targets **MC 26.1.2** — this is the line the **live gmc101 server actually runs**,
   so treat it as the deploy branch, not a throwaway backport. See the deploy notes in memory
   before shipping a jar there.
 
-Port a change across the two lines with `git checkout <otherbranch> -- <paths>` then
+Port a change across the lines with `git checkout <otherbranch> -- <paths>` then
 `git diff --cached HEAD` to catch API-delta clobbers. Three known 26.1↔26.2 deltas:
 `GRAY_STAINED_GLASS_PANE` ↔ `STAINED_GLASS_PANE.gray()`, `getBottomCenter()` ↔
 `Vec3.atBottomCenterOf()`, and team color `ChatFormatting` ↔ `Optional<TeamColor>`.
+Known 26.2→26.3 deltas: `ServerPlayer.drop(stack, bool)` gained a `Prediction` argument;
+`swing(hand)` needs a `SwingAnimation`; `setInvulnerable` → `setPermanentlyInvulnerable`;
+`BlockState.blocksMotion()` is gone (test the collision shape); `ConfiguredFeature` folded into a
+`Feature` interface (hook `PlacedFeature.place`, type id via `FEATURE_TYPE.getKey(feature.codec())`);
+`EnderMan` → `Enderman`; `FarmlandBlock.turnToDirt` → instance `turnToBaseBlock`;
+`ChunkGenerator.tryGenerateStructure` lost `SectionPos` and gained `Climate.Sampler`;
+`VanillaRegistries.createLookup()` → `createReloadableLookup(createWorldLookup())`.
 
 **Parity does NOT extend to `data/sanctuary/worldgen/`.** Those files are namespaced copies of
 vanilla worldgen, and vanilla worldgen types are version-specific, so the two lines must diverge
-there and porting either way breaks the other. Known delta: the density-function type
+there and porting between lines breaks the other. Known delta: the density-function type
 `minecraft:weird_scaled_sampler` exists in 26.1.2 and was REMOVED in 26.2, replaced by
 `minecraft:interval_select`. Copying 26.2 worldgen onto `26.1` (or the reverse) makes registry
 loading fail, which is a hard boot crash: the server cannot start with the mod installed at all.
 That is exactly how 26.2 was broken between 0.8.7.x and 0.8.11.1. Run `python3
 scripts/check_worldgen.py` after touching anything under that directory, and refresh from the
 vanilla JSONs inside the matching Minecraft jar rather than from the other branch.
+26.3 went further: the overworld settings now point at density functions Sanctuary never copied
+(`overworld/final_density`, `preliminary_surface_level`, ...) and a new `material_rule` registry.
+`check_worldgen.py --write` therefore copies the whole closure the gathering world's roots reach
+(ids are matched against the jar, never blocks, the biome `preset` or seed names) and deletes copies
+nothing reaches, because Minecraft still loads unreachable files into its registries. The server
+test generates gathering-world chunks, which is the check that actually catches a bad copy.
 
 ## Commands
 
@@ -38,14 +53,14 @@ vanilla JSONs inside the matching Minecraft jar rather than from the other branc
 ./gradlew test         # JUnit 5 unit tests only
 ./gradlew test --tests "com.k33bz.sanctuary.SurvivalLogicTest"                    # one class
 ./gradlew test --tests "com.k33bz.sanctuary.grave.GraveLifecycleTest.someMethod"  # one method
-./gradlew runServer    # dev server on :25565 (run dir: run262/ on main, run/ on 26.1)
+./gradlew runServer    # dev server on :25565 (run dir: run263/ on main, run262/ on 26.2, run/ on 26.1)
 python3 scripts/check_deps.py   # bump dependency pins in-place (CI runs this weekly)
 python3 scripts/check_worldgen.py   # sanctuary worldgen copies vs the MC jar (--write to refresh)
 ```
 
 - **Never point a dev server at another branch's run dir.** A 26.2 server silently upgrades a
   26.1.2 world the moment it opens one, and that upgrade is irreversible. The run dir comes from
-  `devRunDir` at the top of `build.gradle`: `run262/` on `main`, `run/` on `26.1`. That line is
+  `devRunDir` at the top of `build.gradle`: `run263/` on `main`, `run262/` on `26.2`, `run/` on `26.1`. That line is
   deliberately branch-specific, so a cross-branch `git checkout <otherbranch> -- build.gradle`
   clobbers it; both lines silently shared `run262/` that way until 2026-08-19. Re-check
   `devRunDir` after every port. As a backstop, `runServer` refuses to boot when the run dir's

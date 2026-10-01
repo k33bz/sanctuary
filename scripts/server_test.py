@@ -9,6 +9,7 @@ server console and reads vanilla's own answer (`execute if block ...` prints "Te
 What it covers:
   boot     the server reaches "Done", Sanctuary logs its init line, and no mixin fails to apply
            (mixins apply lazily, so each scenario below also forces its target classes to load)
+  worldgen chunks in the gathering world (sanctuary:rssworld) generate from the namespaced copies
   repair   System 12: a blast inside a sanctuary drops nothing and is rebuilt; a chest breaks
            as vanilla (contents drop, not rebuilt); a torch waits for its wall; an anchor set to
            OFF journals but never rebuilds; outside every sanctuary nothing changes from vanilla
@@ -43,7 +44,10 @@ UA = {"User-Agent": "k33bz/sanctuary server-test (github actions)"}
 FATAL = re.compile(
     r"Mixin apply failed|InvalidInjectionException|InvalidMixinException|MixinApplyError"
     r"|Critical injection failure|Exception ticking world|Encountered an unexpected exception"
-    r"|Unsupported mob type for DoorInteractGoal|Could not execute entrypoint")
+    r"|Unsupported mob type for DoorInteractGoal|Could not execute entrypoint"
+    # worldgen: a dangling or mistyped sanctuary: copy only throws once a gathering-world chunk
+    # generates (0.8.11.1 was a boot crash; a missing noise is a per-chunk "Missing element")
+    r"|Missing element|Unbound values in registry|Failed to load registries|Error generating chunk")
 
 
 # ---------------------------------------------------------------- downloads
@@ -282,6 +286,15 @@ def run(s, results, has_repair):
     s.send("summon minecraft:enderman 10 -60 40")            # loads the enderman mixin target
     time.sleep(5)
     check("crash fix: server survives a door-breaker Drowned in water", s.alive())
+
+    # 8. The gathering world actually GENERATES. It runs on ~110 namespaced copies of vanilla
+    #    worldgen (scripts/check_worldgen.py); a wrong copy boots fine and only fails when a chunk
+    #    is built, so build some far from spawn (fresh terrain) and require the bedrock floor that
+    #    the copied material rules lay at the world's bottom.
+    s.send("execute in sanctuary:rssworld run forceload add 4000 4000 4031 4031")
+    check("worldgen: gathering-world chunks generate (bedrock floor laid)",
+          s.poll("execute in sanctuary:rssworld if block 4008 -64 4008 minecraft:bedrock", True, 90)
+          and s.alive())
 
     # 7. The admin report command (System 12).
     if has_repair:

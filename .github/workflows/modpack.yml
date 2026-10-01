@@ -1,0 +1,43 @@
+name: modpack
+
+# Can gmc101 move to a newer Minecraft yet? gmc101 is gated by the slowest of its ~35 third-party
+# mods, not by Sanctuary. Weekly, ask Modrinth about every mod in scripts/gmc101-modpack.json
+# (scripts/check_modpack.py) and publish a "gmc101 -> <target>: N blockers / ready" badge to the
+# `badges` branch, so the README says when the upgrade unblocks. Never fails the run on blockers:
+# blockers are the expected answer for a while, and the badge carries it.
+
+on:
+  schedule:
+    - cron: "41 7 * * 1"   # Mondays 07:41 UTC
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Minecraft version to check"
+        default: "26.3"
+
+permissions:
+  contents: write   # push the badge JSON to the `badges` branch
+
+env:
+  TARGET: ${{ github.event.inputs.target || '26.3' }}   # the version gmc101 is aiming for
+
+jobs:
+  readiness:
+    if: github.repository_owner == 'k33bz'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check every gmc101 mod on Modrinth
+        run: |
+          set +e
+          python3 scripts/check_modpack.py --target "$TARGET" --json build/modpack.json | tee build-modpack.txt
+          { echo "### gmc101 modpack vs Minecraft $TARGET"; echo; echo '```'; cat build-modpack.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          exit 0
+      - name: Publish the readiness badge
+        if: hashFiles('build/modpack.json') != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          python3 scripts/publish_badges.py modpack --summary build/modpack.json --out /tmp/badges
+          bash scripts/commit_badges.sh /tmp/badges "modpack vs $TARGET @ ${GITHUB_SHA::7}"

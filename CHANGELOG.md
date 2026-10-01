@@ -1,5 +1,20 @@
 ## Unreleased (CI only, no mod change)
 
+**Three release lines.** `main` moves to Minecraft 26.3, a new `26.2` branch keeps the 26.2 build, and
+`26.1` stays the live gmc101 line, so fixes can still be backported to older versions. CI now treats
+`26.2` like the others: Forgejo mirrors it to GitHub after the compat gate (`forgejo-ci.yml`
+push-upstream), its GitHub build publishes version badges (`build.yml`), and `forgejo-parity.yml` checks
+its head carries Forgejo's verification (a line not yet on GitHub is reported, not failed).
+
+**"Can gmc101 upgrade yet?" now answers itself weekly.** `scripts/check_modpack.py` existed but nothing
+ran it. `.github/workflows/modpack.yml` runs it every Monday (and on demand, with any target version)
+against the gmc101 mod list and publishes a README badge, `gmc101 → 26.3: N blockers` or `ready`; the
+full per-mod table lands in the run summary. 26.3 is the target: every mod ready for 26.2 is also ready
+for 26.3, so there is no reason to stop at 26.2. First answer (2026-10-01): 27 of 35 third-party mods
+ready; blocked on YUNG's API (+ the five YUNG's structure mods that follow it), Cobweb, and Server Sided
+Portals. The manifest now notes that Server Sided Portals is datapack-defined custom portals that
+Sanctuary's rifts never used, and that Cobweb is only its library, so dropping it clears two blockers.
+
 **Version badges.** The README shows, per release line (`main` = 26.2, `26.1` = 26.1.2), the mod and
 Minecraft versions, the Fabric loader, fabric-api (the version the real-server CI test booted with,
 next to the one we compile against when they differ), the Flan it booted with, and the server-test

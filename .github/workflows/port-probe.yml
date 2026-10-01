@@ -1,5 +1,5 @@
 name: port-probe
-# TEMPORARY: check every mixin target against the 26.3 jar. Deleted before review.
+# TEMPORARY: probe for the 26.3 port. Deleted before review.
 on:
   push:
     branches: [claude/port-26.3]
@@ -11,4 +11,7 @@ jobs:
       - uses: actions/setup-java@v4
         with: {distribution: temurin, java-version: 25}
       - run: ./gradlew --no-daemon help -q
-      - run: python3 .github/probe/check_mixins.py "$(ls ~/.gradle/caches/fabric-loom/26.3/*merged*.jar | head -1)" .github/probe/mixins.json
+      - run: |
+          J=$(ls ~/.gradle/caches/fabric-loom/26.3/*merged*.jar | head -1)
+          unzip -Z1 "$J" | grep -iE "ender(man|_man)[^/]*\.class$|TakeBlock|LeaveBlock" | grep -v "^data/"
+          for c in $(unzip -Z1 "$J" | grep -iE "TakeBlock[^/]*\.class$" | sed 's/\.class$//;s#/#.#g'); do javap -p -c -cp "$J" "$c" | grep -E "class |void tick|removeBlock|setBlock|invoke" | head -30; done

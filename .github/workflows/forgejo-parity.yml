@@ -2,7 +2,7 @@ name: forgejo-parity
 
 # Forgejo is the source of truth; GitHub is a mirror (see forgejo-ci.yml). Every commit Forgejo
 # verifies and mirrors carries a "forgejo/compat-gate" commit status, posted by
-# scripts/github_report.py. A main/26.1 head WITHOUT that status either was committed directly
+# scripts/github_report.py. A main/26.2/26.1 head WITHOUT that status either was committed directly
 # on GitHub (nothing reconciles it back, so the two diverge) or Forgejo hasn't reported yet.
 # This badge goes red for the first and says which branch and commit.
 #
@@ -30,7 +30,7 @@ jobs:
           REPO: ${{ github.repository }}
         run: |
           python3 - <<'EOF'
-          import json, os, sys, urllib.request
+          import json, os, sys, urllib.error, urllib.request
           repo, token = os.environ["REPO"], os.environ["GH_TOKEN"]
           def get(path):
               req = urllib.request.Request("https://api.github.com" + path, headers={
@@ -39,8 +39,14 @@ jobs:
                   return json.load(r)
           bad = []
           out = ["| Branch | Head | Forgejo |", "|---|---|---|"]
-          for branch in ("main", "26.1"):
-              sha = get(f"/repos/{repo}/commits/{branch}")["sha"]
+          for branch in ("main", "26.2", "26.1"):
+              try:
+                  sha = get(f"/repos/{repo}/commits/{branch}")["sha"]
+              except urllib.error.HTTPError as e:
+                  if e.code not in (404, 422):
+                      raise
+                  out.append(f"| `{branch}` | — | not on GitHub yet (created on Forgejo, mirrored on its first push) |")
+                  continue
               statuses = get(f"/repos/{repo}/commits/{sha}/status")["statuses"]
               s = next((x for x in statuses if x["context"] == "forgejo/compat-gate"), None)
               if s is None:

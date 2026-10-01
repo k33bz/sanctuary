@@ -290,7 +290,8 @@ def run(s, results, has_repair):
     # 8. The gathering world actually GENERATES. It runs on ~110 namespaced copies of vanilla
     #    worldgen (scripts/check_worldgen.py); a wrong copy boots fine and only fails when a chunk
     #    is built, so build some far from spawn (fresh terrain) and require the bedrock floor that
-    #    the copied material rules lay at the world's bottom.
+    #    the copied surface rules lay at the world's bottom (`material_rule` files on 26.3, the
+    #    `surface_rule` inside noise_settings on 26.2 and 26.1).
     s.send("execute in sanctuary:rssworld run forceload add 4000 4000 4031 4031")
     check("worldgen: gathering-world chunks generate (bedrock floor laid)",
           s.poll("execute in sanctuary:rssworld if block 4008 -64 4008 minecraft:bedrock", True, 90)

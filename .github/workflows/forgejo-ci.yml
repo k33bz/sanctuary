@@ -87,14 +87,14 @@ jobs:
           ls -la "$dir"
 
       # The bot speaks 1.21.x and the server is 26.x, so every test crosses the
-      # ViaProxy bridge. It is a 45 MB jar fetched from a pinned ViaVersion CI
-      # build - cached, because that download is the slowest thing here and the
-      # pin only moves when someone edits scripts/fetch-viaproxy.js.
+      # ViaProxy bridge. It is a 49 MB jar fetched from a pinned ViaProxy GitHub
+      # release - cached, because that download is the slowest thing here and the
+      # pin only moves when someone edits scripts/fetch-viaproxy.js (then bump this key).
       - name: cache the ViaProxy bridge
         uses: actions/cache@v4
         with:
           path: harness/ci-artifacts/viaproxy
-          key: viaproxy-3.4.13-build901
+          key: viaproxy-3.4.14
 
       - name: fetch the ViaProxy bridge
         working-directory: harness

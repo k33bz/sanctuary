@@ -72,7 +72,7 @@
         "type": "minecraft:abs"
       },
       "right": {
-        "left": "minecraft:overworld/caves/spaghetti_2d_thickness_modulator",
+        "left": "sanctuary:overworld/caves/spaghetti_2d_thickness_modulator",
         "right": 0.083,
         "type": "minecraft:mul"
       },
@@ -107,7 +107,7 @@
           },
           "type": "minecraft:abs"
         },
-        "right": "minecraft:overworld/caves/spaghetti_2d_thickness_modulator",
+        "right": "sanctuary:overworld/caves/spaghetti_2d_thickness_modulator",
         "type": "minecraft:add"
       },
       "type": "minecraft:cube"

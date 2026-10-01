@@ -1,0 +1,22 @@
+{
+  "sequence": [
+    {
+      "if_true": {
+        "max_threshold": 0.0125,
+        "min_threshold": -0.0125,
+        "noise": "sanctuary:calcite",
+        "type": "minecraft:noise_threshold"
+      },
+      "then_run": {
+        "result_state": "sanctuary:calcite",
+        "type": "minecraft:block"
+      },
+      "type": "minecraft:condition"
+    },
+    {
+      "result_state": "minecraft:stone",
+      "type": "minecraft:block"
+    }
+  ],
+  "type": "minecraft:sequence"
+}

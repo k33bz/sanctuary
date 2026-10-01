@@ -22,7 +22,7 @@
       "type": "minecraft:add"
     },
     "right": {
-      "left": "minecraft:overworld/caves/spaghetti_roughness_function",
+      "left": "sanctuary:overworld/caves/spaghetti_roughness_function",
       "right": {
         "input": {
           "left": {

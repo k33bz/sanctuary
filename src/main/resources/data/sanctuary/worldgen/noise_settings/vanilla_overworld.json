@@ -13,49 +13,49 @@
     "depth": "sanctuary:overworld/depth",
     "ridges": "sanctuary:overworld/ridges",
     "final_density": "sanctuary:overworld/final_density",
-    "chunk_surface_level": "minecraft:overworld/chunk_surface_level"
+    "chunk_surface_level": "sanctuary:overworld/chunk_surface_level"
   },
   "spawn_target": [
     {
-      "minecraft:overworld/continents": [
+      "sanctuary:overworld/continents": [
         -0.11,
         1.0
       ],
-      "minecraft:overworld/erosion": [
+      "sanctuary:overworld/erosion": [
         -1.0,
         1.0
       ],
-      "minecraft:overworld/ridges": [
+      "sanctuary:overworld/ridges": [
         -1.0,
         -0.16
       ],
-      "minecraft:overworld/temperature": [
+      "sanctuary:overworld/temperature": [
         -1.0,
         1.0
       ],
-      "minecraft:overworld/vegetation": [
+      "sanctuary:overworld/vegetation": [
         -1.0,
         1.0
       ]
     },
     {
-      "minecraft:overworld/continents": [
+      "sanctuary:overworld/continents": [
         -0.11,
         1.0
       ],
-      "minecraft:overworld/erosion": [
+      "sanctuary:overworld/erosion": [
         -1.0,
         1.0
       ],
-      "minecraft:overworld/ridges": [
+      "sanctuary:overworld/ridges": [
         0.16,
         1.0
       ],
-      "minecraft:overworld/temperature": [
+      "sanctuary:overworld/temperature": [
         -1.0,
         1.0
       ],
-      "minecraft:overworld/vegetation": [
+      "sanctuary:overworld/vegetation": [
         -1.0,
         1.0
       ]
@@ -74,12 +74,12 @@
     "exclusion": {
       "left": {
         "left": -0.225,
-        "right": "minecraft:overworld/erosion",
+        "right": "sanctuary:overworld/erosion",
         "type": "minecraft:sub"
       },
       "right": {
         "left": {
-          "left": "minecraft:overworld/depth",
+          "left": "sanctuary:overworld/depth",
           "right": 0.9,
           "type": "minecraft:sub"
         },
@@ -106,35 +106,35 @@
       "y_scale": 1.0,
       "type": "minecraft:noise"
     },
-    "surface_level": "minecraft:overworld/preliminary_surface_level"
+    "surface_level": "sanctuary:overworld/preliminary_surface_level"
   },
   "debug_functions": [
     {
-      "function": "minecraft:overworld/final_density",
+      "function": "sanctuary:overworld/final_density",
       "label": "N"
     },
     {
-      "function": "minecraft:overworld/temperature",
+      "function": "sanctuary:overworld/temperature",
       "label": "T"
     },
     {
-      "function": "minecraft:overworld/vegetation",
+      "function": "sanctuary:overworld/vegetation",
       "label": "V"
     },
     {
-      "function": "minecraft:overworld/continents",
+      "function": "sanctuary:overworld/continents",
       "label": "C"
     },
     {
-      "function": "minecraft:overworld/erosion",
+      "function": "sanctuary:overworld/erosion",
       "label": "E"
     },
     {
-      "function": "minecraft:overworld/depth",
+      "function": "sanctuary:overworld/depth",
       "label": "D"
     },
     {
-      "function": "minecraft:overworld/ridges",
+      "function": "sanctuary:overworld/ridges",
       "label": "W"
     },
     {
@@ -160,9 +160,9 @@
       "label": "PV"
     },
     {
-      "function": "minecraft:overworld/preliminary_surface_level",
+      "function": "sanctuary:overworld/preliminary_surface_level",
       "label": "PS"
     }
   ],
-  "material_rule": "minecraft:overworld"
+  "material_rule": "sanctuary:overworld"
 }

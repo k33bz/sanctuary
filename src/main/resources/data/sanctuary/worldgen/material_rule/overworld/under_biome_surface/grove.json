@@ -1,0 +1,10 @@
+{
+  "sequence": [
+    "sanctuary:overworld/powder_snow_under_surface",
+    {
+      "result_state": "minecraft:dirt",
+      "type": "minecraft:block"
+    }
+  ],
+  "type": "minecraft:sequence"
+}

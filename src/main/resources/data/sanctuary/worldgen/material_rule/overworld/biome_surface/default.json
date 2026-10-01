@@ -1,0 +1,17 @@
+{
+  "sequence": [
+    {
+      "if_true": "minecraft:not_underwater",
+      "then_run": {
+        "result_state": "minecraft:grass_block",
+        "type": "minecraft:block"
+      },
+      "type": "minecraft:condition"
+    },
+    {
+      "result_state": "minecraft:dirt",
+      "type": "minecraft:block"
+    }
+  ],
+  "type": "minecraft:sequence"
+}

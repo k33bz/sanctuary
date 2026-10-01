@@ -4,10 +4,10 @@
       "left": {
         "input": {
           "left": {
-            "left": "minecraft:overworld/depth",
+            "left": "sanctuary:overworld/depth",
             "right": {
               "input": {
-                "left": "minecraft:overworld/jaggedness",
+                "left": "sanctuary:overworld/jaggedness",
                 "right": {
                   "input": {
                     "noise": "sanctuary:jagged",
@@ -23,7 +23,7 @@
             },
             "type": "minecraft:add"
           },
-          "right": "minecraft:overworld/factor",
+          "right": "sanctuary:overworld/factor",
           "type": "minecraft:mul"
         },
         "type": "minecraft:quarter_negative"
@@ -31,7 +31,7 @@
       "right": 4.0,
       "type": "minecraft:mul"
     },
-    "right": "minecraft:overworld/base_3d_noise",
+    "right": "sanctuary:overworld/base_3d_noise",
     "type": "minecraft:add"
   },
   "type": "minecraft:cache"

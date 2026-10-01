@@ -1,0 +1,17 @@
+{
+  "sequence": [
+    {
+      "if_true": "minecraft:on_ceiling",
+      "then_run": {
+        "result_state": "minecraft:stone",
+        "type": "minecraft:block"
+      },
+      "type": "minecraft:condition"
+    },
+    {
+      "result_state": "sanctuary:gravel",
+      "type": "minecraft:block"
+    }
+  ],
+  "type": "minecraft:sequence"
+}

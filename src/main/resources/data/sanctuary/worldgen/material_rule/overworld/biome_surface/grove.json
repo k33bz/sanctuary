@@ -1,0 +1,14 @@
+{
+  "sequence": [
+    "sanctuary:overworld/powder_snow_surface",
+    {
+      "if_true": "minecraft:not_underwater",
+      "then_run": {
+        "result_state": "minecraft:snow_block",
+        "type": "minecraft:block"
+      },
+      "type": "minecraft:condition"
+    }
+  ],
+  "type": "minecraft:sequence"
+}

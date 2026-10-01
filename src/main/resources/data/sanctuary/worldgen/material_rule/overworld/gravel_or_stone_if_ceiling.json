@@ -9,7 +9,7 @@
       "type": "minecraft:condition"
     },
     {
-      "result_state": "sanctuary:gravel",
+      "result_state": "minecraft:gravel",
       "type": "minecraft:block"
     }
   ],

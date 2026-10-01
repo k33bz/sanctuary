@@ -3,7 +3,7 @@
     "false_at_and_above": {
       "above_bottom": 5
     },
-    "random_name": "sanctuary:bedrock_floor",
+    "random_name": "minecraft:bedrock_floor",
     "true_at_and_below": {
       "above_bottom": 0
     },

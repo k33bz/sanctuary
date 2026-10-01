@@ -5,7 +5,7 @@
         "type": "minecraft:steep"
       },
       "then_run": {
-        "result_state": "sanctuary:packed_ice",
+        "result_state": "minecraft:packed_ice",
         "type": "minecraft:block"
       },
       "type": "minecraft:condition"
@@ -18,7 +18,7 @@
         "type": "minecraft:noise_threshold"
       },
       "then_run": {
-        "result_state": "sanctuary:packed_ice",
+        "result_state": "minecraft:packed_ice",
         "type": "minecraft:block"
       },
       "type": "minecraft:condition"
@@ -31,7 +31,7 @@
         "type": "minecraft:noise_threshold"
       },
       "then_run": {
-        "result_state": "sanctuary:ice",
+        "result_state": "minecraft:ice",
         "type": "minecraft:block"
       },
       "type": "minecraft:condition"

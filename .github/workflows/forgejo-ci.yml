@@ -87,14 +87,14 @@ jobs:
           ls -la "$dir"
 
       # The bot speaks 1.21.x and the server is 26.x, so every test crosses the
-      # ViaProxy bridge. It is a 45 MB jar fetched from a pinned ViaVersion CI
-      # build - cached, because that download is the slowest thing here and the
-      # pin only moves when someone edits scripts/fetch-viaproxy.js.
+      # ViaProxy bridge. It is a 49 MB jar fetched from a pinned ViaProxy GitHub
+      # release - cached, because that download is the slowest thing here and the
+      # pin only moves when someone edits scripts/fetch-viaproxy.js (then bump this key).
       - name: cache the ViaProxy bridge
         uses: actions/cache@v4
         with:
           path: harness/ci-artifacts/viaproxy
-          key: viaproxy-3.4.13-build901
+          key: viaproxy-3.4.14
 
       - name: fetch the ViaProxy bridge
         working-directory: harness
@@ -203,11 +203,11 @@ jobs:
           name: sanctuary-jars
           path: harness/ci-artifacts/sanctuary/sanctuary/*.jar
 
-  # Mirror main AND 26.1. 26.1 used to stay Forgejo-only, so GitHub's 26.1 went
+  # Mirror every release line: main, 26.2 and 26.1. 26.1 used to stay Forgejo-only, so GitHub's 26.1 went
   # stale (it lacked this very file) while gmc101 deployed from Forgejo's.
   push-upstream:
     needs: build-and-compat
-    if: github.repository_owner == 'homelab' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/26.1')
+    if: github.repository_owner == 'homelab' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/26.2' || github.ref == 'refs/heads/26.1')
     runs-on: debian-op
     steps:
       - uses: actions/checkout@v4

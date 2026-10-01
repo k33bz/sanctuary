@@ -1,5 +1,10 @@
 ## Unreleased (CI only, no mod change)
 
+**Three release lines (CI only).** Same CI change as `main` (GitHub #45): `main` moves to Minecraft 26.3, a
+`26.2` branch keeps the 26.2 build, and `26.1` stays the live gmc101 line. `forgejo-ci.yml` mirrors `26.2` to
+GitHub after the compat gate and `build.yml` publishes version badges for it. The compat gate's ViaProxy
+bridge is now the 3.4.14 release (the harness gates 26.3 with it; cache key `viaproxy-3.4.14`).
+
 **Version badges.** Same CI change as `main`: `build.yml` records what the real-server test compiled
 against and booted with (`scripts/server_test.py` → `versions.json`), and on pushes to `26.1` publishes
 it as shields.io endpoint badges to the orphan `badges` branch on GitHub (`scripts/publish_badges.py`,

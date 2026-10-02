@@ -1,5 +1,11 @@
 ## Unreleased (CI only, no mod change)
 
+**Fabric Loader 0.19.5 on the live line.** gmc101 moved from loader 0.19.3 to 0.19.5 on 2026-10-01
+(rehearsed first: the full 131-mod pack booted on 0.19.5 and took a bot login; the compat gate ran 6/6),
+so `loader_version` on `26.1` follows. The pin is a floor: it may never exceed the loader the live server
+runs, because a jar built against a newer loader crashes an older server at boot, while a newer server
+than the floor is always fine. All three lines now build against 0.19.5. No mod change.
+
 **Three release lines (CI only).** Same CI change as `main` (GitHub #45): `main` moves to Minecraft 26.3, a
 `26.2` branch keeps the 26.2 build, and `26.1` stays the live gmc101 line. `forgejo-ci.yml` mirrors `26.2` to
 GitHub after the compat gate and `build.yml` publishes version badges for it. The compat gate's ViaProxy
